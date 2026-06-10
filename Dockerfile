@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Waitlist Management Backend
 
 # Stage 1: Build Stage
-FROM maven:3.9-eclipse-temurin-17-alpine AS builder
+FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
@@ -13,12 +13,12 @@ COPY src ./src
 RUN mvn clean package -DskipTests
 
 # Stage 2: Runtime Stage
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
 # Install curl for health checks
-RUN apk add --no-cache curl
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # Copy JAR from builder stage
 COPY --from=builder /app/target/backend-0.0.1-SNAPSHOT.jar app.jar
