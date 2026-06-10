@@ -17,9 +17,16 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long> {
 
     Optional<Waitlist> findByGuestPhone(String guestPhone);
 
-    // Return the most recent waitlist entry (by joinedAt desc, then by id desc) for a given restaurant and guest phone
-    @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId AND w.guestPhone = :guestPhone ORDER BY w.id DESC, w.id DESC LIMIT 1")
+    // Return the most recent waitlist entry (by joined_at desc then id desc) for a given restaurant and guest phone
+    @Query(value = "SELECT * FROM waitlist w WHERE w.restaurant_id = :restaurantId AND w.guest_phone = :guestPhone ORDER BY w.id DESC LIMIT 1", nativeQuery = true)
     Optional<Waitlist> findLatestByRestaurantIdAndGuestPhone(@Param("restaurantId") Long restaurantId, @Param("guestPhone") String guestPhone);
+
+    long countByRestaurantIdAndStatusIn(Long restaurantId, java.util.Collection<Waitlist.WaitlistStatus> statuses);
+
+    java.util.List<Waitlist> findByRestaurantIdAndStatusInOrderByIdAsc(Long restaurantId, java.util.Collection<Waitlist.WaitlistStatus> statuses);
+
+    @Query(value = "SELECT * FROM waitlist w WHERE w.restaurant_id = :restaurantId AND DATE(w.joined_at) = :joinedDate", nativeQuery = true)
+    java.util.List<Waitlist> findByRestaurantIdAndJoinedDate(@Param("restaurantId") Long restaurantId, @Param("joinedDate") java.sql.Date joinedDate);
 
     @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId AND w.guestPhone = :guestPhone ORDER BY w.id DESC")
     List<Waitlist> findAllByRestaurantIdAndGuestPhone(@Param("restaurantId") Long restaurantId, @Param("guestPhone") String guestPhone);

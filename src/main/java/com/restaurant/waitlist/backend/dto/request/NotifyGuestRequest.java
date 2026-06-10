@@ -7,8 +7,5 @@ import lombok.Data;
 public class NotifyGuestRequest {
     @Positive(message = "Estimated wait time must be positive")
     private Integer estimatedWaitTime;
-
-    @Positive(message = "Position must be positive")
-    private Integer position;
 }
 

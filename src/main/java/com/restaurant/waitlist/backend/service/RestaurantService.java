@@ -80,61 +80,126 @@ public class RestaurantService {
                 .status(Waitlist.WaitlistStatus.WAITING)
                 .build();
 
+        if (waitlist.getPosition() == null) {
+            java.sql.Date sqlDate = java.sql.Date.valueOf(java.time.LocalDate.now());
+            long activeCount = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurantId, sqlDate).stream()
+                    .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
+                    .count();
+            waitlist.setPosition((int) activeCount + 1);
+        }
+
         waitlist = waitlistRepository.save(waitlist);
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
-    public List<WaitlistResponse> getWaitlist(Long restaurantId) {
-        List<Waitlist> waitlist = waitlistRepository.findByRestaurantId(restaurantId);
-        return waitlist.stream()
+    public List<WaitlistResponse> getWaitlist(Long restaurantId, String status, String date) {
+        restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+        java.util.List<Waitlist> list;
+        String dateParam = (date != null && !date.trim().isEmpty()) ? date.trim() : null;
+        if (dateParam != null) {
+            java.sql.Date sqlDate = java.sql.Date.valueOf(java.time.LocalDate.parse(dateParam));
+            list = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurantId, sqlDate);
+        } else {
+            java.sql.Date sqlDate = java.sql.Date.valueOf(java.time.LocalDate.now());
+            list = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurantId, sqlDate);
+        }
+        if (status != null && !status.trim().isEmpty()) {
+            Waitlist.WaitlistStatus st = Waitlist.WaitlistStatus.valueOf(status.trim().toUpperCase());
+            list = list.stream().filter(w -> w.getStatus() == st).collect(Collectors.toList());
+        }
+        return list.stream()
                 .map(WaitlistResponse::fromWaitlist)
                 .collect(Collectors.toList());
     }
 
-    public void notifyGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
-        // fetch waitlist entry and possibly update estimated time/position
+    public WaitlistResponse notifyGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
         Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
-
-        boolean changed = false;
-        if (waitlist.getEstimatedWaitTime() == null && request.getEstimatedWaitTime() != null) {
+        if (request.getEstimatedWaitTime() != null) {
             waitlist.setEstimatedWaitTime(request.getEstimatedWaitTime());
-            changed = true;
         }
-        if (waitlist.getPosition() == null && request.getPosition() != null) {
-            waitlist.setPosition(request.getPosition());
-            changed = true;
-        }
+        waitlist.setStatus(Waitlist.WaitlistStatus.NOTIFIED);
+        waitlistRepository.save(waitlist);
+        String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
 
-        if (changed) {
-            waitlistRepository.save(waitlist);
-        }
-
-        // mark as notified (validates restaurant ownership)
-        waitlistService.markAsNotified(restaurantId, waitlistId);
-
-        // send sms using the final values (existing in DB or provided)
-        String estimatedTime = waitlist.getEstimatedWaitTime() != null ?
-                waitlist.getEstimatedWaitTime().toString() : "Soon";
-        Integer position = waitlist.getPosition();
-
+        Integer position = waitlist.getPosition() !=null ? waitlist.getPosition() : null;
         smsService.sendWaitlistNotificationSms(
                 waitlist.getGuestPhone(),
                 waitlist.getGuestName(),
                 estimatedTime,
                 position
         );
+        return WaitlistResponse.fromWaitlist(waitlist);
     }
 
-    public void seatGuest(Long restaurantId, Long waitlistId) {
-        // mark as seated (validates restaurant ownership)
-        waitlistService.markAsSeated(restaurantId, waitlistId);
-
-        // send sms
+    @org.springframework.transaction.annotation.Transactional
+    public WaitlistResponse seatGuest(Long restaurantId, Long waitlistId) {
         Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
-        smsService.sendSeatedNotificationSms(
-                waitlist.getGuestPhone(),
-                waitlist.getGuestName()
-        );
+        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
+        }
+        if (waitlist.getStatus() == Waitlist.WaitlistStatus.CANCELLED) {
+            throw new RuntimeException("Waitlist entry was already cancelled");
+        }
+        if (waitlist.getStatus() == Waitlist.WaitlistStatus.SEATED) {
+            throw new RuntimeException("Waitlist entry is already seated");
+        }
+        waitlist.setStatus(Waitlist.WaitlistStatus.SEATED);
+        waitlist.setPosition(null);
+        waitlist.setEstimatedWaitTime(null);
+        waitlist.setSeatedAt(java.time.LocalDateTime.now());
+        waitlistRepository.save(waitlist);
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.util.List<Waitlist> todaysActive = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurantId, java.sql.Date.valueOf(today)).stream()
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
+                .sorted((a, b) -> a.getId().compareTo(b.getId()))
+                .toList();
+        int p = 1;
+        for (Waitlist w : todaysActive) {
+            w.setPosition(p++);
+        }
+        waitlistRepository.saveAll(todaysActive);
+        smsService.sendSeatedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName());
+        return WaitlistResponse.fromWaitlist(waitlist);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public WaitlistResponse approveGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
+        restaurantRepository.findById(restaurantId).orElseThrow(() -> new RuntimeException("Restaurant not found"));
+        Waitlist waitlist = waitlistService.getWaitlistById(waitlistId);
+        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
+        }
+        java.time.LocalDate today = java.time.LocalDate.now();
+        long count = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurantId, java.sql.Date.valueOf(today)).stream()
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
+                .count();
+        waitlist.setPosition((int) (count + 1));
+        waitlist.setStatus(Waitlist.WaitlistStatus.WAITING);
+        if (request.getEstimatedWaitTime() != null) {
+            waitlist.setEstimatedWaitTime(request.getEstimatedWaitTime());
+        }
+        waitlistRepository.save(waitlist);
+        return WaitlistResponse.fromWaitlist(waitlist);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void updateEstimate(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
+        if (waitlist.getStatus() != Waitlist.WaitlistStatus.NOTIFIED) {
+            throw new RuntimeException("Can only update estimate for notified entries");
+        }
+        if (request.getEstimatedWaitTime() != null) {
+            waitlist.setEstimatedWaitTime(request.getEstimatedWaitTime());
+        }
+        waitlistRepository.save(waitlist);
+        if (waitlist.getStatus() == Waitlist.WaitlistStatus.NOTIFIED && request.getEstimatedWaitTime() != null) {
+            String message = "Hi " + waitlist.getGuestName() + ", your table at "
+                    + waitlist.getRestaurant().getName()
+                    + " is slightly delayed. New wait time is approximately "
+                    + request.getEstimatedWaitTime() + " minutes. Thanks for your patience.";
+            smsService.sendSms(waitlist.getGuestPhone(), message);
+        }
     }
 
     public void removeGuest(Long restaurantId, Long waitlistId) {
@@ -151,13 +216,19 @@ public class RestaurantService {
 
         List<Waitlist> allWaitlists = waitlistRepository.findByRestaurantId(restaurantId);
 
-        long totalWaiting = allWaitlists.stream()
-                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING)
+        List<Waitlist> todayWaitlists = allWaitlists.stream()
+                .filter(w -> w.getJoinedAt().isAfter(startOfDay) && w.getJoinedAt().isBefore(endOfDay))
+                .toList();
+
+        long totalWaiting = todayWaitlists.stream()
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
                 .count();
 
-        long totalNotified = allWaitlists.stream()
-                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
-                .count();
+        Integer avgWaitTime = (int) todayWaitlists.stream()
+                .filter(w -> (w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED) && w.getEstimatedWaitTime() != null)
+                .mapToInt(Waitlist::getEstimatedWaitTime)
+                .average()
+                .orElse(0);
 
         long seatedToday = allWaitlists.stream()
                 .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.SEATED &&
@@ -166,18 +237,9 @@ public class RestaurantService {
                         w.getSeatedAt().isBefore(endOfDay))
                 .count();
 
-        long noShowsToday = allWaitlists.stream()
-                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.NO_SHOW &&
-                        w.getJoinedAt().isAfter(startOfDay) &&
-                        w.getJoinedAt().isBefore(endOfDay))
+        long noShowsToday = todayWaitlists.stream()
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.CANCELLED)
                 .count();
-
-        // average wait time should be computed only for entries that are still pending
-        Integer avgWaitTime = (int) allWaitlists.stream()
-                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.PENDING && w.getEstimatedWaitTime() != null)
-                .mapToInt(Waitlist::getEstimatedWaitTime)
-                .average()
-                .orElse(0);
 
         List<Table> allTables = tableRepository.findByRestaurantId(restaurantId);
 
@@ -199,7 +261,7 @@ public class RestaurantService {
 
         return DashboardStatsResponse.builder()
                 .totalWaiting(totalWaiting)
-                .totalNotified(totalNotified)
+                .totalNotified(0L)
                 .averageWaitTime(avgWaitTime)
                 .seatedToday(seatedToday)
                 .noShowsToday(noShowsToday)

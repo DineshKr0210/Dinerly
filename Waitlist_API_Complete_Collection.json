@@ -393,11 +393,23 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist",
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist?status={{status}}&date={{date}}",
               "host": ["{{base_url}}"],
-              "path": ["restaurants", "{{restaurantId}}", "waitlist"]
+              "path": ["restaurants", "{{restaurantId}}", "waitlist"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Optional. Filter by status (PENDING, WAITING, NOTIFIED, SEATED, CANCELLED, NO_SHOW)"
+                },
+                {
+                  "key": "date",
+                  "value": "",
+                  "description": "Optional. Filter by date (YYYY-MM-DD). Defaults to today if omitted."
+                }
+              ]
             },
-            "description": "Get all guests in waitlist for the specified restaurant."
+            "description": "Get guests in waitlist for the specified restaurant. Optional query params: status, date."
           }
         },
         {
@@ -460,6 +472,68 @@
               "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}", "notify"]
             },
             "description": "Send SMS notification to guest with optional estimated wait time and position updates. Status changes to NOTIFIED."
+          }
+        },
+        {
+          "name": "Approve Guest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estimatedWaitTime\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist/{{waitlistId}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}", "approve"]
+            },
+            "description": "Approve a pending guest: assigns position = active queue size + 1, sets status to WAITING, and records estimated wait time."
+          }
+        },
+        {
+          "name": "Update Estimate (Delay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estimatedWaitTime\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist/{{waitlistId}}/update-estimate",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}", "update-estimate"]
+            },
+            "description": "Update the estimated wait time for a NOTIFIED guest. Does not change position. Sends SMS to the guest only if status is NOTIFIED."
           }
         },
         {

@@ -88,15 +88,22 @@ public class WaitlistService {
         restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = LocalDateTime.of(today, LocalTime.MIN);
+        LocalDateTime endOfDay = LocalDateTime.of(today, LocalTime.MAX);
+
         List<Waitlist> allWaitlists = waitlistRepository.findByRestaurantId(restaurantId);
 
-        long totalWaiting = allWaitlists.stream()
-                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING)
+        List<Waitlist> todayWaitlists = allWaitlists.stream()
+                .filter(w -> w.getJoinedAt().isAfter(startOfDay) && w.getJoinedAt().isBefore(endOfDay))
+                .toList();
+
+        long totalWaiting = todayWaitlists.stream()
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
                 .count();
 
-        // average wait time should be computed only for entries that are still pending
-        Integer avgWaitTime = (int) allWaitlists.stream()
-                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.PENDING && w.getEstimatedWaitTime() != null)
+        Integer avgWaitTime = (int) todayWaitlists.stream()
+                .filter(w -> (w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED) && w.getEstimatedWaitTime() != null)
                 .mapToInt(Waitlist::getEstimatedWaitTime)
                 .average()
                 .orElse(0);

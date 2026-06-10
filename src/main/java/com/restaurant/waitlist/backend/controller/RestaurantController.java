@@ -60,9 +60,11 @@ public class RestaurantController {
 
     @GetMapping("/{restaurantId}/waitlist")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<List<WaitlistResponse>>> getWaitlist(@PathVariable Long restaurantId) {
+    public ResponseEntity<ApiResponse<List<WaitlistResponse>>> getWaitlist(@PathVariable Long restaurantId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String date) {
         try {
-            List<WaitlistResponse> response = restaurantService.getWaitlist(restaurantId);
+            List<WaitlistResponse> response = restaurantService.getWaitlist(restaurantId, status, date);
             return ResponseEntity.ok(ApiResponse.success("Waitlist retrieved", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
@@ -87,13 +89,39 @@ public class RestaurantController {
 
     @PostMapping("/{restaurantId}/waitlist/{id}/notify")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<Void>> notifyGuest(
+    public ResponseEntity<ApiResponse<WaitlistResponse>> notifyGuest(
             @PathVariable Long restaurantId,
             @PathVariable Long id,
             @Valid @RequestBody NotifyGuestRequest request) {
         try {
-            restaurantService.notifyGuest(restaurantId, id, request);
-            return ResponseEntity.ok(ApiResponse.success("Guest notified successfully"));
+            WaitlistResponse response = restaurantService.notifyGuest(restaurantId, id, request);
+            return ResponseEntity.ok(ApiResponse.success("Guest notified successfully", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{restaurantId}/waitlist/{id}/approve")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> approveGuest(@PathVariable Long restaurantId, @PathVariable Long id,
+            @Valid @RequestBody NotifyGuestRequest request) {
+        try {
+            WaitlistResponse response = restaurantService.approveGuest(restaurantId, id, request);
+            return ResponseEntity.ok(ApiResponse.success("Guest approved successfully", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{restaurantId}/waitlist/{id}/update-estimate")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<Void>> updateEstimate(@PathVariable Long restaurantId, @PathVariable Long id,
+            @Valid @RequestBody NotifyGuestRequest request) {
+        try {
+            restaurantService.updateEstimate(restaurantId, id, request);
+            return ResponseEntity.ok(ApiResponse.success("Estimate updated"));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
@@ -102,10 +130,10 @@ public class RestaurantController {
 
     @PostMapping("/{restaurantId}/waitlist/{id}/seat")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<Void>> seatGuest(@PathVariable Long restaurantId, @PathVariable Long id) {
+    public ResponseEntity<ApiResponse<WaitlistResponse>> seatGuest(@PathVariable Long restaurantId, @PathVariable Long id) {
         try {
-            restaurantService.seatGuest(restaurantId, id);
-            return ResponseEntity.ok(ApiResponse.success("Guest seated successfully"));
+            WaitlistResponse response = restaurantService.seatGuest(restaurantId, id);
+            return ResponseEntity.ok(ApiResponse.success("Guest seated successfully", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
