@@ -45,6 +45,25 @@
   ],
   "item": [
     {
+      "name": "🏥 Health Check (No Auth)",
+      "description": "Public health check endpoint",
+      "item": [
+        {
+          "name": "Health Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Check if application is running. No authentication required."
+          }
+        }
+      ]
+    },
+    {
       "name": "🔐 Authentication",
       "description": "Login and password reset operations",
       "item": [
@@ -165,24 +184,28 @@
         {
           "name": "Get Waitlist Status",
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/waitlist/status?restaurantId={{restaurantId}}&phone={{phone}}",
-              "host": ["{{base_url}}"],
-              "path": ["waitlist", "status"],
-              "query": [
-                {
-                  "key": "restaurantId",
-                  "value": "{{restaurantId}}"
-                },
-                {
-                  "key": "phone",
-                  "value": "{{phone}}"
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": 1,\n  \"phone\": \"+1-416-555-0144\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
                 }
-              ]
+              }
             },
-            "description": "Get current waitlist position and estimated wait time for a guest at a specific restaurant."
+            "url": {
+              "raw": "{{base_url}}/waitlist/status",
+              "host": ["{{base_url}}"],
+              "path": ["waitlist", "status"]
+            },
+            "description": "Get all waitlist records for a phone number at a specific restaurant. Returns all matching records (today and previous days)."
           }
         },
         {
@@ -494,7 +517,117 @@
           }
         },
         {
+          "name": "Add Table",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableNumber\": \"T01\",\n  \"capacity\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/tables",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "tables"]
+            },
+            "description": "Add a new table to the restaurant."
+          }
+        },
+        {
           "name": "Update Table Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/tables/{{tableId}}/status?status=OCCUPIED",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "tables", "{{tableId}}", "status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "OCCUPIED",
+                  "description": "OPEN, OCCUPIED, RESERVED, NEEDS_CLEANING"
+                }
+              ]
+            },
+            "description": "Update table status. Options: OPEN, OCCUPIED, RESERVED, NEEDS_CLEANING"
+          }
+        },
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "dashboard"]
+            },
+            "description": "Get live dashboard stats: total waiting, notified, avg wait time, seated today, no shows, table statuses."
+          }
+        },
+        {
+          "name": "Get Guest History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/guest-history",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "guest-history"]
+            },
+            "description": "Get all guest history records for the restaurant."
+          }
+        },
+        {
+          "name": "Get Restaurant Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/settings",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "settings"]
+            },
+            "description": "Get restaurant settings: SMS/email notifications, avg service time, buffer time, operating hours, max waitlist size."
+          }
+        },
+        {
+          "name": "Update Restaurant Settings",
           "request": {
             "method": "PUT",
             "header": [
@@ -509,7 +642,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"OCCUPIED\"\n}",
+              "raw": "{\n  \"sendSmsNotifications\": true,\n  \"sendEmailNotifications\": true,\n  \"averageServiceTime\": 45,\n  \"bufferTime\": 15,\n  \"operatingHours\": \"10:00-22:00\",\n  \"maxWaitlistSize\": 50\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -517,11 +650,11 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/restaurants/{{restaurantId}}/tables/{{tableId}}",
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/settings",
               "host": ["{{base_url}}"],
-              "path": ["restaurants", "{{restaurantId}}", "tables", "{{tableId}}"]
+              "path": ["restaurants", "{{restaurantId}}", "settings"]
             },
-            "description": "Update table status. Options: OPEN, OCCUPIED, RESERVED"
+            "description": "Update restaurant settings."
           }
         }
       ]
