@@ -53,9 +53,9 @@ public class WaitlistService {
     }
 
     public WaitlistResponse getWaitlistStatus(Long restaurantId, String phone) {
-        // fetch the latest waitlist entry for this phone at the restaurant (most recent joinedAt)
+        // fetch the latest waitlist entry for this phone at the restaurant (most recent joinedAt, then by id)
         Waitlist waitlist = waitlistRepository
-                .findFirstByRestaurantIdAndGuestPhoneOrderByJoinedAtDesc(restaurantId, phone)
+                .findLatestByRestaurantIdAndGuestPhone(restaurantId, phone)
                 .orElseThrow(() -> new RuntimeException("Waitlist entry not found for this restaurant"));
 
         return WaitlistResponse.fromWaitlist(waitlist);
