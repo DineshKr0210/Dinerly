@@ -53,6 +53,18 @@ public class WaitlistService {
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
+    public List<WaitlistResponse> getWaitlistStatusList(Long restaurantId, String phone) {
+        List<Waitlist> waitlists = waitlistRepository.findAllByRestaurantIdAndGuestPhone(restaurantId, phone);
+        
+        if (waitlists.isEmpty()) {
+            throw new RuntimeException("No waitlist entries found for this phone number");
+        }
+        
+        return waitlists.stream()
+                .map(WaitlistResponse::fromWaitlist)
+                .collect(Collectors.toList());
+    }
+
     public void removeFromWaitlist(Long restaurantId, Long waitlistId) {
         Waitlist waitlist = waitlistRepository.findById(waitlistId)
                 .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));

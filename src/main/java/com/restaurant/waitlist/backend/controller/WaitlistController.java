@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.controller;
 
 import com.restaurant.waitlist.backend.dto.request.JoinWaitlistRequest;
+import com.restaurant.waitlist.backend.dto.request.WaitlistStatusRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.service.WaitlistService;
@@ -30,11 +31,11 @@ public class WaitlistController {
         }
     }
 
-    @GetMapping("/status")
-    public ResponseEntity<ApiResponse<WaitlistResponse>> getWaitlistStatus(@RequestParam Long restaurantId, @RequestParam String phone) {
+    @PostMapping("/status")
+    public ResponseEntity<ApiResponse<java.util.List<WaitlistResponse>>> getWaitlistStatus(@Valid @RequestBody WaitlistStatusRequest request) {
         try {
-            WaitlistResponse response = waitlistService.getWaitlistStatus(restaurantId, phone);
-            return ResponseEntity.ok(ApiResponse.success("Waitlist status", response));
+            java.util.List<WaitlistResponse> response = waitlistService.getWaitlistStatusList(request.getRestaurantId(), request.getPhone());
+            return ResponseEntity.ok(ApiResponse.success("Waitlist records found", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));

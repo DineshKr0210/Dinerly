@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface WaitlistRepository extends JpaRepository<Waitlist, Long> {
@@ -15,7 +16,12 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long> {
     List<Waitlist> findByRestaurantIdAndStatus(Long restaurantId, Waitlist.WaitlistStatus status);
 
     Optional<Waitlist> findByGuestPhone(String guestPhone);
-    Optional<Waitlist> findByRestaurantIdAndGuestPhone(Long restaurantId, String guestPhone);
+
+    @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId AND w.guestPhone = :guestPhone")
+    Optional<Waitlist> findByRestaurantIdAndGuestPhone(@Param("restaurantId") Long restaurantId, @Param("guestPhone") String guestPhone);
+
+    @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId AND w.guestPhone = :guestPhone ORDER BY w.joinedAt DESC")
+    List<Waitlist> findAllByRestaurantIdAndGuestPhone(@Param("restaurantId") Long restaurantId, @Param("guestPhone") String guestPhone);
 
     @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = ?1 AND w.status IN ('WAITING', 'NOTIFIED') ORDER BY w.position ASC")
     List<Waitlist> findActiveWaitlistByRestaurant(Long restaurantId);

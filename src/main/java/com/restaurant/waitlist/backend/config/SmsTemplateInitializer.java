@@ -20,6 +20,7 @@ public class SmsTemplateInitializer {
             System.out.println("SMS templates initialized successfully");
         } catch (Exception e) {
             System.err.println("Error initializing SMS templates: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
