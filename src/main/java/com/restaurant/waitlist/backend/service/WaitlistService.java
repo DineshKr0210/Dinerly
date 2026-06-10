@@ -1,14 +1,20 @@
 package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.request.JoinWaitlistRequest;
+import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
+import com.restaurant.waitlist.backend.dto.response.WaitlistDashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.entity.Restaurant;
+import com.restaurant.waitlist.backend.entity.Table;
 import com.restaurant.waitlist.backend.entity.Waitlist;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,7 +53,9 @@ public class WaitlistService {
     }
 
     public WaitlistResponse getWaitlistStatus(Long restaurantId, String phone) {
-        Waitlist waitlist = waitlistRepository.findByRestaurantIdAndGuestPhone(restaurantId, phone)
+        // fetch the latest waitlist entry for this phone at the restaurant (most recent joinedAt)
+        Waitlist waitlist = waitlistRepository
+                .findFirstByRestaurantIdAndGuestPhoneOrderByJoinedAtDesc(restaurantId, phone)
                 .orElseThrow(() -> new RuntimeException("Waitlist entry not found for this restaurant"));
 
         return WaitlistResponse.fromWaitlist(waitlist);
@@ -75,6 +83,29 @@ public class WaitlistService {
 
         waitlist.setStatus(Waitlist.WaitlistStatus.CANCELLED);
         waitlistRepository.save(waitlist);
+    }
+    public WaitlistDashboardStatsResponse getDashboardStats(Long restaurantId) {
+        restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        List<Waitlist> allWaitlists = waitlistRepository.findByRestaurantId(restaurantId);
+
+        long totalWaiting = allWaitlists.stream()
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING)
+                .count();
+
+        // average wait time should be computed only for entries that are still pending
+        Integer avgWaitTime = (int) allWaitlists.stream()
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.PENDING && w.getEstimatedWaitTime() != null)
+                .mapToInt(Waitlist::getEstimatedWaitTime)
+                .average()
+                .orElse(0);
+
+
+        return WaitlistDashboardStatsResponse.builder()
+                .totalWaiting(totalWaiting)
+                .averageWaitTime(avgWaitTime)
+                .build();
     }
 
     public List<WaitlistResponse> getRestaurantWaitlist(Long restaurantId) {

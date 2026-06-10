@@ -172,8 +172,9 @@ public class RestaurantService {
                         w.getJoinedAt().isBefore(endOfDay))
                 .count();
 
+        // average wait time should be computed only for entries that are still pending
         Integer avgWaitTime = (int) allWaitlists.stream()
-                .filter(w -> w.getEstimatedWaitTime() != null)
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.PENDING && w.getEstimatedWaitTime() != null)
                 .mapToInt(Waitlist::getEstimatedWaitTime)
                 .average()
                 .orElse(0);
