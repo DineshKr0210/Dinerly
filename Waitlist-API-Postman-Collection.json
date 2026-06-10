@@ -1,0 +1,431 @@
+{
+  "info": {
+    "_postman_id": "waitlist-backend-collection",
+    "name": "Waitlist Management Backend API",
+    "description": "Complete REST API collection for Restaurant Waitlist Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "restaurantId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "waitlistId",
+      "value": "101",
+      "type": "string"
+    },
+    {
+      "key": "tableId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "guestPhone",
+      "value": "9876543210",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "1. Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"guest@example.com\",\"password\":\"123456\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "User login endpoint. Returns JWT token and user information."
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\"email\":\"guest@example.com\",\"password\":\"123456\"}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["auth", "login"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\"success\":true,\"message\":\"Login successful\",\"data\":{\"token\":\"eyJhbGciOiJIUzUxMiJ9...\",\"user\":{\"id\":1,\"email\":\"guest@example.com\",\"name\":\"Dinesh\",\"phone\":\"9876543210\",\"role\":\"GUEST\"}}}"
+            }
+          ]
+        },
+        {
+          "name": "2. Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"guest@example.com\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Request password reset. Sends email with reset link."
+          }
+        },
+        {
+          "name": "3. Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"token\":\"reset-token-here\",\"newPassword\":\"newpassword123\",\"confirmPassword\":\"newpassword123\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Reset password using token sent to email."
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Guest Operations",
+      "item": [
+        {
+          "name": "4. Join Waitlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"restaurantId\":1,\"name\":\"Dinesh\",\"phone\":\"9876543210\",\"partySize\":3,\"preference\":\"Indoor\",\"notes\":\"Birthday celebration\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/waitlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["waitlist"]
+            },
+            "description": "Join waitlist. Guest will be in PENDING status until restaurant approves."
+          }
+        },
+        {
+          "name": "5. Check Waitlist Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/waitlist/status?phone={{guestPhone}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["waitlist", "status"],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "{{guestPhone}}"
+                }
+              ]
+            },
+            "description": "Get current position and estimated wait time for a guest."
+          }
+        },
+        {
+          "name": "6. Leave Waitlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/waitlist/{{waitlistId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["waitlist", "{{waitlistId}}"]
+            },
+            "description": "Remove guest from waitlist."
+          }
+        },
+        {
+          "name": "7. Submit Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"waitlistId\":101,\"rating\":5,\"comments\":\"Excellent service!\",\"tags\":[\"Friendly staff\",\"Quick service\",\"Great food\"]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/feedback",
+              "host": ["{{baseUrl}}"],
+              "path": ["feedback"]
+            },
+            "description": "Submit feedback after dining. Rating scale: 1-5 stars."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🍽️ Restaurant Operations",
+      "item": [
+        {
+          "name": "8. Get Waitlist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/restaurants/{{restaurantId}}/waitlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist"]
+            },
+            "description": "Get all guests currently in waitlist for a restaurant."
+          }
+        },
+        {
+          "name": "9. Add Guest (Restaurant Side)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Ravi\",\"phone\":\"9999999999\",\"partySize\":2,\"preference\":\"Patio\",\"notes\":\"VIP Guest\",\"position\":6,\"estimatedWaitTime\":30}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/restaurants/{{restaurantId}}/waitlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist"]
+            },
+            "description": "Manually add a guest to the waitlist with position and wait time."
+          }
+        },
+        {
+          "name": "10. Notify Guest (Send SMS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/restaurants/waitlist/{{waitlistId}}/notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["restaurants", "waitlist", "{{waitlistId}}", "notify"]
+            },
+            "description": "Send SMS notification to guest. Status changes to NOTIFIED."
+          }
+        },
+        {
+          "name": "11. Seat Guest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/restaurants/waitlist/{{waitlistId}}/seat",
+              "host": ["{{baseUrl}}"],
+              "path": ["restaurants", "waitlist", "{{waitlistId}}", "seat"]
+            },
+            "description": "Mark guest as seated. Status changes to SEATED and SMS is sent."
+          }
+        },
+        {
+          "name": "12. Remove Guest",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/restaurants/waitlist/{{waitlistId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["restaurants", "waitlist", "{{waitlistId}}"]
+            },
+            "description": "Remove guest from waitlist."
+          }
+        },
+        {
+          "name": "13. Get Tables",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/restaurants/{{restaurantId}}/tables",
+              "host": ["{{baseUrl}}"],
+              "path": ["restaurants", "{{restaurantId}}", "tables"]
+            },
+            "description": "Get all tables for a restaurant with their status."
+          }
+        },
+        {
+          "name": "14. Update Table Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"status\":\"OCCUPIED\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tables/{{tableId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tables", "{{tableId}}"]
+            },
+            "description": "Update table status. Options: OPEN, OCCUPIED, RESERVED"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Admin Analytics",
+      "item": [
+        {
+          "name": "15. Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/analytics",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "analytics"]
+            },
+            "description": "Get dashboard metrics: total seated, avg wait time, no-show rate, avg rating."
+          }
+        },
+        {
+          "name": "16. Guest History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/guests",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "guests"]
+            },
+            "description": "Get guest history and patterns: visits, avg wait, last visit, rating."
+          }
+        },
+        {
+          "name": "17. Feedback Insights",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/feedback",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "feedback"]
+            },
+            "description": "Get feedback insights: overall rating, total reviews, top tags."
+          }
+        }
+      ]
+    }
+  ]
+}
+

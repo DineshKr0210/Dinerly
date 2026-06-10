@@ -1,0 +1,700 @@
+{
+  "info": {
+    "_postman_id": "waitlist-api-complete-collection",
+    "name": "Waitlist Management System - Complete API",
+    "description": "Complete REST API collection for Restaurant Waitlist Management System with Restaurant ID scoping. Organized by Login, Guest, Restaurant, Admin, and Utilities.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "JWT Bearer Token - Set from login response"
+    },
+    {
+      "key": "restaurantId",
+      "value": "1",
+      "type": "string",
+      "description": "Restaurant ID (from create restaurant response or 1-4 for seeded restaurants)"
+    },
+    {
+      "key": "waitlistId",
+      "value": "1",
+      "type": "string",
+      "description": "Waitlist Entry ID (from join/add guest response)"
+    },
+    {
+      "key": "tableId",
+      "value": "1",
+      "type": "string",
+      "description": "Table ID (from get tables response)"
+    },
+    {
+      "key": "phone",
+      "value": "+1-416-555-0144",
+      "type": "string",
+      "description": "Guest phone number for status queries"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "description": "Login and password reset operations",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"restaurant@example.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "User login endpoint. Returns JWT token.\n\nNote: Copy the token from response and set it in the 'token' collection variable."
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"restaurant@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Request password reset. Email will be sent with reset token."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset-token-from-email\",\n  \"newPassword\": \"newpassword123\",\n  \"confirmPassword\": \"newpassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Reset password using token from email."
+          }
+        }
+      ]
+    },
+    {
+      "name": "👤 Guest Operations",
+      "description": "Public guest-facing endpoints for joining waitlist and checking status",
+      "item": [
+        {
+          "name": "Join Waitlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": 1,\n  \"name\": \"Jane Smith\",\n  \"phone\": \"+1-416-555-0144\",\n  \"partySize\": 4,\n  \"preference\": \"Window Seat\",\n  \"notes\": \"Vegetarian guests\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/waitlist",
+              "host": ["{{base_url}}"],
+              "path": ["waitlist"]
+            },
+            "description": "Guest joins the waitlist. Status starts as PENDING until restaurant approves."
+          }
+        },
+        {
+          "name": "Get Waitlist Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/waitlist/status?restaurantId={{restaurantId}}&phone={{phone}}",
+              "host": ["{{base_url}}"],
+              "path": ["waitlist", "status"],
+              "query": [
+                {
+                  "key": "restaurantId",
+                  "value": "{{restaurantId}}"
+                },
+                {
+                  "key": "phone",
+                  "value": "{{phone}}"
+                }
+              ]
+            },
+            "description": "Get current waitlist position and estimated wait time for a guest at a specific restaurant."
+          }
+        },
+        {
+          "name": "Leave Waitlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/waitlist/{{restaurantId}}/{{waitlistId}}",
+              "host": ["{{base_url}}"],
+              "path": ["waitlist", "{{restaurantId}}", "{{waitlistId}}"]
+            },
+            "description": "Guest leaves/cancels from waitlist."
+          }
+        },
+        {
+          "name": "Submit Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"waitlistId\": 1,\n  \"rating\": 5,\n  \"comments\": \"Excellent service and great food!\",\n  \"tags\": [\n    \"Friendly staff\",\n    \"Quick service\",\n    \"Great ambiance\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["feedback"]
+            },
+            "description": "Guest submits feedback after dining. Rating scale: 1-5 stars."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🍽️ Restaurant Setup & Management",
+      "description": "Restaurant creation and configuration",
+      "item": [
+        {
+          "name": "Create Restaurant - thecommons",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"thecommons\",\n  \"address\": \"Canada\",\n  \"phone\": \"+1-647-555-0101\",\n  \"email\": \"thecommons@restaurant.com\",\n  \"totalTables\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants"]
+            },
+            "description": "Create a new restaurant. Will receive ID 1 if DB is empty."
+          }
+        },
+        {
+          "name": "Create Restaurant - Social eatery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Social eatery\",\n  \"address\": \"Canada\",\n  \"phone\": \"+1-647-555-0102\",\n  \"email\": \"socialeatery@restaurant.com\",\n  \"totalTables\": 25\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants"]
+            },
+            "description": "Create a new restaurant. Will receive ID 2 if thecommons was created."
+          }
+        },
+        {
+          "name": "Create Restaurant - Dinerly",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dinerly\",\n  \"address\": \"Canada\",\n  \"phone\": \"+1-647-555-0103\",\n  \"email\": \"dinerly@restaurant.com\",\n  \"totalTables\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants"]
+            },
+            "description": "Create a new restaurant. Will receive ID 3 if previous two were created."
+          }
+        },
+        {
+          "name": "Create Restaurant - The Taste Kitchen",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"The Taste Kitchen\",\n  \"address\": \"Canada\",\n  \"phone\": \"+1-647-555-0104\",\n  \"email\": \"tastkitchen@restaurant.com\",\n  \"totalTables\": 22\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants"]
+            },
+            "description": "Create a new restaurant. Will receive ID 4 if previous three were created."
+          }
+        }
+          ,
+          {
+            "name": "Get All Restaurants",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/restaurants",
+                "host": ["{{base_url}}"],
+                "path": ["restaurants"]
+              },
+              "description": "Retrieve all restaurants from the database."
+            }
+          }
+      ]
+    },
+    {
+      "name": "🏢 Restaurant Operations (with Restaurant ID)",
+      "description": "Restaurant staff operations scoped to specific restaurant",
+      "item": [
+        {
+          "name": "Get Restaurant Waitlist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist"]
+            },
+            "description": "Get all guests in waitlist for the specified restaurant."
+          }
+        },
+        {
+          "name": "Add Guest to Waitlist (Restaurant Staff)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"phone\": \"+1-416-555-0123\",\n  \"partySize\": 4,\n  \"preference\": \"Window Seat\",\n  \"notes\": \"Allergic to nuts\",\n  \"position\": 2,\n  \"estimatedWaitTime\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist"]
+            },
+            "description": "Restaurant staff manually add a guest to the waitlist with position and estimated wait time."
+          }
+        },
+        {
+          "name": "Notify Guest (Send SMS)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estimatedWaitTime\": 15,\n  \"position\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist/{{waitlistId}}/notify",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}", "notify"]
+            },
+            "description": "Send SMS notification to guest with optional estimated wait time and position updates. Status changes to NOTIFIED."
+          }
+        },
+        {
+          "name": "Seat Guest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist/{{waitlistId}}/seat",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}", "seat"]
+            },
+            "description": "Mark guest as seated. Status changes to SEATED and confirmation SMS is sent."
+          }
+        },
+        {
+          "name": "Remove Guest from Waitlist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist/{{waitlistId}}",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}"]
+            },
+            "description": "Remove guest from the waitlist (e.g., no-show or cancellation)."
+          }
+        },
+        {
+          "name": "Get Restaurant Tables",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/tables",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "tables"]
+            },
+            "description": "Get all tables for the specified restaurant with their current status."
+          }
+        },
+        {
+          "name": "Update Table Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"OCCUPIED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/tables/{{tableId}}",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "tables", "{{tableId}}"]
+            },
+            "description": "Update table status. Options: OPEN, OCCUPIED, RESERVED"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Admin Analytics & Insights",
+      "description": "Admin-only endpoints for analytics and reporting",
+      "item": [
+        {
+          "name": "Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "analytics"]
+            },
+            "description": "Get dashboard metrics: total seated guests, average wait time, no-show rate, and average rating."
+          }
+        },
+        {
+          "name": "Guest History & Patterns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/guests",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "guests"]
+            },
+            "description": "Get guest history and patterns: visit count, average wait time, last visit date, and average rating."
+          }
+        },
+        {
+          "name": "Feedback Insights",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "feedback"]
+            },
+            "description": "Get feedback insights: overall rating, total reviews count, and top feedback tags."
+          }
+        },
+        {
+          "name": "Get SMS Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/sms-templates",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "sms-templates"]
+            },
+            "description": "Get all SMS message templates. Admins can use these to customize notification messages."
+          }
+        },
+        {
+          "name": "Update SMS Template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messageTemplate\": \"Hi {guestName}, your table is almost ready! Wait time: {estimatedWait} minutes.{position} Come soon!\",\n  \"description\": \"Custom notification template for waitlist\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/sms-templates/1",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "sms-templates", "1"]
+            },
+            "description": "Update SMS template message. Use placeholders: {guestName}, {estimatedWait}, {position}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Quick Test Workflows",
+      "description": "Example workflows to test the complete system",
+      "item": [
+        {
+          "name": "[Workflow 1] Create Restaurant → Add Guest → Notify → Seat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Workflow Test\",\n  \"address\": \"123 Test St\",\n  \"phone\": \"+1-647-555-9999\",\n  \"email\": \"workflow@test.com\",\n  \"totalTables\": 15\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants"]
+            },
+            "description": "Step 1: Create a test restaurant. Copy the returned ID and use as {{restaurantId}}."
+          }
+        },
+        {
+          "name": "[Workflow 2] Guest Join → Check Status → Leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": 1,\n  \"name\": \"Workflow Guest\",\n  \"phone\": \"+1-416-555-9876\",\n  \"partySize\": 3,\n  \"preference\": \"Booth\",\n  \"notes\": \"Test guest\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/waitlist",
+              "host": ["{{base_url}}"],
+              "path": ["waitlist"]
+            },
+            "description": "Step 2: Guest joins waitlist. Copy returned waitlistId and use as {{waitlistId}}. Then check status and leave."
+          }
+        }
+      ]
+    }
+  ]
+}
+

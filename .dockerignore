@@ -1,0 +1,60 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# IDE files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# Maven
+target/
+.m2
+*.jar
+*.war
+*.ear
+
+# Build and logs
+logs/
+*.log
+
+# Docker files (don't need to include in context)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+README.md
+HELP.md
+
+# Test files
+src/test/
+
+# Node modules (if any)
+node_modules/
+npm-debug.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
