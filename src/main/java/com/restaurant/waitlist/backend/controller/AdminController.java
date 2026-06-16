@@ -77,6 +77,20 @@ public class AdminController {
         }
     }
 
+    @GetMapping("/twilio-test")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> twilioTest() {
+        try {
+            java.util.Map<String, String> response = smsTemplateService == null ? adminService.getTwilioProbe() : null;
+            if (response == null) {
+                response = adminService.getTwilioProbe();
+            }
+            return ResponseEntity.ok(ApiResponse.success("Twilio probe result", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PutMapping("/sms-templates/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SmsTemplateResponse>> updateSmsTemplate(

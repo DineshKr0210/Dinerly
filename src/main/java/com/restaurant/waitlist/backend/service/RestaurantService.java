@@ -181,7 +181,7 @@ public class RestaurantService {
         waitlistRepository.save(waitlist);
         String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
         Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
-        smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+        smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 

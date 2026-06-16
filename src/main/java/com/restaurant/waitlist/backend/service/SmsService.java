@@ -7,11 +7,14 @@ import com.twilio.type.PhoneNumber;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
 public class SmsService {
+    private static final Logger log = LoggerFactory.getLogger(SmsService.class);
 
     @Value("${twilio.account-sid}")
     private String accountSid;
@@ -25,18 +28,26 @@ public class SmsService {
     @Autowired
     private SmsTemplateService smsTemplateService;
 
+    private String mask(String s) {
+        if (s == null) return "null";
+        if (s.length() <= 4) return "****";
+        return "****" + s.substring(s.length() - 4);
+    }
+
     public void sendSms(String toPhoneNumber, String message) {
         try {
+            log.debug("Initializing Twilio with accountSid={} and from={}",
+                    mask(accountSid), fromPhoneNumber);
             Twilio.init(accountSid, authToken);
             Message msg = Message.creator(
                     new PhoneNumber(toPhoneNumber),
                     new PhoneNumber(fromPhoneNumber),
                     message
             ).create();
-
-            System.out.println("SMS sent successfully. SID: " + msg.getSid());
+            log.info("SMS sent successfully to {}. SID={}", toPhoneNumber, msg.getSid());
         } catch (Exception e) {
-            System.err.println("Error sending SMS: " + e.getMessage());
+            log.error("Error sending SMS to {}: {}", toPhoneNumber, e.getMessage());
+            log.debug("SMS send exception", e);
             throw new RuntimeException("Failed to send SMS notification");
         }
     }
@@ -61,6 +72,16 @@ public class SmsService {
         sendSms(phoneNumber, message);
     }
 
+    public void sendApprovedNotificationSms(String phoneNumber, String guestName, String estimatedWait, Integer position) {
+        Map<String, String> params = new HashMap<>();
+        params.put("guestName", guestName);
+        params.put("estimatedWait", estimatedWait);
+        params.put("position", (position != null) ? (" Your position: " + position + ".") : "");
+
+        String message = smsTemplateService.formatMessage("WAITLIST_APPROVED", params);
+        sendSms(phoneNumber, message);
+    }
+
     public void sendSeatedNotificationSms(String phoneNumber, String guestName) {
         Map<String, String> params = new HashMap<>();
         params.put("guestName", guestName);
@@ -75,5 +96,23 @@ public class SmsService {
 
         String message = smsTemplateService.formatMessage("WAITLIST_JOIN_CONFIRMATION", params);
         sendSms(phoneNumber, message);
+    }
+
+    public Map<String, String> probeAccount() {
+        Map<String, String> out = new HashMap<>();
+        try {
+            log.debug("Probing Twilio account with accountSid={}", mask(accountSid));
+            Twilio.init(accountSid, authToken);
+            Account acct = Account.fetcher(accountSid).fetch();
+            out.put("sid", mask(acct.getSid()));
+            out.put("friendlyName", acct.getFriendlyName() != null ? acct.getFriendlyName() : "");
+            out.put("status", "ok");
+            return out;
+        } catch (Exception e) {
+            log.error("Twilio probe failed: {}", e.getMessage());
+            out.put("status", "error");
+            out.put("message", e.getMessage());
+            return out;
+        }
     }
 }

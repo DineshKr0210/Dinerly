@@ -17,6 +17,7 @@ public class SmsTemplateInitializer {
         try {
             smsTemplateService.initializeDefaultTemplates();
             smsTemplateService.initializeJoinConfirmationTemplate();
+            smsTemplateService.initializeApprovedTemplate();
             System.out.println("SMS templates initialized successfully");
         } catch (Exception e) {
             System.err.println("Error initializing SMS templates: " + e.getMessage());

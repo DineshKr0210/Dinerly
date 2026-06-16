@@ -25,6 +25,9 @@ public class AdminService {
     @Autowired
     private FeedbackRepository feedbackRepository;
 
+    @Autowired
+    private SmsService smsService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public AnalyticsResponse getAnalytics() {
@@ -159,6 +162,10 @@ public class AdminService {
                 .totalReviews((long) todayFeedback.size())
                 .topTags(topTags)
                 .build();
+    }
+
+    public java.util.Map<String, String> getTwilioProbe() {
+        return smsService.probeAccount();
     }
 }
 

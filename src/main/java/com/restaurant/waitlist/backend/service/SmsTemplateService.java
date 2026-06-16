@@ -73,5 +73,16 @@ public class SmsTemplateService {
             smsTemplateRepository.save(joinTemplate);
         }
     }
+
+    public void initializeApprovedTemplate() {
+        if (smsTemplateRepository.findByTemplateType("WAITLIST_APPROVED").isEmpty()) {
+            SmsTemplate approvedTemplate = SmsTemplate.builder()
+                    .templateType("WAITLIST_APPROVED")
+                    .messageTemplate("Hi {guestName}, great news! Your reservation has been approved.{position} Estimated wait time is {estimatedWait} minutes. We look forward to serving you!")
+                    .description("Template for notifying guests their reservation has been approved")
+                    .build();
+            smsTemplateRepository.save(approvedTemplate);
+        }
+    }
 }
 
