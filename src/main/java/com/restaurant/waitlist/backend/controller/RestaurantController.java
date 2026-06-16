@@ -15,6 +15,8 @@ import com.restaurant.waitlist.backend.entity.Table;
 import com.restaurant.waitlist.backend.service.RestaurantService;
 import com.restaurant.waitlist.backend.service.TableService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +30,8 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class RestaurantController {
 
+    private static final Logger log = LoggerFactory.getLogger(RestaurantController.class);
+
     @Autowired
     private RestaurantService restaurantService;
 
@@ -38,10 +42,13 @@ public class RestaurantController {
     public ResponseEntity<ApiResponse<RestaurantResponse>> createRestaurant(
             @Valid @RequestBody CreateRestaurantRequest request) {
         try {
+            log.info("START: createRestaurant | {}", request);
             RestaurantResponse response = restaurantService.createRestaurant(request);
+            log.info("END: createRestaurant | success");
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("Restaurant created successfully", response));
         } catch (Exception e) {
+            log.error("ERROR: createRestaurant | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -50,9 +57,12 @@ public class RestaurantController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<RestaurantResponse>>> getAllRestaurants() {
         try {
+            log.info("START: getAllRestaurants | {}", "");
             List<RestaurantResponse> response = restaurantService.getAllRestaurants();
+            log.info("END: getAllRestaurants | success");
             return ResponseEntity.ok(ApiResponse.success("Restaurants retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getAllRestaurants | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -64,9 +74,12 @@ public class RestaurantController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String date) {
         try {
+            log.info("START: getWaitlist | restaurantId={}, status={}, date={}", restaurantId, status, date);
             List<WaitlistResponse> response = restaurantService.getWaitlist(restaurantId, status, date);
+            log.info("END: getWaitlist | success");
             return ResponseEntity.ok(ApiResponse.success("Waitlist retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getWaitlist | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -78,10 +91,13 @@ public class RestaurantController {
             @PathVariable Long restaurantId,
             @Valid @RequestBody AddGuestRequest request) {
         try {
+            log.info("START: addGuest | restaurantId={}, request={}", restaurantId, request);
             WaitlistResponse response = restaurantService.addGuestToWaitlist(restaurantId, request);
+            log.info("END: addGuest | success");
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("Guest added to waitlist", response));
         } catch (Exception e) {
+            log.error("ERROR: addGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -94,9 +110,12 @@ public class RestaurantController {
             @PathVariable Long id,
             @Valid @RequestBody NotifyGuestRequest request) {
         try {
+            log.info("START: notifyGuest | restaurantId={}, id={}, request={}", restaurantId, id, request);
             WaitlistResponse response = restaurantService.notifyGuest(restaurantId, id, request);
+            log.info("END: notifyGuest | success");
             return ResponseEntity.ok(ApiResponse.success("Guest notified successfully", response));
         } catch (Exception e) {
+            log.error("ERROR: notifyGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -107,9 +126,12 @@ public class RestaurantController {
     public ResponseEntity<ApiResponse<WaitlistResponse>> approveGuest(@PathVariable Long restaurantId, @PathVariable Long id,
             @Valid @RequestBody NotifyGuestRequest request) {
         try {
+            log.info("START: approveGuest | restaurantId={}, id={}, request={}", restaurantId, id, request);
             WaitlistResponse response = restaurantService.approveGuest(restaurantId, id, request);
+            log.info("END: approveGuest | success");
             return ResponseEntity.ok(ApiResponse.success("Guest approved successfully", response));
         } catch (Exception e) {
+            log.error("ERROR: approveGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -120,9 +142,12 @@ public class RestaurantController {
     public ResponseEntity<ApiResponse<Void>> updateEstimate(@PathVariable Long restaurantId, @PathVariable Long id,
             @Valid @RequestBody NotifyGuestRequest request) {
         try {
+            log.info("START: updateEstimate | restaurantId={}, id={}, request={}", restaurantId, id, request);
             restaurantService.updateEstimate(restaurantId, id, request);
+            log.info("END: updateEstimate | success");
             return ResponseEntity.ok(ApiResponse.success("Estimate updated"));
         } catch (Exception e) {
+            log.error("ERROR: updateEstimate | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -132,9 +157,12 @@ public class RestaurantController {
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> seatGuest(@PathVariable Long restaurantId, @PathVariable Long id) {
         try {
+            log.info("START: seatGuest | restaurantId={}, id={}", restaurantId, id);
             WaitlistResponse response = restaurantService.seatGuest(restaurantId, id);
+            log.info("END: seatGuest | success");
             return ResponseEntity.ok(ApiResponse.success("Guest seated successfully", response));
         } catch (Exception e) {
+            log.error("ERROR: seatGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -144,9 +172,12 @@ public class RestaurantController {
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<Void>> removeGuest(@PathVariable Long restaurantId, @PathVariable Long id) {
         try {
+            log.info("START: removeGuest | restaurantId={}, id={}", restaurantId, id);
             restaurantService.removeGuest(restaurantId, id);
+            log.info("END: removeGuest | success");
             return ResponseEntity.ok(ApiResponse.success("Guest removed"));
         } catch (Exception e) {
+            log.error("ERROR: removeGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -156,9 +187,12 @@ public class RestaurantController {
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<List<TableResponse>>> getTables(@PathVariable Long restaurantId) {
         try {
+            log.info("START: getTables | restaurantId={}", restaurantId);
             List<TableResponse> response = tableService.getRestaurantTables(restaurantId);
+            log.info("END: getTables | success");
             return ResponseEntity.ok(ApiResponse.success("Tables retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getTables | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -169,10 +203,13 @@ public class RestaurantController {
     public ResponseEntity<ApiResponse<TableResponse>> addTable(@PathVariable Long restaurantId,
             @Valid @RequestBody AddTableRequest request) {
         try {
+            log.info("START: addTable | restaurantId={}, request={}", restaurantId, request);
             TableResponse response = tableService.addTable(restaurantId, request);
+            log.info("END: addTable | success");
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success("Table added successfully", response));
         } catch (Exception e) {
+            log.error("ERROR: addTable | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -183,9 +220,12 @@ public class RestaurantController {
     public ResponseEntity<ApiResponse<Void>> updateTableStatus(@PathVariable Long restaurantId, @PathVariable Long tableId,
             @RequestParam Table.TableStatus status) {
         try {
+            log.info("START: updateTableStatus | restaurantId={}, tableId={}, status={}", restaurantId, tableId, status);
             tableService.updateTableStatus(restaurantId, tableId, status);
+            log.info("END: updateTableStatus | success");
             return ResponseEntity.ok(ApiResponse.success("Table status updated successfully"));
         } catch (Exception e) {
+            log.error("ERROR: updateTableStatus | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -195,9 +235,12 @@ public class RestaurantController {
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<DashboardStatsResponse>> getDashboard(@PathVariable Long restaurantId) {
         try {
+            log.info("START: getDashboard | restaurantId={}", restaurantId);
             DashboardStatsResponse response = restaurantService.getDashboardStats(restaurantId);
+            log.info("END: getDashboard | success");
             return ResponseEntity.ok(ApiResponse.success("Dashboard stats retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getDashboard | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -207,9 +250,12 @@ public class RestaurantController {
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<List<WaitlistResponse>>> getGuestHistory(@PathVariable Long restaurantId) {
         try {
+            log.info("START: getGuestHistory | restaurantId={}", restaurantId);
             List<WaitlistResponse> response = restaurantService.getGuestHistory(restaurantId);
+            log.info("END: getGuestHistory | success");
             return ResponseEntity.ok(ApiResponse.success("Guest history retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getGuestHistory | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -219,9 +265,12 @@ public class RestaurantController {
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> getSettings(@PathVariable Long restaurantId) {
         try {
+            log.info("START: getSettings | restaurantId={}", restaurantId);
             RestaurantSettingsResponse response = restaurantService.getSettings(restaurantId);
+            log.info("END: getSettings | success");
             return ResponseEntity.ok(ApiResponse.success("Settings retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getSettings | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -232,9 +281,12 @@ public class RestaurantController {
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> updateSettings(@PathVariable Long restaurantId,
             @Valid @RequestBody UpdateRestaurantSettingsRequest request) {
         try {
+            log.info("START: updateSettings | restaurantId={}, request={}", restaurantId, request);
             RestaurantSettingsResponse response = restaurantService.updateSettings(restaurantId, request);
+            log.info("END: updateSettings | success");
             return ResponseEntity.ok(ApiResponse.success("Settings updated successfully", response));
         } catch (Exception e) {
+            log.error("ERROR: updateSettings | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }

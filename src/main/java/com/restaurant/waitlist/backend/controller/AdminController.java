@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -27,13 +29,18 @@ public class AdminController {
     @Autowired
     private SmsTemplateService smsTemplateService;
 
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
+
     @GetMapping("/analytics")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AnalyticsResponse>> getAnalytics() {
         try {
+            log.info("START: getAnalytics | {}", "");
             AnalyticsResponse response = adminService.getAnalytics();
+            log.info("END: getAnalytics | success");
             return ResponseEntity.ok(ApiResponse.success("Analytics data retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getAnalytics | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -43,9 +50,12 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<GuestHistoryResponse>>> getGuestHistory() {
         try {
+            log.info("START: getGuestHistory | {}", "");
             List<GuestHistoryResponse> response = adminService.getGuestHistory();
+            log.info("END: getGuestHistory | success");
             return ResponseEntity.ok(ApiResponse.success("Guest history retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getGuestHistory | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -55,9 +65,12 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<FeedbackInsightsResponse>> getFeedbackInsights() {
         try {
+            log.info("START: getFeedbackInsights | {}", "");
             FeedbackInsightsResponse response = adminService.getFeedbackInsights();
+            log.info("END: getFeedbackInsights | success");
             return ResponseEntity.ok(ApiResponse.success("Feedback insights retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getFeedbackInsights | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -67,11 +80,14 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<SmsTemplateResponse>>> getSmsTemplates() {
         try {
+            log.info("START: getSmsTemplates | {}", "");
             List<SmsTemplateResponse> response = smsTemplateService.getAllTemplates().stream()
                     .map(SmsTemplateResponse::fromSmsTemplate)
                     .collect(Collectors.toList());
+            log.info("END: getSmsTemplates | success");
             return ResponseEntity.ok(ApiResponse.success("SMS templates retrieved", response));
         } catch (Exception e) {
+            log.error("ERROR: getSmsTemplates | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -81,12 +97,12 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<java.util.Map<String, String>>> twilioTest() {
         try {
-            java.util.Map<String, String> response = smsTemplateService == null ? adminService.getTwilioProbe() : null;
-            if (response == null) {
-                response = adminService.getTwilioProbe();
-            }
+            log.info("START: twilioTest | {}", "");
+            java.util.Map<String, String> response = adminService.getTwilioProbe();
+            log.info("END: twilioTest | success");
             return ResponseEntity.ok(ApiResponse.success("Twilio probe result", response));
         } catch (Exception e) {
+            log.error("ERROR: twilioTest | {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
