@@ -45,10 +45,6 @@ public class WaitlistService {
                 .build();
 
         waitlist = waitlistRepository.save(waitlist);
-        
-        // Send join confirmation SMS
-        smsService.sendJoinConfirmationSms(waitlist.getGuestPhone(), waitlist.getGuestName());
-        
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 

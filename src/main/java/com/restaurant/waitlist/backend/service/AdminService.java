@@ -28,28 +28,32 @@ public class AdminService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public AnalyticsResponse getAnalytics() {
+        LocalDate today = LocalDate.now();
+        java.time.LocalDateTime startOfDay = java.time.LocalDateTime.of(today, java.time.LocalTime.MIN);
+        java.time.LocalDateTime endOfDay = java.time.LocalDateTime.of(today, java.time.LocalTime.MAX);
+
         List<Feedback> allFeedback = feedbackRepository.findAll();
         List<Waitlist> allWaitlists = waitlistRepository.findAll();
 
-        // Total seated
-        long totalSeated = allWaitlists.stream()
+        List<Waitlist> todayWaitlists = allWaitlists.stream()
+                .filter(w -> w.getJoinedAt().isAfter(startOfDay) && w.getJoinedAt().isBefore(endOfDay))
+                .toList();
+
+        long totalSeated = todayWaitlists.stream()
                 .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.SEATED)
                 .count();
 
-        // Average wait time
-        double avgWaitTime = allWaitlists.stream()
+        double avgWaitTime = todayWaitlists.stream()
                 .filter(w -> w.getSeatedAt() != null && w.getJoinedAt() != null)
                 .mapToLong(w -> ChronoUnit.MINUTES.between(w.getJoinedAt(), w.getSeatedAt()))
                 .average()
                 .orElse(0.0);
 
-        // No-show rate
-        long noShowCount = allWaitlists.stream()
-                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.NO_SHOW)
+        long noShowCount = todayWaitlists.stream()
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.CANCELLED)
                 .count();
-        double noShowRate = allWaitlists.isEmpty() ? 0 : (double) noShowCount / allWaitlists.size() * 100;
+        double noShowRate = todayWaitlists.isEmpty() ? 0 : (double) noShowCount / todayWaitlists.size() * 100;
 
-        // Average rating
         double avgRating = allFeedback.stream()
                 .mapToInt(Feedback::getRating)
                 .average()
@@ -64,11 +68,15 @@ public class AdminService {
     }
 
     public List<GuestHistoryResponse> getGuestHistory() {
+        LocalDate today = LocalDate.now();
+        java.time.LocalDateTime startOfDay = java.time.LocalDateTime.of(today, java.time.LocalTime.MIN);
+        java.time.LocalDateTime endOfDay = java.time.LocalDateTime.of(today, java.time.LocalTime.MAX);
+
         List<Waitlist> allWaitlists = waitlistRepository.findAll();
 
-        // Filter to only include guests who have been seated
         Map<String, List<Waitlist>> groupedByPhone = allWaitlists.stream()
-                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.SEATED)
+                .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.SEATED &&
+                        w.getJoinedAt().isAfter(startOfDay) && w.getJoinedAt().isBefore(endOfDay))
                 .collect(Collectors.groupingBy(Waitlist::getGuestPhone));
 
         return groupedByPhone.entrySet().stream()
@@ -109,15 +117,27 @@ public class AdminService {
     }
 
     public FeedbackInsightsResponse getFeedbackInsights() {
-        List<Feedback> allFeedback = feedbackRepository.findAll();
+        LocalDate today = LocalDate.now();
+        java.time.LocalDateTime startOfDay = java.time.LocalDateTime.of(today, java.time.LocalTime.MIN);
+        java.time.LocalDateTime endOfDay = java.time.LocalDateTime.of(today, java.time.LocalTime.MAX);
 
-        double overallRating = allFeedback.stream()
+        List<Waitlist> allWaitlists = waitlistRepository.findAll();
+        Set<Long> todayWaitlistIds = allWaitlists.stream()
+                .filter(w -> w.getJoinedAt().isAfter(startOfDay) && w.getJoinedAt().isBefore(endOfDay))
+                .map(Waitlist::getId)
+                .collect(Collectors.toSet());
+
+        List<Feedback> todayFeedback = feedbackRepository.findAll().stream()
+                .filter(f -> f.getWaitlist() != null && todayWaitlistIds.contains(f.getWaitlist().getId()))
+                .toList();
+
+        double overallRating = todayFeedback.stream()
                 .mapToInt(Feedback::getRating)
                 .average()
                 .orElse(0.0);
 
         Map<String, Integer> tagCounts = new HashMap<>();
-        allFeedback.forEach(feedback -> {
+        todayFeedback.forEach(feedback -> {
             try {
                 if (feedback.getTags() != null) {
                     List<String> tags = objectMapper.readValue(feedback.getTags(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
@@ -136,7 +156,7 @@ public class AdminService {
 
         return FeedbackInsightsResponse.builder()
                 .overallRating(Math.round(overallRating * 100.0) / 100.0)
-                .totalReviews((long) allFeedback.size())
+                .totalReviews((long) todayFeedback.size())
                 .topTags(topTags)
                 .build();
     }

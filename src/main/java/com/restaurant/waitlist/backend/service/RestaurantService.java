@@ -159,7 +159,6 @@ public class RestaurantService {
             w.setPosition(p++);
         }
         waitlistRepository.saveAll(todaysActive);
-        smsService.sendSeatedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName());
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
@@ -180,6 +179,9 @@ public class RestaurantService {
             waitlist.setEstimatedWaitTime(request.getEstimatedWaitTime());
         }
         waitlistRepository.save(waitlist);
+        String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
+        Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
+        smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
