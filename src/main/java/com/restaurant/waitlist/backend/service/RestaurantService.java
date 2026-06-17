@@ -16,7 +16,19 @@ import com.restaurant.waitlist.backend.repository.RestaurantSettingsRepository;
 import com.restaurant.waitlist.backend.repository.TableRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.restaurant.waitlist.backend.dto.request.SeatGuestRequest;
+import com.restaurant.waitlist.backend.dto.response.WaitlistSmsResult;
+import com.restaurant.waitlist.backend.dto.response.ReportsResponse;
+import com.restaurant.waitlist.backend.repository.spec.WaitlistSpecification;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -26,6 +38,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class RestaurantService {
+
+    private static final Logger log = LoggerFactory.getLogger(RestaurantService.class);
 
     @Autowired
     private RestaurantRepository restaurantRepository;
@@ -113,27 +127,40 @@ public class RestaurantService {
                 .collect(Collectors.toList());
     }
 
-    public WaitlistResponse notifyGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
+    public WaitlistSmsResult notifyGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
         Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
+
         if (request.getEstimatedWaitTime() != null) {
             waitlist.setEstimatedWaitTime(request.getEstimatedWaitTime());
         }
-        waitlist.setStatus(Waitlist.WaitlistStatus.NOTIFIED);
-        waitlistRepository.save(waitlist);
-        String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
 
-        Integer position = waitlist.getPosition() !=null ? waitlist.getPosition() : null;
-        smsService.sendWaitlistNotificationSms(
-                waitlist.getGuestPhone(),
-                waitlist.getGuestName(),
-                estimatedTime,
-                position
-        );
-        return WaitlistResponse.fromWaitlist(waitlist);
+        // Transition to NOTIFIED and set notifiedAt only once
+        if (waitlist.getStatus() != Waitlist.WaitlistStatus.NOTIFIED) {
+            waitlist.setStatus(Waitlist.WaitlistStatus.NOTIFIED);
+            if (waitlist.getNotifiedAt() == null) {
+                waitlist.setNotifiedAt(java.time.LocalDateTime.now());
+            }
+        }
+
+        waitlistRepository.save(waitlist);
+
+        boolean smsSent = true;
+        String smsError = null;
+        try {
+            String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
+            Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
+            smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+        } catch (Exception e) {
+            smsSent = false;
+            smsError = e.getMessage();
+            log.error("SMS send failed for notifyGuest id={} restaurantId={} error={}", waitlistId, restaurantId, smsError);
+        }
+
+        return new WaitlistSmsResult(WaitlistResponse.fromWaitlist(waitlist), smsSent, smsError);
     }
 
     @org.springframework.transaction.annotation.Transactional
-    public WaitlistResponse seatGuest(Long restaurantId, Long waitlistId) {
+    public WaitlistResponse seatGuest(Long restaurantId, Long waitlistId, SeatGuestRequest seatReq) {
         Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
         if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
             throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
@@ -144,11 +171,19 @@ public class RestaurantService {
         if (waitlist.getStatus() == Waitlist.WaitlistStatus.SEATED) {
             throw new RuntimeException("Waitlist entry is already seated");
         }
+
         waitlist.setStatus(Waitlist.WaitlistStatus.SEATED);
         waitlist.setPosition(null);
         waitlist.setEstimatedWaitTime(null);
-        waitlist.setSeatedAt(java.time.LocalDateTime.now());
+        if (waitlist.getSeatedAt() == null) {
+            waitlist.setSeatedAt(java.time.LocalDateTime.now());
+        }
+        if (seatReq != null && seatReq.getTableName() != null && !seatReq.getTableName().isBlank() && waitlist.getTableName() == null) {
+            waitlist.setTableName(seatReq.getTableName());
+        }
+
         waitlistRepository.save(waitlist);
+
         java.time.LocalDate today = java.time.LocalDate.now();
         java.util.List<Waitlist> todaysActive = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurantId, java.sql.Date.valueOf(today)).stream()
                 .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
@@ -163,7 +198,7 @@ public class RestaurantService {
     }
 
     @org.springframework.transaction.annotation.Transactional
-    public WaitlistResponse approveGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
+    public WaitlistSmsResult approveGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
         restaurantRepository.findById(restaurantId).orElseThrow(() -> new RuntimeException("Restaurant not found"));
         Waitlist waitlist = waitlistService.getWaitlistById(waitlistId);
         if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
@@ -178,11 +213,140 @@ public class RestaurantService {
         if (request.getEstimatedWaitTime() != null) {
             waitlist.setEstimatedWaitTime(request.getEstimatedWaitTime());
         }
+        if (waitlist.getApprovedAt() == null) {
+            waitlist.setApprovedAt(java.time.LocalDateTime.now());
+        }
         waitlistRepository.save(waitlist);
-        String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
-        Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
-        smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
-        return WaitlistResponse.fromWaitlist(waitlist);
+
+        boolean smsSent = true;
+        String smsError = null;
+        try {
+            String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
+            Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
+            smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+        } catch (Exception e) {
+            smsSent = false;
+            smsError = e.getMessage();
+            log.error("SMS send failed for approveGuest id={} restaurantId={} error={}", waitlistId, restaurantId, smsError);
+        }
+
+        return new WaitlistSmsResult(WaitlistResponse.fromWaitlist(waitlist), smsSent, smsError);
+    }
+
+    // Paginated guest history using Specification
+    public Page<WaitlistResponse> getGuestHistory(Long restaurantId, Integer page, Integer size,
+                                                  String statusStr, String dateStr) {
+        restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        Waitlist.WaitlistStatus status = null;
+        if (statusStr != null && !statusStr.trim().isEmpty()) {
+            status = Waitlist.WaitlistStatus.valueOf(statusStr.trim().toUpperCase());
+        }
+
+        java.time.LocalDate date = null;
+        if (dateStr != null && !dateStr.trim().isEmpty()) {
+            date = java.time.LocalDate.parse(dateStr.trim());
+        }
+
+        // Convert 1-indexed page to 0-indexed for PageRequest
+        int pageNumber = (page != null && page >= 1) ? page - 1 : 0;
+        int pageSize = (size != null && size > 0) ? size : 10;
+
+        Pageable pageable = PageRequest.of(
+                pageNumber,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "joinedAt")
+        );
+
+        Specification<Waitlist> spec = WaitlistSpecification.filter(restaurantId, status, date, null, null);
+        Page<Waitlist> pageResult = waitlistRepository.findAll(spec, pageable);
+        return pageResult.map(WaitlistResponse::fromWaitlist);
+    }
+
+    // Export CSV (no pagination)
+    public String exportGuestHistoryCsv(Long restaurantId, String statusStr, String dateStr) {
+        restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        Waitlist.WaitlistStatus status = null;
+        if (statusStr != null && !statusStr.trim().isEmpty()) {
+            status = Waitlist.WaitlistStatus.valueOf(statusStr.trim().toUpperCase());
+        }
+
+        java.time.LocalDate date = null;
+        if (dateStr != null && !dateStr.trim().isEmpty()) {
+            date = java.time.LocalDate.parse(dateStr.trim());
+        }
+
+        Specification<Waitlist> spec = WaitlistSpecification.filter(restaurantId, status, date, null, null);
+        java.util.List<Waitlist> rows = waitlistRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "joinedAt"));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("id,guestName,phone,partySize,status,joinedAt,approvedAt,notifiedAt,seatedAt,cancelledAt,tableName\n");
+        for (Waitlist w : rows) {
+            sb.append(w.getId()).append(",");
+            sb.append(csvEscape(w.getGuestName())).append(",");
+            sb.append(csvEscape(w.getGuestPhone())).append(",");
+            sb.append(w.getPartySize() != null ? w.getPartySize() : "").append(",");
+            sb.append(w.getStatus() != null ? w.getStatus().name() : "").append(",");
+            sb.append(w.getJoinedAt() != null ? w.getJoinedAt().toString() : "").append(",");
+            sb.append(w.getApprovedAt() != null ? w.getApprovedAt().toString() : "").append(",");
+            sb.append(w.getNotifiedAt() != null ? w.getNotifiedAt().toString() : "").append(",");
+            sb.append(w.getSeatedAt() != null ? w.getSeatedAt().toString() : "").append(",");
+            sb.append(w.getCancelledAt() != null ? w.getCancelledAt().toString() : "").append(",");
+            sb.append(csvEscape(w.getTableName())).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String csvEscape(String s) {
+        if (s == null) return "";
+        String escaped = s.replace("\"", "\"\"");
+        if (escaped.contains(",") || escaped.contains("\n") || escaped.contains("\"")) {
+            return "\"" + escaped + "\"";
+        } else {
+            return escaped;
+        }
+    }
+
+    // Reports aggregated metrics
+    public ReportsResponse getReports(Long restaurantId, String fromDateStr, String toDateStr) {
+        restaurantRepository.findById(restaurantId).orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        java.sql.Date fromDate = null;
+        java.sql.Date toDate = null;
+        if (fromDateStr != null && !fromDateStr.trim().isEmpty()) {
+            fromDate = java.sql.Date.valueOf(java.time.LocalDate.parse(fromDateStr.trim()));
+        }
+        if (toDateStr != null && !toDateStr.trim().isEmpty()) {
+            toDate = java.sql.Date.valueOf(java.time.LocalDate.parse(toDateStr.trim()));
+        }
+
+        long totalGuests = waitlistRepository.countByRestaurantInDateRange(restaurantId, fromDate, toDate);
+        long totalWaiting = waitlistRepository.countByRestaurantAndStatusInDateRange(restaurantId, "WAITING", fromDate, toDate);
+        long totalNotified = waitlistRepository.countByRestaurantAndStatusInDateRange(restaurantId, "NOTIFIED", fromDate, toDate);
+        long totalSeated = waitlistRepository.countByRestaurantAndStatusInDateRange(restaurantId, "SEATED", fromDate, toDate);
+        long totalCancelled = waitlistRepository.countByRestaurantAndStatusInDateRange(restaurantId, "CANCELLED", fromDate, toDate);
+
+        Double avgMinutes = waitlistRepository.averageSeatedDurationMinutes(restaurantId, fromDate, toDate);
+        int averageWaitTime = avgMinutes != null ? (int) Math.round(avgMinutes) : 0;
+
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.sql.Date todayDate = java.sql.Date.valueOf(today);
+        long todayGuestsCount = waitlistRepository.countByRestaurantInDateRange(restaurantId, todayDate, todayDate);
+        long todaySeatedCount = waitlistRepository.countByRestaurantAndStatusInDateRange(restaurantId, "SEATED", todayDate, todayDate);
+
+        return ReportsResponse.builder()
+                .totalGuests(totalGuests)
+                .totalWaiting(totalWaiting)
+                .totalNotified(totalNotified)
+                .totalSeated(totalSeated)
+                .totalCancelled(totalCancelled)
+                .averageWaitTime(averageWaitTime)
+                .todayGuestsCount(todayGuestsCount)
+                .todaySeatedCount(todaySeatedCount)
+                .build();
     }
 
     @org.springframework.transaction.annotation.Transactional

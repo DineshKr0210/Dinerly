@@ -57,6 +57,18 @@ public class Waitlist {
     @Column(name = "seated_at")
     private LocalDateTime seatedAt;
 
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "notified_at")
+    private LocalDateTime notifiedAt;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "table_name")
+    private String tableName;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

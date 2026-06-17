@@ -37,6 +37,18 @@
       "description": "Table ID (from get tables response)"
     },
     {
+      "key": "page",
+      "value": "1",
+      "type": "string",
+      "description": "Default page for paginated endpoints (1-indexed)"
+    },
+    {
+      "key": "size",
+      "value": "10",
+      "type": "string",
+      "description": "Default page size for paginated endpoints"
+    },
+    {
       "key": "phone",
       "value": "+1-416-555-0144",
       "type": "string",
@@ -471,7 +483,7 @@
               "host": ["{{base_url}}"],
               "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}", "notify"]
             },
-            "description": "Send SMS notification to guest with optional estimated wait time and position updates. Status changes to NOTIFIED."
+            "description": "Send SMS notification to guest with optional estimated wait time and position updates. Status changes to NOTIFIED. Response includes smsSent (true/false) and smsError (string|null)."
           }
         },
         {
@@ -502,7 +514,7 @@
               "host": ["{{base_url}}"],
               "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}", "approve"]
             },
-            "description": "Approve a pending guest: assigns position = active queue size + 1, sets status to WAITING, and records estimated wait time."
+            "description": "Approve a pending guest: assigns position = active queue size + 1, sets status to WAITING, and records estimated wait time. Response includes smsSent (true/false) and smsError (string|null)."
           }
         },
         {
@@ -542,16 +554,29 @@
             "method": "POST",
             "header": [
               {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{token}}"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableName\": \"T01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{base_url}}/restaurants/{{restaurantId}}/waitlist/{{waitlistId}}/seat",
               "host": ["{{base_url}}"],
               "path": ["restaurants", "{{restaurantId}}", "waitlist", "{{waitlistId}}", "seat"]
             },
-            "description": "Mark guest as seated. Status changes to SEATED and confirmation SMS is sent."
+            "description": "Mark guest as seated. Optional request body: { tableName : \"T01\" }. Status changes to SEATED and confirmation SMS is sent."
           }
         },
         {
@@ -665,7 +690,7 @@
           }
         },
         {
-          "name": "Get Guest History",
+          "name": "Get Guest History (paginated)",
           "request": {
             "method": "GET",
             "header": [
@@ -675,11 +700,93 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/restaurants/{{restaurantId}}/guest-history",
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/guest-history?page={{page}}&size={{size}}&status={{status}}&date={{date}}",
               "host": ["{{base_url}}"],
-              "path": ["restaurants", "{{restaurantId}}", "guest-history"]
+              "path": ["restaurants", "{{restaurantId}}", "guest-history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (1-indexed, default 1)"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "Page size (default 10)"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Optional. Filter by status (PENDING, WAITING, NOTIFIED, SEATED, CANCELLED, NO_SHOW)"
+                },
+                {
+                  "key": "date",
+                  "value": "",
+                  "description": "Optional. Filter by joined_at date (YYYY-MM-DD)"
+                }
+              ]
             },
-            "description": "Get all guest history records for the restaurant."
+            "description": "Get guest history records for the restaurant with pagination and optional filters."
+          }
+        },
+        {
+          "name": "Export Guest History (CSV)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/guest-history/export?status={{status}}&date={{date}}",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "guest-history", "export"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Optional. Filter by status"
+                },
+                {
+                  "key": "date",
+                  "value": "",
+                  "description": "Optional. Filter by joined_at date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Export full filtered guest history as CSV."
+          }
+        },
+        {
+          "name": "Get Reports (aggregated)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/reports?fromDate={{fromDate}}&toDate={{toDate}}",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "reports"],
+              "query": [
+                {
+                  "key": "fromDate",
+                  "value": "",
+                  "description": "Optional. Start date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "toDate",
+                  "value": "",
+                  "description": "Optional. End date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Get aggregated reports for the restaurant using efficient counts and averages."
           }
         },
         {

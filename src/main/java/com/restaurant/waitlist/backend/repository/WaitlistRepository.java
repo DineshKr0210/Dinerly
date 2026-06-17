@@ -2,6 +2,7 @@ package com.restaurant.waitlist.backend.repository;
 
 import com.restaurant.waitlist.backend.entity.Waitlist;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -10,7 +11,7 @@ import java.util.Optional;
 import org.springframework.data.repository.query.Param;
 
 @Repository
-public interface WaitlistRepository extends JpaRepository<Waitlist, Long> {
+public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSpecificationExecutor<Waitlist> {
     List<Waitlist> findByRestaurantId(Long restaurantId);
 
     List<Waitlist> findByRestaurantIdAndStatus(Long restaurantId, Waitlist.WaitlistStatus status);
@@ -38,5 +39,29 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long> {
     long countSeatedByRestaurant(Long restaurantId);
 
     List<Waitlist> findByStatus(Waitlist.WaitlistStatus status);
+
+     // Aggregation queries for reports (Postgres)
+     @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE w.restaurant_id = :restaurantId" +
+             " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
+             " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+     long countByRestaurantInDateRange(@Param("restaurantId") Long restaurantId,
+                                      @Param("fromDate") java.sql.Date fromDate,
+                                      @Param("toDate") java.sql.Date toDate);
+
+     @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE w.restaurant_id = :restaurantId AND w.status = :status" +
+             " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
+             " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+     long countByRestaurantAndStatusInDateRange(@Param("restaurantId") Long restaurantId,
+                                                @Param("status") String status,
+                                                @Param("fromDate") java.sql.Date fromDate,
+                                                @Param("toDate") java.sql.Date toDate);
+
+     @Query(value = "SELECT AVG(EXTRACT(EPOCH FROM (w.seated_at - w.joined_at))/60) FROM waitlist w " +
+             "WHERE w.restaurant_id = :restaurantId AND w.seated_at IS NOT NULL" +
+             " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
+             " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+     Double averageSeatedDurationMinutes(@Param("restaurantId") Long restaurantId,
+                                         @Param("fromDate") java.sql.Date fromDate,
+                                         @Param("toDate") java.sql.Date toDate);
 }
 

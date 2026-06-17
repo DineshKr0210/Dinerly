@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.dto.request.AddGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.AddTableRequest;
 import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
 import com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest;
+import com.restaurant.waitlist.backend.dto.request.SeatGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.UpdateRestaurantSettingsRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
@@ -11,6 +12,9 @@ import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantSettingsResponse;
 import com.restaurant.waitlist.backend.dto.response.TableResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
+import com.restaurant.waitlist.backend.dto.response.WaitlistSmsResult;
+import com.restaurant.waitlist.backend.dto.response.ReportsResponse;
+import org.springframework.data.domain.Page;
 import com.restaurant.waitlist.backend.entity.Table;
 import com.restaurant.waitlist.backend.service.RestaurantService;
 import com.restaurant.waitlist.backend.service.TableService;
@@ -105,15 +109,15 @@ public class RestaurantController {
 
     @PostMapping("/{restaurantId}/waitlist/{id}/notify")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<WaitlistResponse>> notifyGuest(
+    public ResponseEntity<ApiResponse<WaitlistSmsResult>> notifyGuest(
             @PathVariable Long restaurantId,
             @PathVariable Long id,
             @Valid @RequestBody NotifyGuestRequest request) {
         try {
             log.info("START: notifyGuest | restaurantId={}, id={}, request={}", restaurantId, id, request);
-            WaitlistResponse response = restaurantService.notifyGuest(restaurantId, id, request);
-            log.info("END: notifyGuest | success");
-            return ResponseEntity.ok(ApiResponse.success("Guest notified successfully", response));
+            WaitlistSmsResult result = restaurantService.notifyGuest(restaurantId, id, request);
+            log.info("END: notifyGuest | success smsSent={}", result.isSmsSent());
+            return ResponseEntity.ok(ApiResponse.success("Guest notified successfully", result));
         } catch (Exception e) {
             log.error("ERROR: notifyGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()
@@ -123,13 +127,13 @@ public class RestaurantController {
 
     @PostMapping("/{restaurantId}/waitlist/{id}/approve")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<WaitlistResponse>> approveGuest(@PathVariable Long restaurantId, @PathVariable Long id,
+    public ResponseEntity<ApiResponse<WaitlistSmsResult>> approveGuest(@PathVariable Long restaurantId, @PathVariable Long id,
             @Valid @RequestBody NotifyGuestRequest request) {
         try {
             log.info("START: approveGuest | restaurantId={}, id={}, request={}", restaurantId, id, request);
-            WaitlistResponse response = restaurantService.approveGuest(restaurantId, id, request);
-            log.info("END: approveGuest | success");
-            return ResponseEntity.ok(ApiResponse.success("Guest approved successfully", response));
+            WaitlistSmsResult result = restaurantService.approveGuest(restaurantId, id, request);
+            log.info("END: approveGuest | success smsSent={}", result.isSmsSent());
+            return ResponseEntity.ok(ApiResponse.success("Guest approved successfully", result));
         } catch (Exception e) {
             log.error("ERROR: approveGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()
@@ -155,10 +159,11 @@ public class RestaurantController {
 
     @PostMapping("/{restaurantId}/waitlist/{id}/seat")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<WaitlistResponse>> seatGuest(@PathVariable Long restaurantId, @PathVariable Long id) {
+    public ResponseEntity<ApiResponse<WaitlistResponse>> seatGuest(@PathVariable Long restaurantId, @PathVariable Long id,
+            @Valid @RequestBody(required = false) SeatGuestRequest request) {
         try {
-            log.info("START: seatGuest | restaurantId={}, id={}", restaurantId, id);
-            WaitlistResponse response = restaurantService.seatGuest(restaurantId, id);
+            log.info("START: seatGuest | restaurantId={}, id={}, request={}", restaurantId, id, request);
+            WaitlistResponse response = restaurantService.seatGuest(restaurantId, id, request);
             log.info("END: seatGuest | success");
             return ResponseEntity.ok(ApiResponse.success("Guest seated successfully", response));
         } catch (Exception e) {
@@ -248,14 +253,59 @@ public class RestaurantController {
 
     @GetMapping("/{restaurantId}/guest-history")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<List<WaitlistResponse>>> getGuestHistory(@PathVariable Long restaurantId) {
+    public ResponseEntity<ApiResponse<Page<WaitlistResponse>>> getGuestHistory(@PathVariable Long restaurantId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String date) {
         try {
-            log.info("START: getGuestHistory | restaurantId={}", restaurantId);
-            List<WaitlistResponse> response = restaurantService.getGuestHistory(restaurantId);
+            log.info("START: getGuestHistory | restaurantId={}, page={}, size={}, status={}, date={}", restaurantId, page, size, status, date);
+
+            if (page < 0 || size <= 0) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Invalid page or size"));
+            }
+
+            Page<WaitlistResponse> response = restaurantService.getGuestHistory(restaurantId, page, size, status, date);
             log.info("END: getGuestHistory | success");
             return ResponseEntity.ok(ApiResponse.success("Guest history retrieved", response));
         } catch (Exception e) {
             log.error("ERROR: getGuestHistory | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{restaurantId}/guest-history/export")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<?> exportGuestHistory(@PathVariable Long restaurantId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String date) {
+        try {
+            log.info("START: exportGuestHistory | restaurantId={}, status={}, date={}", restaurantId, status, date);
+            String csv = restaurantService.exportGuestHistoryCsv(restaurantId, status, date);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.add("Content-Type", "text/csv; charset=utf-8");
+            headers.add("Content-Disposition", "attachment; filename=\"guest-history.csv\"");
+            log.info("END: exportGuestHistory | success");
+            return ResponseEntity.ok().headers(headers).body(csv);
+        } catch (Exception e) {
+            log.error("ERROR: exportGuestHistory | {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{restaurantId}/reports")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<ReportsResponse>> getReports(@PathVariable Long restaurantId,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        try {
+            log.info("START: getReports | restaurantId={}, fromDate={}, toDate={}", restaurantId, fromDate, toDate);
+            ReportsResponse response = restaurantService.getReports(restaurantId, fromDate, toDate);
+            log.info("END: getReports | success");
+            return ResponseEntity.ok(ApiResponse.success("Reports retrieved", response));
+        } catch (Exception e) {
+            log.error("ERROR: getReports | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
