@@ -123,7 +123,6 @@ public class RestaurantService {
             list = list.stream().filter(w -> w.getStatus() == st).collect(Collectors.toList());
         }
         return list.stream()
-                .sorted((a, b) -> Long.compare(b.getId(), a.getId()))
                 .map(WaitlistResponse::fromWaitlist)
                 .collect(Collectors.toList());
     }
@@ -147,15 +146,24 @@ public class RestaurantService {
 
         boolean smsSent = true;
         String smsError = null;
+        String message = null;
         try {
             String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
             Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
             smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+            message = estimatedTime;
+            waitlist.setSmsMessage(message);
+            waitlist.setSmsStatus("SENT");
+            waitlist.setSmsSentAt(LocalDateTime.now());
+            waitlist.setSmsError(null);
         } catch (Exception e) {
             smsSent = false;
             smsError = e.getMessage();
             log.error("SMS send failed for notifyGuest id={} restaurantId={} error={}", waitlistId, restaurantId, smsError);
+            waitlist.setSmsStatus("FAILED");
+            waitlist.setSmsError(smsError);
         }
+        waitlistRepository.save(waitlist);
 
         return new WaitlistSmsResult(WaitlistResponse.fromWaitlist(waitlist), smsSent, smsError);
     }
@@ -221,15 +229,24 @@ public class RestaurantService {
 
         boolean smsSent = true;
         String smsError = null;
+        String message = null;
         try {
             String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
             Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
             smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+            message = estimatedTime;
+            waitlist.setSmsMessage(message);
+            waitlist.setSmsStatus("SENT");
+            waitlist.setSmsSentAt(LocalDateTime.now());
+            waitlist.setSmsError(null);
         } catch (Exception e) {
             smsSent = false;
             smsError = e.getMessage();
             log.error("SMS send failed for approveGuest id={} restaurantId={} error={}", waitlistId, restaurantId, smsError);
+            waitlist.setSmsStatus("FAILED");
+            waitlist.setSmsError(smsError);
         }
+        waitlistRepository.save(waitlist);
 
         return new WaitlistSmsResult(WaitlistResponse.fromWaitlist(waitlist), smsSent, smsError);
     }
@@ -250,13 +267,9 @@ public class RestaurantService {
             date = java.time.LocalDate.parse(dateStr.trim());
         }
 
-        // Convert 1-indexed page to 0-indexed for PageRequest
-        int pageNumber = (page != null && page >= 1) ? page - 1 : 0;
-        int pageSize = (size != null && size > 0) ? size : 10;
-
         Pageable pageable = PageRequest.of(
-                pageNumber,
-                pageSize,
+                page != null && page >= 0 ? page : 0,
+                size != null && size > 0 ? size : 10,
                 Sort.by(Sort.Direction.DESC, "joinedAt")
         );
 
@@ -365,7 +378,19 @@ public class RestaurantService {
                     + waitlist.getRestaurant().getName()
                     + " is slightly delayed. New wait time is approximately "
                     + request.getEstimatedWaitTime() + " minutes. Thanks for your patience.";
-            smsService.sendSms(waitlist.getGuestPhone(), message);
+            try {
+                smsService.sendSms(waitlist.getGuestPhone(), message);
+                waitlist.setSmsMessage(message);
+                waitlist.setSmsStatus("SENT");
+                waitlist.setSmsSentAt(LocalDateTime.now());
+                waitlist.setSmsError(null);
+            } catch (Exception e) {
+                log.error("SMS send failed for updateEstimate id={} restaurantId={} error={}", waitlistId, restaurantId, e.getMessage());
+                waitlist.setSmsMessage(message);
+                waitlist.setSmsStatus("FAILED");
+                waitlist.setSmsError(e.getMessage());
+            }
+            waitlistRepository.save(waitlist);
         }
     }
 

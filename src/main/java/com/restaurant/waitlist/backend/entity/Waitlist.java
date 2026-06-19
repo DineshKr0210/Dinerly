@@ -57,6 +57,18 @@ public class Waitlist {
     @Column(name = "seated_at")
     private LocalDateTime seatedAt;
 
+    @Column(name = "sms_message")
+    private String smsMessage;
+
+    @Column(name = "sms_status")
+    private String smsStatus; // SENT / FAILED
+
+    @Column(name = "sms_error")
+    private String smsError;
+
+    @Column(name = "sms_sent_at")
+    private LocalDateTime smsSentAt;
+
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 

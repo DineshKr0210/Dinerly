@@ -1,6 +1,8 @@
 package com.restaurant.waitlist.backend.repository;
 
 import com.restaurant.waitlist.backend.entity.Waitlist;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -56,12 +58,21 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                                 @Param("fromDate") java.sql.Date fromDate,
                                                 @Param("toDate") java.sql.Date toDate);
 
-     @Query(value = "SELECT AVG(EXTRACT(EPOCH FROM (w.seated_at - w.joined_at))/60) FROM waitlist w " +
-             "WHERE w.restaurant_id = :restaurantId AND w.seated_at IS NOT NULL" +
-             " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
-             " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
-     Double averageSeatedDurationMinutes(@Param("restaurantId") Long restaurantId,
-                                         @Param("fromDate") java.sql.Date fromDate,
-                                         @Param("toDate") java.sql.Date toDate);
+      @Query(value = "SELECT AVG(EXTRACT(EPOCH FROM (w.seated_at - w.joined_at))/60) FROM waitlist w " +
+              "WHERE w.restaurant_id = :restaurantId AND w.seated_at IS NOT NULL" +
+              " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
+              " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+      Double averageSeatedDurationMinutes(@Param("restaurantId") Long restaurantId,
+                                          @Param("fromDate") java.sql.Date fromDate,
+                                          @Param("toDate") java.sql.Date toDate);
+
+      @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId " +
+              "AND (:status IS NULL OR w.status = :status) " +
+              "AND (:search IS NULL OR LOWER(w.guestName) LIKE LOWER(CONCAT('%', :search, '%')) OR w.guestPhone LIKE CONCAT('%', :search, '%')) " +
+              "ORDER BY w.joinedAt DESC")
+      Page<Waitlist> findByRestaurantIdWithSearch(@Param("restaurantId") Long restaurantId,
+                                                   @Param("status") Waitlist.WaitlistStatus status,
+                                                   @Param("search") String search,
+                                                   Pageable pageable);
 }
 

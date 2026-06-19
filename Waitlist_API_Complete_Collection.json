@@ -2,9 +2,9 @@
   "info": {
     "_postman_id": "waitlist-api-complete-collection",
     "name": "Waitlist Management System - Complete API",
-    "description": "Complete REST API collection for Restaurant Waitlist Management System with Restaurant ID scoping. Organized by Login, Guest, Restaurant, Admin, and Utilities.",
+    "description": "Complete REST API collection for Restaurant Waitlist Management System with Restaurant ID scoping. Organized by Login, Guest, Restaurant, Admin, Notifications, and Utilities.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "2.0.0"
+    "version": "2.1.0"
   },
   "variable": [
     {
@@ -841,6 +841,137 @@
       ]
     },
     {
+      "name": "🔔 Notifications Management",
+      "description": "Notification APIs for managing and tracking SMS communications",
+      "item": [
+        {
+          "name": "Get Notification Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/notifications/summary",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "notifications", "summary"]
+            },
+            "description": "Get today's notification summary: totalGuests, waiting, notified, seated, cancelled counts."
+          }
+        },
+        {
+          "name": "Get Notifications (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/notifications?page={{page}}&size={{size}}&search=&status=",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "notifications"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (0-indexed, default 0)"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "Page size (default 10)"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Optional. Search by guest name or phone"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Optional. Filter by status (PENDING, WAITING, NOTIFIED, SEATED, CANCELLED, NO_SHOW)"
+                }
+              ]
+            },
+            "description": "Get paginated list of notifications with search and status filtering."
+          }
+        },
+        {
+          "name": "Get Notification Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/notifications/{{waitlistId}}",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "notifications", "{{waitlistId}}"]
+            },
+            "description": "Get detailed information for a specific notification/waitlist entry including SMS details."
+          }
+        },
+        {
+          "name": "Send Custom SMS",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hi John, your table is ready! Please come to the lobby. Thank you!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/notifications/{{waitlistId}}/send-sms",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "notifications", "{{waitlistId}}", "send-sms"]
+            },
+            "description": "Send a custom SMS message to a guest. Stores message, status (SENT/FAILED), error, and timestamp in the waitlist table."
+          }
+        },
+        {
+          "name": "Get SMS History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/notifications/{{waitlistId}}/sms-history",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "notifications", "{{waitlistId}}", "sms-history"]
+            },
+            "description": "Get SMS history for a specific guest: message content, status (SENT/FAILED), error message, and timestamp."
+          }
+        }
+      ]
+    },
+    {
       "name": "📊 Admin Analytics & Insights",
       "description": "Admin-only endpoints for analytics and reporting",
       "item": [
@@ -1005,6 +1136,24 @@
               "path": ["waitlist"]
             },
             "description": "Step 2: Guest joins waitlist. Copy returned waitlistId and use as {{waitlistId}}. Then check status and leave."
+          }
+        },
+        {
+          "name": "[Workflow 3] View Notifications → Send SMS → Check History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/notifications/summary",
+              "host": ["{{base_url}}"],
+              "path": ["restaurants", "{{restaurantId}}", "notifications", "summary"]
+            },
+            "description": "Step 1: Get notification summary showing today's guest counts by status."
           }
         }
       ]
