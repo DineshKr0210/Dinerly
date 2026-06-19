@@ -62,7 +62,7 @@ public class SmsService {
         sendSms(phoneNumber, message);
     }
 
-    public void sendWaitlistNotificationSms(String phoneNumber, String guestName, String estimatedWait, Integer position) {
+    public String sendWaitlistNotificationSms(String phoneNumber, String guestName, String estimatedWait, Integer position) {
         Map<String, String> params = new HashMap<>();
         params.put("guestName", guestName);
         params.put("estimatedWait", estimatedWait);
@@ -70,9 +70,10 @@ public class SmsService {
 
         String message = smsTemplateService.formatMessage("WAITLIST_NOTIFICATION", params);
         sendSms(phoneNumber, message);
+        return message;
     }
 
-    public void sendApprovedNotificationSms(String phoneNumber, String guestName, String estimatedWait, Integer position) {
+    public String sendApprovedNotificationSms(String phoneNumber, String guestName, String estimatedWait, Integer position) {
         Map<String, String> params = new HashMap<>();
         params.put("guestName", guestName);
         params.put("estimatedWait", estimatedWait);
@@ -80,6 +81,7 @@ public class SmsService {
 
         String message = smsTemplateService.formatMessage("WAITLIST_APPROVED", params);
         sendSms(phoneNumber, message);
+        return message;
     }
 
     public void sendSeatedNotificationSms(String phoneNumber, String guestName) {

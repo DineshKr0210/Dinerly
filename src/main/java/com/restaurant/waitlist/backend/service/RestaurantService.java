@@ -150,8 +150,7 @@ public class RestaurantService {
         try {
             String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
             Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
-            smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
-            message = estimatedTime;
+            message = smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
             waitlist.setSmsMessage(message);
             waitlist.setSmsStatus("SENT");
             waitlist.setSmsSentAt(LocalDateTime.now());
@@ -233,8 +232,7 @@ public class RestaurantService {
         try {
             String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
             Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
-            smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
-            message = estimatedTime;
+            message = smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
             waitlist.setSmsMessage(message);
             waitlist.setSmsStatus("SENT");
             waitlist.setSmsSentAt(LocalDateTime.now());
