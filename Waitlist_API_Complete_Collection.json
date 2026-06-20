@@ -873,7 +873,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/restaurants/{{restaurantId}}/notifications?page={{page}}&size={{size}}&search=&status=",
+              "raw": "{{base_url}}/restaurants/{{restaurantId}}/notifications?page=0&size=10&search=&status=&date=",
               "host": ["{{base_url}}"],
               "path": ["restaurants", "{{restaurantId}}", "notifications"],
               "query": [
@@ -896,10 +896,15 @@
                   "key": "status",
                   "value": "",
                   "description": "Optional. Filter by status (PENDING, WAITING, NOTIFIED, SEATED, CANCELLED, NO_SHOW)"
+                },
+                {
+                  "key": "date",
+                  "value": "",
+                  "description": "Optional. Filter by date (YYYY-MM-DD format). Defaults to today's date if not provided"
                 }
               ]
             },
-            "description": "Get paginated list of notifications with search and status filtering."
+            "description": "Get paginated list of notifications with search, status, and date filtering. If no date provided, defaults to today."
           }
         },
         {

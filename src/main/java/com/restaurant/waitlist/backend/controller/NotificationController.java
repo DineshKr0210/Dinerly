@@ -40,10 +40,11 @@ public class NotificationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String date) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-            Page<WaitlistResponse> response = notificationService.getNotifications(restaurantId, pageable, search, status);
+            Page<WaitlistResponse> response = notificationService.getNotifications(restaurantId, pageable, search, status, date);
             return ResponseEntity.ok(ApiResponse.success("Notifications retrieved", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

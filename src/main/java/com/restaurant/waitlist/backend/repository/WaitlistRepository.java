@@ -66,13 +66,24 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                           @Param("fromDate") java.sql.Date fromDate,
                                           @Param("toDate") java.sql.Date toDate);
 
-      @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId " +
-              "AND (:status IS NULL OR w.status = :status) " +
-              "AND (:search IS NULL OR LOWER(w.guestName) LIKE LOWER(CONCAT('%', :search, '%')) OR w.guestPhone LIKE CONCAT('%', :search, '%')) " +
-              "ORDER BY w.joinedAt DESC")
-      Page<Waitlist> findByRestaurantIdWithSearch(@Param("restaurantId") Long restaurantId,
-                                                   @Param("status") Waitlist.WaitlistStatus status,
-                                                   @Param("search") String search,
-                                                   Pageable pageable);
+       @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId " +
+               "AND (:status IS NULL OR w.status = :status) " +
+               "AND (:search IS NULL OR LOWER(w.guestName) LIKE LOWER(CONCAT('%', :search, '%')) OR w.guestPhone LIKE CONCAT('%', :search, '%')) " +
+               "ORDER BY w.joinedAt DESC")
+       Page<Waitlist> findByRestaurantIdWithSearch(@Param("restaurantId") Long restaurantId,
+                                                    @Param("status") Waitlist.WaitlistStatus status,
+                                                    @Param("search") String search,
+                                                    Pageable pageable);
+
+       @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId " +
+               "AND (:status IS NULL OR w.status = :status) " +
+               "AND (:search IS NULL OR LOWER(w.guestName) LIKE LOWER(CONCAT('%', :search, '%')) OR w.guestPhone LIKE CONCAT('%', :search, '%')) " +
+               "AND DATE(w.joinedAt) = :joinedDate " +
+               "ORDER BY w.joinedAt DESC")
+       Page<Waitlist> findByRestaurantIdWithSearchAndDate(@Param("restaurantId") Long restaurantId,
+                                                          @Param("status") Waitlist.WaitlistStatus status,
+                                                          @Param("search") String search,
+                                                          @Param("joinedDate") java.time.LocalDate joinedDate,
+                                                          Pageable pageable);
 }
 

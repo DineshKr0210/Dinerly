@@ -63,7 +63,7 @@ public class NotificationService {
                 .build();
     }
 
-    public Page<WaitlistResponse> getNotifications(Long restaurantId, Pageable pageable, String search, String status) {
+    public Page<WaitlistResponse> getNotifications(Long restaurantId, Pageable pageable, String search, String status, String date) {
         restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
@@ -76,7 +76,18 @@ public class NotificationService {
             }
         }
 
-        Page<Waitlist> page = waitlistRepository.findByRestaurantIdWithSearch(restaurantId, statusFilter, search, pageable);
+        LocalDate filterDate;
+        if (date == null || date.isEmpty()) {
+            filterDate = LocalDate.now();
+        } else {
+            try {
+                filterDate = LocalDate.parse(date);
+            } catch (Exception e) {
+                throw new RuntimeException("Invalid date format. Use YYYY-MM-DD");
+            }
+        }
+
+        Page<Waitlist> page = waitlistRepository.findByRestaurantIdWithSearchAndDate(restaurantId, statusFilter, search, filterDate, pageable);
         return page.map(WaitlistResponse::fromWaitlist);
     }
 
