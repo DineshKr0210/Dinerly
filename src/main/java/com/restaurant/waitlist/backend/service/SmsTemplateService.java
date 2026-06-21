@@ -47,7 +47,7 @@ public class SmsTemplateService {
         if (smsTemplateRepository.findByTemplateType("WAITLIST_NOTIFICATION").isEmpty()) {
             SmsTemplate waitlistTemplate = SmsTemplate.builder()
                     .templateType("WAITLIST_NOTIFICATION")
-                    .messageTemplate("Hi {guestName}, your table is almost ready! Estimated wait time: {estimatedWait} minutes.{position} Please come to the restaurant now.")
+                    .messageTemplate("Hi {guestName}, your table is almost ready! Please come to the restaurant now.")
                     .description("Template for notifying guests when their table is almost ready")
                     .build();
             smsTemplateRepository.save(waitlistTemplate);
