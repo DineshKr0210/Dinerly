@@ -123,6 +123,7 @@ public class RestaurantService {
             list = list.stream().filter(w -> w.getStatus() == st).collect(Collectors.toList());
         }
         return list.stream()
+                .sorted((a, b) -> b.getId().compareTo(a.getId()))
                 .map(WaitlistResponse::fromWaitlist)
                 .collect(Collectors.toList());
     }
