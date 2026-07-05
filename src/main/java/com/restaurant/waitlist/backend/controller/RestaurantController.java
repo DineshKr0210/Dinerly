@@ -250,5 +250,78 @@ public class RestaurantController {
                     .body(ApiResponse.error(e.getMessage()));
         }
     }
+    @GetMapping("/{restaurantId}/guest-history")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<Page<WaitlistResponse>>> getGuestHistory(@PathVariable Long restaurantId,
+                                                                               @RequestParam(defaultValue = "0") int page,
+                                                                               @RequestParam(defaultValue = "10") int size,
+                                                                               @RequestParam(required = false) String status,
+                                                                               @RequestParam(required = false) String date) {
+        try {
+            log.info("START: getGuestHistory | restaurantId={}, page={}, size={}, status={}, date={}", restaurantId, page, size, status, date);
+
+            if (page < 0 || size <= 0) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("Invalid page or size"));
+            }
+
+            Page<WaitlistResponse> response = restaurantService.getGuestHistory(restaurantId, page, size, status, date);
+            log.info("END: getGuestHistory | success");
+            return ResponseEntity.ok(ApiResponse.success("Guest history retrieved", response));
+        } catch (Exception e) {
+            log.error("ERROR: getGuestHistory | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{restaurantId}/guest-history/export")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<?> exportGuestHistory(@PathVariable Long restaurantId,
+                                                @RequestParam(required = false) String status,
+                                                @RequestParam(required = false) String date) {
+        try {
+            log.info("START: exportGuestHistory | restaurantId={}, status={}, date={}", restaurantId, status, date);
+            String csv = restaurantService.exportGuestHistoryCsv(restaurantId, status, date);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.add("Content-Type", "text/csv; charset=utf-8");
+            headers.add("Content-Disposition", "attachment; filename=\"guest-history.csv\"");
+            log.info("END: exportGuestHistory | success");
+            return ResponseEntity.ok().headers(headers).body(csv);
+        } catch (Exception e) {
+            log.error("ERROR: exportGuestHistory | {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{restaurantId}/settings")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> getSettings(@PathVariable Long restaurantId) {
+        try {
+            log.info("START: getSettings | restaurantId={}", restaurantId);
+            RestaurantSettingsResponse response = restaurantService.getSettings(restaurantId);
+            log.info("END: getSettings | success");
+            return ResponseEntity.ok(ApiResponse.success("Settings retrieved", response));
+        } catch (Exception e) {
+            log.error("ERROR: getSettings | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{restaurantId}/settings")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> updateSettings(@PathVariable Long restaurantId,
+                                                                                  @Valid @RequestBody UpdateRestaurantSettingsRequest request) {
+        try {
+            log.info("START: updateSettings | restaurantId={}, request={}", restaurantId, request);
+            RestaurantSettingsResponse response = restaurantService.updateSettings(restaurantId, request);
+            log.info("END: updateSettings | success");
+            return ResponseEntity.ok(ApiResponse.success("Settings updated successfully", response));
+        } catch (Exception e) {
+            log.error("ERROR: updateSettings | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
 }
 

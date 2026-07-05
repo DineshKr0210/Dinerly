@@ -16,6 +16,7 @@ public class UserResponse {
     private String name;
     private String phone;
     private User.UserRole role;
+    private Long restaurantId;
 
     public static UserResponse fromUser(User user) {
         return UserResponse.builder()
@@ -24,6 +25,7 @@ public class UserResponse {
                 .name(user.getName())
                 .phone(user.getPhone())
                 .role(user.getRole())
+                .restaurantId(user.getRestaurantId())
                 .build();
     }
 }

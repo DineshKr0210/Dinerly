@@ -183,77 +183,6 @@ public class AdminService {
         return smsService.probeAccount();
     }
 
-    public Page<WaitlistResponse> getGuestHistory(Long restaurantId, Integer page, Integer size,
-                                                  String statusStr, String dateStr) {
-        restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        Waitlist.WaitlistStatus status = null;
-        if (statusStr != null && !statusStr.trim().isEmpty()) {
-            status = Waitlist.WaitlistStatus.valueOf(statusStr.trim().toUpperCase());
-        }
-
-        java.time.LocalDate date = null;
-        if (dateStr != null && !dateStr.trim().isEmpty()) {
-            date = java.time.LocalDate.parse(dateStr.trim());
-        }
-
-        Pageable pageable = PageRequest.of(
-                page != null && page >= 0 ? page : 0,
-                size != null && size > 0 ? size : 10,
-                Sort.by(Sort.Direction.DESC, "joinedAt")
-        );
-
-        Specification<Waitlist> spec = WaitlistSpecification.filter(restaurantId, status, date, null, null);
-        Page<Waitlist> pageResult = waitlistRepository.findAll(spec, pageable);
-        return pageResult.map(WaitlistResponse::fromWaitlist);
-    }
-
-    public String exportGuestHistoryCsv(Long restaurantId, String statusStr, String dateStr) {
-        restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        Waitlist.WaitlistStatus status = null;
-        if (statusStr != null && !statusStr.trim().isEmpty()) {
-            status = Waitlist.WaitlistStatus.valueOf(statusStr.trim().toUpperCase());
-        }
-
-        java.time.LocalDate date = null;
-        if (dateStr != null && !dateStr.trim().isEmpty()) {
-            date = java.time.LocalDate.parse(dateStr.trim());
-        }
-
-        Specification<Waitlist> spec = WaitlistSpecification.filter(restaurantId, status, date, null, null);
-        java.util.List<Waitlist> rows = waitlistRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "joinedAt"));
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("id,guestName,phone,partySize,status,joinedAt,approvedAt,notifiedAt,seatedAt,cancelledAt,tableName\n");
-        for (Waitlist w : rows) {
-            sb.append(w.getId()).append(",");
-            sb.append(csvEscape(w.getGuestName())).append(",");
-            sb.append(csvEscape(w.getGuestPhone())).append(",");
-            sb.append(w.getPartySize() != null ? w.getPartySize() : "").append(",");
-            sb.append(w.getStatus() != null ? w.getStatus().name() : "").append(",");
-            sb.append(w.getJoinedAt() != null ? w.getJoinedAt().toString() : "").append(",");
-            sb.append(w.getApprovedAt() != null ? w.getApprovedAt().toString() : "").append(",");
-            sb.append(w.getNotifiedAt() != null ? w.getNotifiedAt().toString() : "").append(",");
-            sb.append(w.getSeatedAt() != null ? w.getSeatedAt().toString() : "").append(",");
-            sb.append(w.getCancelledAt() != null ? w.getCancelledAt().toString() : "").append(",");
-            sb.append(csvEscape(w.getTableName())).append("\n");
-        }
-        return sb.toString();
-    }
-
-    private String csvEscape(String s) {
-        if (s == null) return "";
-        String escaped = s.replace("\"", "\"\"");
-        if (escaped.contains(",") || escaped.contains("\n") || escaped.contains("\"")) {
-            return "\"" + escaped + "\"";
-        } else {
-            return escaped;
-        }
-    }
-
     public ReportsResponse getReports(Long restaurantId, String fromDateStr, String toDateStr) {
         restaurantRepository.findById(restaurantId).orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
@@ -290,52 +219,6 @@ public class AdminService {
                 .todayGuestsCount(todayGuestsCount)
                 .todaySeatedCount(todaySeatedCount)
                 .build();
-    }
-
-    public RestaurantSettingsResponse getSettings(Long restaurantId) {
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> {
-                    Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                            .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-                    RestaurantSettings newSettings = RestaurantSettings.builder()
-                            .restaurant(restaurant)
-                            .build();
-                    return restaurantSettingsRepository.save(newSettings);
-                });
-        return RestaurantSettingsResponse.fromSettings(settings);
-    }
-
-    public RestaurantSettingsResponse updateSettings(Long restaurantId, UpdateRestaurantSettingsRequest request) {
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> {
-                    Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                            .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-                    return RestaurantSettings.builder()
-                            .restaurant(restaurant)
-                            .build();
-                });
-
-        if (request.getSendSmsNotifications() != null) {
-            settings.setSendSmsNotifications(request.getSendSmsNotifications());
-        }
-        if (request.getSendEmailNotifications() != null) {
-            settings.setSendEmailNotifications(request.getSendEmailNotifications());
-        }
-        if (request.getAverageServiceTime() != null) {
-            settings.setAverageServiceTime(request.getAverageServiceTime());
-        }
-        if (request.getBufferTime() != null) {
-            settings.setBufferTime(request.getBufferTime());
-        }
-        if (request.getOperatingHours() != null) {
-            settings.setOperatingHours(request.getOperatingHours());
-        }
-        if (request.getMaxWaitlistSize() != null) {
-            settings.setMaxWaitlistSize(request.getMaxWaitlistSize());
-        }
-
-        settings = restaurantSettingsRepository.save(settings);
-        return RestaurantSettingsResponse.fromSettings(settings);
     }
 }
 
