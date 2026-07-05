@@ -2,10 +2,7 @@ package com.restaurant.waitlist.backend.controller;
 
 import com.restaurant.waitlist.backend.dto.request.JoinWaitlistRequest;
 import com.restaurant.waitlist.backend.dto.request.WaitlistStatusRequest;
-import com.restaurant.waitlist.backend.dto.response.ApiResponse;
-import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
-import com.restaurant.waitlist.backend.dto.response.WaitlistDashboardStatsResponse;
-import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
+import com.restaurant.waitlist.backend.dto.response.*;
 import com.restaurant.waitlist.backend.service.RestaurantService;
 import com.restaurant.waitlist.backend.service.WaitlistService;
 import jakarta.validation.Valid;
@@ -16,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/waitlist")
@@ -78,6 +77,19 @@ public class WaitlistController {
             return ResponseEntity.ok(ApiResponse.success("Dashboard stats retrieved", response));
         } catch (Exception e) {
             log.error("ERROR: waitlist.getDashboard | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    @GetMapping("/restaurants")
+    public ResponseEntity<ApiResponse<List<RestaurantResponse>>> getAllRestaurants() {
+        try {
+            log.info("START: getAllRestaurants | {}", "");
+            List<RestaurantResponse> response = waitlistService.getAllRestaurants();
+            log.info("END: getAllRestaurants | success");
+            return ResponseEntity.ok(ApiResponse.success("Restaurants retrieved", response));
+        } catch (Exception e) {
+            log.error("ERROR: getAllRestaurants | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }

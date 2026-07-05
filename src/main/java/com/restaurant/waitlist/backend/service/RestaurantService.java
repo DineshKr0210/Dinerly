@@ -72,11 +72,7 @@ public class RestaurantService {
         return RestaurantResponse.fromRestaurant(restaurant);
     }
 
-    public List<RestaurantResponse> getAllRestaurants() {
-        return restaurantRepository.findAll().stream()
-                .map(RestaurantResponse::fromRestaurant)
-                .collect(Collectors.toList());
-    }
+
 
     public WaitlistResponse addGuestToWaitlist(Long restaurantId, AddGuestRequest request) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)

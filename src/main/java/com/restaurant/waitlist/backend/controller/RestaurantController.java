@@ -58,20 +58,6 @@ public class RestaurantController {
         }
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<RestaurantResponse>>> getAllRestaurants() {
-        try {
-            log.info("START: getAllRestaurants | {}", "");
-            List<RestaurantResponse> response = restaurantService.getAllRestaurants();
-            log.info("END: getAllRestaurants | success");
-            return ResponseEntity.ok(ApiResponse.success("Restaurants retrieved", response));
-        } catch (Exception e) {
-            log.error("ERROR: getAllRestaurants | {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
     @GetMapping("/{restaurantId}/waitlist")
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<List<WaitlistResponse>>> getWaitlist(@PathVariable Long restaurantId,

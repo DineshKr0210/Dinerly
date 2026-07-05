@@ -2,6 +2,7 @@ package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.request.JoinWaitlistRequest;
 import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
+import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistDashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.entity.Restaurant;
@@ -159,6 +160,12 @@ public class WaitlistService {
         Waitlist waitlist = getWaitlistById(restaurantId, waitlistId);
         waitlist.setStatus(Waitlist.WaitlistStatus.NOTIFIED);
         waitlistRepository.save(waitlist);
+    }
+
+    public List<RestaurantResponse> getAllRestaurants() {
+        return restaurantRepository.findAll().stream()
+                .map(RestaurantResponse::fromRestaurant)
+                .collect(Collectors.toList());
     }
 }
 
