@@ -1,14 +1,17 @@
 package com.restaurant.waitlist.backend.service;
 
+import com.restaurant.waitlist.backend.dto.response.SendCallResponse;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.Account;
+import com.twilio.rest.api.v2010.account.Call;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,6 +27,9 @@ public class SmsService {
 
     @Value("${twilio.phone-number}")
     private String fromPhoneNumber;
+
+    @Value("${twilio.voice-webhook-url:}")
+    private String voiceWebhookUrl;
 
     @Autowired
     private SmsTemplateService smsTemplateService;
@@ -49,6 +55,36 @@ public class SmsService {
             log.error("Error sending SMS to {}: {}", toPhoneNumber, e.getMessage());
             log.debug("SMS send exception", e);
             throw new RuntimeException("Failed to send SMS notification");
+        }
+    }
+
+    public SendCallResponse makePhoneCall(String toPhoneNumber, String message) {
+        if (toPhoneNumber == null || toPhoneNumber.isBlank()) {
+            throw new RuntimeException("Guest phone number is required");
+        }
+        if (voiceWebhookUrl == null || voiceWebhookUrl.isBlank()) {
+            throw new RuntimeException("Twilio voice webhook URL is not configured");
+        }
+
+        try {
+            log.debug("Placing short Twilio voice call to {} with webhook {}", toPhoneNumber, voiceWebhookUrl);
+            Twilio.init(accountSid, authToken);
+            Call call = Call.creator(
+                    new PhoneNumber(toPhoneNumber),
+                    new PhoneNumber(fromPhoneNumber),
+                    URI.create(voiceWebhookUrl)
+            ).create();
+
+            log.info("Phone call initiated to {}. SID={}", toPhoneNumber, call.getSid());
+            return SendCallResponse.builder()
+                    .callInitiated(true)
+                    .status(call.getStatus() != null ? call.getStatus().toString() : "queued")
+                    .sid(call.getSid())
+                    .build();
+        } catch (Exception e) {
+            log.error("Error initiating voice call to {}: {}", toPhoneNumber, e.getMessage());
+            log.debug("Voice call exception", e);
+            throw new RuntimeException("Failed to initiate phone call");
         }
     }
 

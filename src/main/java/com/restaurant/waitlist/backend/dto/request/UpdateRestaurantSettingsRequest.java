@@ -8,6 +8,7 @@ import lombok.Data;
 public class UpdateRestaurantSettingsRequest {
     private Boolean sendSmsNotifications;
     private Boolean sendEmailNotifications;
+    private String nightlySummaryEmail;
 
     @Positive(message = "Average service time must be positive")
     private Integer averageServiceTime;

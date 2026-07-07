@@ -2,6 +2,8 @@ package com.restaurant.waitlist.backend.controller;
 
 import com.restaurant.waitlist.backend.dto.request.ForgotPasswordRequest;
 import com.restaurant.waitlist.backend.dto.request.LoginRequest;
+import com.restaurant.waitlist.backend.dto.request.RegisterRequest;
+import com.restaurant.waitlist.backend.dto.request.ResendVerificationRequest;
 import com.restaurant.waitlist.backend.dto.request.ResetPasswordRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.LoginResponse;
@@ -22,6 +24,39 @@ public class AuthController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
+        try {
+            authService.registerRestaurant(request);
+            return ResponseEntity.ok(ApiResponse.success("Registration successful. Verification email sent."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(@RequestParam("token") String token) {
+        try {
+            authService.verifyEmail(token);
+            return ResponseEntity.ok(ApiResponse.success("Email verified successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<Void>> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        try {
+            authService.resendVerification(request);
+            return ResponseEntity.ok(ApiResponse.success("Verification email resent successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {

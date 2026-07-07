@@ -1,16 +1,21 @@
 package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.request.LoginRequest;
+import com.restaurant.waitlist.backend.dto.request.RegisterRequest;
+import com.restaurant.waitlist.backend.dto.request.ResendVerificationRequest;
 import com.restaurant.waitlist.backend.dto.response.LoginResponse;
 import com.restaurant.waitlist.backend.dto.response.UserResponse;
+import com.restaurant.waitlist.backend.entity.EmailVerificationToken;
 import com.restaurant.waitlist.backend.entity.PasswordResetToken;
 import com.restaurant.waitlist.backend.entity.User;
+import com.restaurant.waitlist.backend.repository.EmailVerificationTokenRepository;
 import com.restaurant.waitlist.backend.repository.PasswordResetTokenRepository;
 import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +29,9 @@ public class AuthService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EmailVerificationTokenRepository emailVerificationTokenRepository;
 
     @Autowired
     private PasswordResetTokenRepository passwordResetTokenRepository;
@@ -41,11 +49,14 @@ public class AuthService {
         User user = userRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (!user.getIsActive()) {
-            throw new RuntimeException("User account is inactive");
+        if (!Boolean.TRUE.equals(user.getEnabled())) {
+            throw new RuntimeException("User account is disabled");
         }
 
-        // Defensive handling: trim incoming password and guard against nulls
+        if (user.getRole() == User.UserRole.RESTAURANT && !Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new RuntimeException("Email not verified");
+        }
+
         String rawPassword = loginRequest.getPassword() == null ? "" : loginRequest.getPassword().trim();
         String storedPassword = user.getPassword();
 
@@ -56,12 +67,10 @@ public class AuthService {
 
         boolean matched = false;
         try {
-            // If the stored password looks like a BCrypt hash, use passwordEncoder.matches
             String lower = storedPassword.toLowerCase();
             if (lower.startsWith("$2a$") || lower.startsWith("$2b$") || lower.startsWith("$2y$")) {
                 matched = passwordEncoder.matches(rawPassword, storedPassword);
             } else {
-                // Fallback: maybe the value in DB is plaintext (e.g., inserted manually). Compare directly
                 matched = storedPassword.equals(rawPassword);
             }
         } catch (Exception e) {
@@ -79,6 +88,72 @@ public class AuthService {
         return LoginResponse.builder()
                 .token(token)
                 .user(userResponse)
+                .build();
+    }
+
+    @Transactional
+    public void registerRestaurant(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email is already registered");
+        }
+
+        User user = User.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(User.UserRole.RESTAURANT)
+                .emailVerified(false)
+                .enabled(true)
+                .build();
+
+        userRepository.save(user);
+        EmailVerificationToken token = createVerificationToken(user);
+        emailVerificationTokenRepository.save(token);
+        emailService.sendVerificationEmail(user.getEmail(), token.getToken());
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+        EmailVerificationToken verificationToken = emailVerificationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid verification token"));
+
+        if (verificationToken.getUsed()) {
+            throw new RuntimeException("Verification token has already been used");
+        }
+
+        if (LocalDateTime.now().isAfter(verificationToken.getExpiresAt())) {
+            throw new RuntimeException("Verification token has expired");
+        }
+
+        User user = verificationToken.getUser();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        verificationToken.setUsed(true);
+        emailVerificationTokenRepository.save(verificationToken);
+    }
+
+    @Transactional
+    public void resendVerification(ResendVerificationRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new RuntimeException("Email is already verified");
+        }
+
+        EmailVerificationToken token = createVerificationToken(user);
+        emailVerificationTokenRepository.save(token);
+        emailService.sendVerificationEmail(user.getEmail(), token.getToken());
+    }
+
+    private EmailVerificationToken createVerificationToken(User user) {
+        return EmailVerificationToken.builder()
+                .user(user)
+                .token(EmailVerificationToken.generateToken())
+                .expiresAt(LocalDateTime.now().plusHours(24))
+                .used(false)
                 .build();
     }
 

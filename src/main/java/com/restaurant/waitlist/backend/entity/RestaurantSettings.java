@@ -34,6 +34,8 @@ public class RestaurantSettings {
     @Builder.Default
     private Boolean sendEmailNotifications = true;
 
+    private String nightlySummaryEmail;
+
     @Column(nullable = false)
     @Builder.Default
     private Integer averageServiceTime = 45;

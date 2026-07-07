@@ -54,6 +54,12 @@ public class RestaurantService {
     private RestaurantSettingsRepository restaurantSettingsRepository;
 
     @Autowired
+    private com.restaurant.waitlist.backend.service.StaffService staffService;
+
+    @Autowired
+    private com.restaurant.waitlist.backend.service.TableService tableService;
+
+    @Autowired
     private WaitlistService waitlistService;
 
     @Autowired
@@ -126,6 +132,8 @@ public class RestaurantService {
 
     public WaitlistSmsResult notifyGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
         Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
+                .orElse(RestaurantSettings.builder().restaurant(waitlist.getRestaurant()).build());
 
         if (request.getEstimatedWaitTime() != null) {
             waitlist.setEstimatedWaitTime(request.getEstimatedWaitTime());
@@ -139,26 +147,32 @@ public class RestaurantService {
             }
         }
 
-        waitlistRepository.save(waitlist);
-
-        boolean smsSent = true;
+        boolean smsSent = false;
         String smsError = null;
         String message = null;
-        try {
-            String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
-            Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
-            message = smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
-            waitlist.setSmsMessage(message);
-            waitlist.setSmsStatus("SENT");
-            waitlist.setSmsSentAt(LocalDateTime.now());
+
+        if (Boolean.TRUE.equals(settings.getSendSmsNotifications())) {
+            try {
+                String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
+                Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
+                message = smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+                waitlist.setSmsMessage(message);
+                waitlist.setSmsStatus("SENT");
+                waitlist.setSmsSentAt(LocalDateTime.now());
+                waitlist.setSmsError(null);
+                smsSent = true;
+            } catch (Exception e) {
+                smsError = e.getMessage();
+                log.error("SMS send failed for notifyGuest id={} restaurantId={} error={}", waitlistId, restaurantId, smsError);
+                waitlist.setSmsStatus("FAILED");
+                waitlist.setSmsError(smsError);
+            }
+        } else {
+            waitlist.setSmsMessage(null);
+            waitlist.setSmsStatus("DISABLED");
             waitlist.setSmsError(null);
-        } catch (Exception e) {
-            smsSent = false;
-            smsError = e.getMessage();
-            log.error("SMS send failed for notifyGuest id={} restaurantId={} error={}", waitlistId, restaurantId, smsError);
-            waitlist.setSmsStatus("FAILED");
-            waitlist.setSmsError(smsError);
         }
+
         waitlistRepository.save(waitlist);
 
         return new WaitlistSmsResult(WaitlistResponse.fromWaitlist(waitlist), smsSent, smsError);
@@ -223,23 +237,32 @@ public class RestaurantService {
         }
         waitlistRepository.save(waitlist);
 
-        boolean smsSent = true;
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
+                .orElse(RestaurantSettings.builder().restaurant(waitlist.getRestaurant()).build());
+
+        boolean smsSent = false;
         String smsError = null;
         String message = null;
-        try {
-            String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
-            Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
-            message = smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
-            waitlist.setSmsMessage(message);
-            waitlist.setSmsStatus("SENT");
-            waitlist.setSmsSentAt(LocalDateTime.now());
+        if (Boolean.TRUE.equals(settings.getSendSmsNotifications())) {
+            try {
+                String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
+                Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
+                message = smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+                waitlist.setSmsMessage(message);
+                waitlist.setSmsStatus("SENT");
+                waitlist.setSmsSentAt(LocalDateTime.now());
+                waitlist.setSmsError(null);
+                smsSent = true;
+            } catch (Exception e) {
+                smsError = e.getMessage();
+                log.error("SMS send failed for approveGuest id={} restaurantId={} error={}", waitlistId, restaurantId, smsError);
+                waitlist.setSmsStatus("FAILED");
+                waitlist.setSmsError(smsError);
+            }
+        } else {
+            waitlist.setSmsMessage(null);
+            waitlist.setSmsStatus("DISABLED");
             waitlist.setSmsError(null);
-        } catch (Exception e) {
-            smsSent = false;
-            smsError = e.getMessage();
-            log.error("SMS send failed for approveGuest id={} restaurantId={} error={}", waitlistId, restaurantId, smsError);
-            waitlist.setSmsStatus("FAILED");
-            waitlist.setSmsError(smsError);
         }
         waitlistRepository.save(waitlist);
 
@@ -419,20 +442,46 @@ public class RestaurantService {
     }
 
 
-    public RestaurantSettingsResponse getSettings(Long restaurantId) {
+        public com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse getSettings(Long restaurantId) {
         RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> {
-                    Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                            .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-                    RestaurantSettings newSettings = RestaurantSettings.builder()
-                            .restaurant(restaurant)
-                            .build();
-                    return restaurantSettingsRepository.save(newSettings);
-                });
-        return RestaurantSettingsResponse.fromSettings(settings);
-    }
+            .orElseGet(() -> {
+                Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                    .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+                RestaurantSettings newSettings = RestaurantSettings.builder()
+                    .restaurant(restaurant)
+                    .build();
+                return restaurantSettingsRepository.save(newSettings);
+            });
 
-    public RestaurantSettingsResponse updateSettings(Long restaurantId, UpdateRestaurantSettingsRequest request) {
+        com.restaurant.waitlist.backend.dto.response.RestaurantResponse profile = com.restaurant.waitlist.backend.dto.response.RestaurantResponse.fromRestaurant(settings.getRestaurant());
+        com.restaurant.waitlist.backend.dto.response.RestaurantSettingsResponse settingsResp = com.restaurant.waitlist.backend.dto.response.RestaurantSettingsResponse.fromSettings(settings);
+
+        java.util.List<com.restaurant.waitlist.backend.dto.response.StaffResponse> staff = staffService.getStaff(restaurantId);
+        java.util.List<com.restaurant.waitlist.backend.dto.response.TableResponse> tables = tableService.getRestaurantTables(restaurantId);
+
+        int totalTables = tables != null ? tables.size() : 0;
+        int totalSeats = 0;
+        if (tables != null) {
+            for (com.restaurant.waitlist.backend.dto.response.TableResponse t : tables) {
+            if (t.getCapacity() != null) totalSeats += t.getCapacity();
+            }
+        }
+
+        com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse.FloorSummary floor = com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse.FloorSummary.builder()
+            .totalTables(totalTables)
+            .totalSeats(totalSeats)
+            .staffOnFile(staff != null ? staff.size() : 0)
+            .build();
+
+        return com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse.builder()
+            .profile(profile)
+            .settings(settingsResp)
+            .staff(staff)
+            .floor(floor)
+            .build();
+        }
+
+        public com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse updateSettings(Long restaurantId, UpdateRestaurantSettingsRequest request) {
         RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
                 .orElseGet(() -> {
                     Restaurant restaurant = restaurantRepository.findById(restaurantId)
@@ -448,6 +497,12 @@ public class RestaurantService {
         if (request.getSendEmailNotifications() != null) {
             settings.setSendEmailNotifications(request.getSendEmailNotifications());
         }
+        if (request.getNightlySummaryEmail() != null) {
+            settings.setNightlySummaryEmail(request.getNightlySummaryEmail());
+        }
+        if (request.getNightlySummaryEmail() != null) {
+            settings.setNightlySummaryEmail(request.getNightlySummaryEmail());
+        }
         if (request.getAverageServiceTime() != null) {
             settings.setAverageServiceTime(request.getAverageServiceTime());
         }
@@ -462,7 +517,8 @@ public class RestaurantService {
         }
 
         settings = restaurantSettingsRepository.save(settings);
-        return RestaurantSettingsResponse.fromSettings(settings);
+        // Return composed overview after update
+        return getSettings(restaurantId);
     }
 }
 

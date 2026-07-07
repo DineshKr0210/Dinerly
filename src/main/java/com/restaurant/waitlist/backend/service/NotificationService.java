@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.response.NotificationSummaryResponse;
+import com.restaurant.waitlist.backend.dto.response.SendCallResponse;
 import com.restaurant.waitlist.backend.dto.response.SendSmsResponse;
 import com.restaurant.waitlist.backend.dto.response.SmsHistoryResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
@@ -125,6 +126,27 @@ public class NotificationService {
             waitlistRepository.save(waitlist);
             return SendSmsResponse.builder()
                     .smsSent(false)
+                    .error(e.getMessage())
+                    .build();
+        }
+    }
+
+    public SendCallResponse makeCall(Long restaurantId, Long waitlistId, String message) {
+        Waitlist waitlist = waitlistRepository.findById(waitlistId)
+                .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
+
+        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
+        }
+
+        try {
+            String callMessage = (message == null || message.isBlank())
+                    ? "Hello, this is the restaurant. Your table is ready. Please answer the phone."
+                    : message;
+            return smsService.makePhoneCall(waitlist.getGuestPhone(), callMessage);
+        } catch (Exception e) {
+            return SendCallResponse.builder()
+                    .callInitiated(false)
                     .error(e.getMessage())
                     .build();
         }

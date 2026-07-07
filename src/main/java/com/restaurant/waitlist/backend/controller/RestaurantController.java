@@ -281,10 +281,10 @@ public class RestaurantController {
 
     @GetMapping("/{restaurantId}/settings")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> getSettings(@PathVariable Long restaurantId) {
+    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse>> getSettings(@PathVariable Long restaurantId) {
         try {
             log.info("START: getSettings | restaurantId={}", restaurantId);
-            RestaurantSettingsResponse response = restaurantService.getSettings(restaurantId);
+            com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse response = restaurantService.getSettings(restaurantId);
             log.info("END: getSettings | success");
             return ResponseEntity.ok(ApiResponse.success("Settings retrieved", response));
         } catch (Exception e) {
@@ -296,11 +296,11 @@ public class RestaurantController {
 
     @PutMapping("/{restaurantId}/settings")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> updateSettings(@PathVariable Long restaurantId,
+    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse>> updateSettings(@PathVariable Long restaurantId,
                                                                                   @Valid @RequestBody UpdateRestaurantSettingsRequest request) {
         try {
             log.info("START: updateSettings | restaurantId={}, request={}", restaurantId, request);
-            RestaurantSettingsResponse response = restaurantService.updateSettings(restaurantId, request);
+            com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse response = restaurantService.updateSettings(restaurantId, request);
             log.info("END: updateSettings | success");
             return ResponseEntity.ok(ApiResponse.success("Settings updated successfully", response));
         } catch (Exception e) {

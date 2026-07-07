@@ -15,10 +15,29 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    @Value("${app.frontend.url:http://dev.dinerly.ca}")
+    private String frontendUrl;
+
+    public void sendVerificationEmail(String toEmail, String verificationToken) {
+        try {
+            String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Verify your email - Waitlist Management");
+            message.setText("Click the link below to verify your email:\n\n"
+                    + verificationLink + "\n\n"
+                    + "If you did not request this, please ignore this email.");
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Error sending email: " + e.getMessage());
+            throw new RuntimeException("Failed to send verification email");
+        }
+    }
+
     public void sendPasswordResetEmail(String toEmail, String resetToken) {
         try {
-            String resetLink = "http://localhost:3000/resetpassword?token=" + resetToken;
-            
+            String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom(fromEmail);
             message.setTo(toEmail);
@@ -26,7 +45,6 @@ public class EmailService {
             message.setText("Click the link below to reset your password (Valid for 1 hour):\n\n"
                     + resetLink + "\n\n"
                     + "If you didn't request this, please ignore this email.");
-
             mailSender.send(message);
         } catch (Exception e) {
             System.err.println("Error sending email: " + e.getMessage());
@@ -48,6 +66,19 @@ public class EmailService {
             mailSender.send(message);
         } catch (Exception e) {
             System.err.println("Error sending notification email: " + e.getMessage());
+        }
+    }
+
+    public void sendNightlySummary(String toEmail, String restaurantName, String summaryBody) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("Nightly summary for " + restaurantName);
+            message.setText(summaryBody);
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Error sending nightly summary email: " + e.getMessage());
         }
     }
 }

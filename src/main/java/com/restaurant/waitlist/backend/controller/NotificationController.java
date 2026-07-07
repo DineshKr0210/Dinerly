@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.controller;
 import com.restaurant.waitlist.backend.dto.request.SendSmsRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.NotificationSummaryResponse;
+import com.restaurant.waitlist.backend.dto.response.SendCallResponse;
 import com.restaurant.waitlist.backend.dto.response.SendSmsResponse;
 import com.restaurant.waitlist.backend.dto.response.SmsHistoryResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
@@ -71,6 +72,20 @@ public class NotificationController {
         try {
             SendSmsResponse response = notificationService.sendSms(restaurantId, waitlistId, request.getMessage());
             return ResponseEntity.ok(ApiResponse.success("SMS sent", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{waitlistId}/make-call")
+    public ResponseEntity<ApiResponse<SendCallResponse>> makeCall(
+            @PathVariable Long restaurantId,
+            @PathVariable Long waitlistId,
+            @RequestBody(required = false) SendSmsRequest request) {
+        try {
+            String message = request != null ? request.getMessage() : null;
+            SendCallResponse response = notificationService.makeCall(restaurantId, waitlistId, message);
+            return ResponseEntity.ok(ApiResponse.success("Phone call initiated", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

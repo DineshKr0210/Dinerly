@@ -11,6 +11,7 @@ public class RestaurantSettingsResponse {
     private Long restaurantId;
     private Boolean sendSmsNotifications;
     private Boolean sendEmailNotifications;
+    private String nightlySummaryEmail;
     private Integer averageServiceTime;
     private Integer bufferTime;
     private String operatingHours;
@@ -22,6 +23,7 @@ public class RestaurantSettingsResponse {
                 .restaurantId(settings.getRestaurant().getId())
                 .sendSmsNotifications(settings.getSendSmsNotifications())
                 .sendEmailNotifications(settings.getSendEmailNotifications())
+                .nightlySummaryEmail(settings.getNightlySummaryEmail())
                 .averageServiceTime(settings.getAverageServiceTime())
                 .bufferTime(settings.getBufferTime())
                 .operatingHours(settings.getOperatingHours())

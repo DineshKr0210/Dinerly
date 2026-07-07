@@ -80,7 +80,7 @@
       "description": "Login and password reset operations",
       "item": [
         {
-          "name": "Login",
+          "name": "Register Restaurant",
           "request": {
             "method": "POST",
             "header": [
@@ -91,7 +91,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"restaurant@example.com\",\n  \"password\": \"password123\"\n}",
+              "raw": "{\n  \"name\": \"Sample Restaurant\",\n  \"email\": \"restaurant@example.com\",\n  \"phone\": \"+14165550123\",\n  \"password\": \"password123\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -99,15 +99,61 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/auth/login",
+              "raw": "{{base_url}}/auth/register",
               "host": ["{{base_url}}"],
-              "path": ["auth", "login"]
+              "path": ["auth", "register"]
             },
-            "description": "User login endpoint. Returns JWT token.\n\nNote: Copy the token from response and set it in the 'token' collection variable."
+            "description": "Restaurant registration endpoint. Sends verification email."
           }
         },
         {
-          "name": "Forgot Password",
+          "name": "Verify Email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/verify-email?token=your-token",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "your-token"
+                }
+              ]
+            },
+            "description": "Verify the restaurant email using the token sent by email."
+          }
+        },
+        {
+          "name": "Resend Verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"restaurant@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/resend-verification",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "resend-verification"]
+            },
+            "description": "Resend email verification token to the registered email address."
+          }
+        },
+        {
+          "name": "Login",
           "request": {
             "method": "POST",
             "header": [
