@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,6 +32,9 @@ public class SmsService {
 
     @Value("${twilio.voice-webhook-url:}")
     private String voiceWebhookUrl;
+
+    @Value("${twilio.voice-webhook-action-url:}")
+    private String voiceWebhookActionUrl;
 
     @Autowired
     private SmsTemplateService smsTemplateService;
@@ -67,13 +72,23 @@ public class SmsService {
         }
 
         try {
-            log.debug("Placing short Twilio voice call to {} with webhook {}", toPhoneNumber, voiceWebhookUrl);
+            String voiceUrl = voiceWebhookUrl;
+            if (message != null && !message.isBlank()) {
+                String encoded = URLEncoder.encode(message, StandardCharsets.UTF_8);
+                voiceUrl = voiceWebhookUrl + (voiceWebhookUrl.contains("?") ? "&" : "?") + "message=" + encoded;
+            }
+            log.debug("Placing Twilio voice call to {} with webhook {} and action {}", toPhoneNumber, voiceUrl, voiceWebhookActionUrl);
             Twilio.init(accountSid, authToken);
-            Call call = Call.creator(
+            com.twilio.rest.api.v2010.account.CallCreator creator = Call.creator(
                     new PhoneNumber(toPhoneNumber),
                     new PhoneNumber(fromPhoneNumber),
-                    URI.create(voiceWebhookUrl)
-            ).create();
+                    URI.create(voiceUrl)
+            );
+            if (voiceWebhookActionUrl != null && !voiceWebhookActionUrl.isBlank()) {
+                creator.setStatusCallback(URI.create(voiceWebhookActionUrl));
+                creator.setStatusCallbackMethod(com.twilio.http.HttpMethod.POST);
+            }
+            Call call = creator.create();
 
             log.info("Phone call initiated to {}. SID={}", toPhoneNumber, call.getSid());
             return SendCallResponse.builder()
@@ -99,12 +114,14 @@ public class SmsService {
     }
 
     public String sendWaitlistNotificationSms(String phoneNumber, String guestName, String estimatedWait, Integer position) {
-        Map<String, String> params = new HashMap<>();
-        params.put("guestName", guestName);
-        params.put("estimatedWait", estimatedWait);
-        params.put("position", (position != null) ? (" Your position: " + position + ".") : "");
-
-        String message = smsTemplateService.formatMessage("WAITLIST_NOTIFICATION", params);
+        String message = "Hi " + guestName + ",\n\n"
+                + "Your table is almost ready at Dinerly.\n\n"
+                + "Please reply with one of the following:\n"
+                + "1️⃣ On my way\n"
+                + "2️⃣ Arriving in 5 minutes\n"
+                + "3️⃣ Unable to make it\n\n"
+                + "You can also send any custom message or questions by replying to this SMS.\n\n"
+                + "Thank you!";
         sendSms(phoneNumber, message);
         return message;
     }

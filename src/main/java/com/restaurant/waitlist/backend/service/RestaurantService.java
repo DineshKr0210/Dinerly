@@ -153,9 +153,7 @@ public class RestaurantService {
 
         if (Boolean.TRUE.equals(settings.getSendSmsNotifications())) {
             try {
-                String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
-                Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
-                message = smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+                message = smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), null, null);
                 waitlist.setSmsMessage(message);
                 waitlist.setSmsStatus("SENT");
                 waitlist.setSmsSentAt(LocalDateTime.now());

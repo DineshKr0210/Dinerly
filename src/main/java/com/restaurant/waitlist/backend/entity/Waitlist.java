@@ -69,6 +69,24 @@ public class Waitlist {
     @Column(name = "sms_sent_at")
     private LocalDateTime smsSentAt;
 
+    @Column(name = "latest_customer_reply")
+    private String latestCustomerReply;
+
+    @Column(name = "customer_reply_received_at")
+    private LocalDateTime customerReplyReceivedAt;
+
+    @Column(name = "customer_reply_sid")
+    private String customerReplySid;
+
+    @Column(name = "latest_voice_reply")
+    private String latestVoiceReply;
+
+    @Column(name = "voice_reply_received_at")
+    private LocalDateTime voiceReplyReceivedAt;
+
+    @Column(name = "voice_reply_digits")
+    private String voiceReplyDigits;
+
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 

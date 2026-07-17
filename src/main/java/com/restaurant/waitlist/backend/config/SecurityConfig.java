@@ -36,6 +36,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                         // Allow guests to access waitlist public endpoints without authenticating
                         .requestMatchers("/api/waitlist/**").permitAll()
+                        .requestMatchers("/api/twilio/**").permitAll()
                         .requestMatchers("/api/restaurants/**").hasRole("RESTAURANT")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

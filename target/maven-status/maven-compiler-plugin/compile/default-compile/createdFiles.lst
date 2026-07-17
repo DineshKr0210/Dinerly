@@ -12,9 +12,12 @@ com/restaurant/waitlist/backend/dto/request/ResendVerificationRequest.class
 com/restaurant/waitlist/backend/service/SmsTemplateService.class
 com/restaurant/waitlist/backend/service/StaffService.class
 com/restaurant/waitlist/backend/controller/FeedbackController.class
+com/restaurant/waitlist/backend/controller/TwilioWebhookController.class
 com/restaurant/waitlist/backend/dto/response/AnalyticsResponse$AnalyticsResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/FeedbackRequest.class
 com/restaurant/waitlist/backend/dto/request/ResetPasswordRequest.class
+com/restaurant/waitlist/backend/controller/TwimlController.class
+com/restaurant/waitlist/backend/controller/TwilioVoiceWebhookController.class
 com/restaurant/waitlist/backend/repository/EmailVerificationTokenRepository.class
 com/restaurant/waitlist/backend/dto/response/ReportsResponse$ReportsResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/NotifyGuestRequest.class
@@ -46,6 +49,7 @@ com/restaurant/waitlist/backend/util/Constants.class
 com/restaurant/waitlist/backend/dto/response/SmsTemplateResponse.class
 com/restaurant/waitlist/backend/controller/TableController.class
 com/restaurant/waitlist/backend/entity/Waitlist.class
+com/restaurant/waitlist/backend/service/InboundVoiceService.class
 com/restaurant/waitlist/backend/dto/request/AddTableRequest.class
 com/restaurant/waitlist/backend/entity/EmailVerificationToken$EmailVerificationTokenBuilder.class
 com/restaurant/waitlist/backend/service/AdminService.class
@@ -105,6 +109,7 @@ com/restaurant/waitlist/backend/util/Constants$WaitlistStatus.class
 com/restaurant/waitlist/backend/repository/spec/WaitlistSpecification.class
 com/restaurant/waitlist/backend/entity/EmailVerificationToken.class
 com/restaurant/waitlist/backend/dto/response/UserResponse$UserResponseBuilder.class
+com/restaurant/waitlist/backend/service/InboundSmsService.class
 com/restaurant/waitlist/backend/controller/WaitlistController.class
 com/restaurant/waitlist/backend/service/SmsService.class
 com/restaurant/waitlist/backend/service/RestaurantService.class

@@ -92,7 +92,7 @@ public class AuthService {
     }
 
     @Transactional
-    public void registerRestaurant(RegisterRequest request) {
+    public void registerGuest(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email is already registered");
         }
@@ -102,7 +102,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(User.UserRole.RESTAURANT)
+                .role(User.UserRole.GUEST)
                 .emailVerified(false)
                 .enabled(true)
                 .build();

@@ -28,8 +28,8 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            authService.registerRestaurant(request);
-            return ResponseEntity.ok(ApiResponse.success("Registration successful. Verification email sent."));
+            authService.registerGuest(request);
+            return ResponseEntity.ok(ApiResponse.success("Guest registration successful. Verification email sent."));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));

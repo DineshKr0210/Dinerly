@@ -26,6 +26,12 @@ public class WaitlistResponse {
     private LocalDateTime notifiedAt;
     private LocalDateTime seatedAt;
     private LocalDateTime cancelledAt;
+    private String latestCustomerReply;
+    private LocalDateTime customerReplyReceivedAt;
+    private String customerReplySid;
+    private String latestVoiceReply;
+    private LocalDateTime voiceReplyReceivedAt;
+    private String voiceReplyDigits;
     private String tableName;
 
     public static WaitlistResponse fromWaitlist(Waitlist waitlist) {
@@ -44,6 +50,12 @@ public class WaitlistResponse {
                 .notifiedAt(waitlist.getNotifiedAt())
                 .seatedAt(waitlist.getSeatedAt())
                 .cancelledAt(waitlist.getCancelledAt())
+                .latestCustomerReply(waitlist.getLatestCustomerReply())
+                .customerReplyReceivedAt(waitlist.getCustomerReplyReceivedAt())
+                .customerReplySid(waitlist.getCustomerReplySid())
+                .latestVoiceReply(waitlist.getLatestVoiceReply())
+                .voiceReplyReceivedAt(waitlist.getVoiceReplyReceivedAt())
+                .voiceReplyDigits(waitlist.getVoiceReplyDigits())
                 .tableName(waitlist.getTableName())
                 .build();
     }
