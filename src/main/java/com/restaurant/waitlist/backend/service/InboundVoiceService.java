@@ -20,13 +20,18 @@ public class InboundVoiceService {
     @Transactional
     public boolean processInboundVoice(String fromPhoneNumber, String toPhoneNumber, String callSid, String digits, String recordingUrl, String callStatus) {
         if (fromPhoneNumber == null || fromPhoneNumber.isBlank()) {
-            log.warn("Ignoring inbound voice event with missing from");
+            log.warn("Ignoring inbound voice event with missing fromPhoneNumber");
             return false;
         }
 
-        Optional<Waitlist> latestWaitlist = waitlistRepository.findFirstByGuestPhoneOrderByIdDesc(normalizePhone(fromPhoneNumber));
+        if (toPhoneNumber == null || toPhoneNumber.isBlank()) {
+            log.warn("Ignoring inbound voice event with missing toPhoneNumber");
+            return false;
+        }
+
+        Optional<Waitlist> latestWaitlist = waitlistRepository.findFirstByGuestPhoneOrderByIdDesc(normalizePhone(toPhoneNumber));
         if (latestWaitlist.isEmpty()) {
-            log.warn("No waitlist entry found for inbound voice from {}", fromPhoneNumber);
+            log.warn("No waitlist entry found for inbound voice from {}", toPhoneNumber);
             return false;
         }
 

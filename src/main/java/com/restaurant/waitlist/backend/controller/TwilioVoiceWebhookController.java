@@ -25,6 +25,6 @@ public class TwilioVoiceWebhookController {
         String callStatus = params.get("CallStatus");
 
         boolean processed = inboundVoiceService.processInboundVoice(from, to, callSid, digits, recordingUrl, callStatus);
-        return ResponseEntity.ok(processed ? "OK" : "IGNORED");
+        return ResponseEntity.ok(processed ? "Thank you for your response" : "IGNORED");
     }
 }
