@@ -8,6 +8,7 @@ import com.restaurant.waitlist.backend.dto.response.SendSmsResponse;
 import com.restaurant.waitlist.backend.dto.response.SmsHistoryResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.service.NotificationService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/restaurants/{restaurantId}/notifications")
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('RESTAURANT')")
+@SecurityRequirement(name = "bearerAuth")
 public class NotificationController {
 
     @Autowired

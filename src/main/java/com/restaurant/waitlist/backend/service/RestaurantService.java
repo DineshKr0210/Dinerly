@@ -130,6 +130,11 @@ public class RestaurantService {
                 .collect(Collectors.toList());
     }
 
+    public WaitlistResponse getWaitlistStatusById(Long restaurantId, Long waitlistId) {
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
+        return WaitlistResponse.fromWaitlist(waitlist);
+    }
+
     public WaitlistSmsResult notifyGuest(Long restaurantId, Long waitlistId, com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest request) {
         Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
         RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)

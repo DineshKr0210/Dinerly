@@ -137,3 +137,4 @@ com/restaurant/waitlist/backend/dto/response/SendSmsResponse$SendSmsResponseBuil
 com/restaurant/waitlist/backend/service/FeedbackService.class
 com/restaurant/waitlist/backend/dto/response/DashboardStatsResponse$DashboardStatsResponseBuilder.class
 com/restaurant/waitlist/backend/entity/User$UserRole.class
+com/restaurant/waitlist/backend/config/OpenApiConfig.class

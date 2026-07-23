@@ -14,6 +14,7 @@ import com.restaurant.waitlist.backend.dto.response.TableResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistSmsResult;
 import com.restaurant.waitlist.backend.dto.response.ReportsResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.data.domain.Page;
 import com.restaurant.waitlist.backend.entity.Table;
 import com.restaurant.waitlist.backend.service.RestaurantService;
@@ -32,6 +33,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/restaurants")
 @CrossOrigin(origins = "*")
+@SecurityRequirement(name = "bearerAuth")
 public class RestaurantController {
 
     private static final Logger log = LoggerFactory.getLogger(RestaurantController.class);
@@ -70,6 +72,22 @@ public class RestaurantController {
             return ResponseEntity.ok(ApiResponse.success("Waitlist retrieved", response));
         } catch (Exception e) {
             log.error("ERROR: getWaitlist | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{restaurantId}/waitlist/{id}/status")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> getWaitlistStatusById(@PathVariable Long restaurantId,
+            @PathVariable Long id) {
+        try {
+            log.info("START: getWaitlistStatusById | restaurantId={}, id={}", restaurantId, id);
+            WaitlistResponse response = restaurantService.getWaitlistStatusById(restaurantId, id);
+            log.info("END: getWaitlistStatusById | success");
+            return ResponseEntity.ok(ApiResponse.success("Waitlist status retrieved", response));
+        } catch (Exception e) {
+            log.error("ERROR: getWaitlistStatusById | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -294,20 +312,5 @@ public class RestaurantController {
         }
     }
 
-    @PutMapping("/{restaurantId}/settings")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse>> updateSettings(@PathVariable Long restaurantId,
-                                                                                  @Valid @RequestBody UpdateRestaurantSettingsRequest request) {
-        try {
-            log.info("START: updateSettings | restaurantId={}, request={}", restaurantId, request);
-            com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse response = restaurantService.updateSettings(restaurantId, request);
-            log.info("END: updateSettings | success");
-            return ResponseEntity.ok(ApiResponse.success("Settings updated successfully", response));
-        } catch (Exception e) {
-            log.error("ERROR: updateSettings | {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
 }
 

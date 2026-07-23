@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.service.AdminService;
 import com.restaurant.waitlist.backend.dto.request.UpdateSmsTemplateRequest;
 import com.restaurant.waitlist.backend.service.RestaurantService;
 import com.restaurant.waitlist.backend.service.SmsTemplateService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 @RestController
 @RequestMapping("/api/admin")
 @CrossOrigin(origins = "*")
+@SecurityRequirement(name = "bearerAuth")
 public class AdminController {
 
     @Autowired

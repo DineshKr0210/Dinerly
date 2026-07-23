@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.controller;
 import com.restaurant.waitlist.backend.dto.request.UpdateTableStatusRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.service.TableService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/tables")
 @CrossOrigin(origins = "*")
+@SecurityRequirement(name = "bearerAuth")
 public class TableController {
 
     @Autowired
