@@ -23,6 +23,6 @@ public class TwilioWebhookController {
         String messageSid = params.get("MessageSid");
 
         boolean processed = inboundSmsService.processInboundSms(from, body, to, messageSid);
-        return ResponseEntity.ok(processed ? "OK" : "IGNORED");
+        return ResponseEntity.ok(processed ? "Thank You for your response" : "IGNORED");
     }
 }
