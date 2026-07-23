@@ -25,17 +25,13 @@ public class InboundSmsService {
         }
 
         String normalizedFrom = normalizePhone(fromPhoneNumber);
-        Optional<Waitlist> latestWaitlist = waitlistRepository.findByGuestPhone(normalizedFrom);
+        Optional<Waitlist> latestWaitlist = waitlistRepository.findFirstByGuestPhoneOrderByIdDesc(normalizedFrom);
         if (latestWaitlist.isEmpty()) {
             log.warn("No waitlist entry found for inbound SMS from {}", normalizedFrom);
             return false;
         }
 
         Waitlist waitlist = latestWaitlist.get();
-        waitlist.setLatestCustomerReply(body.trim());
-        waitlist.setCustomerReplyReceivedAt(LocalDateTime.now());
-        waitlist.setCustomerReplySid(messageSid);
-
         waitlist.setLatestCustomerReply(body.trim());
         waitlist.setCustomerReplyReceivedAt(LocalDateTime.now());
         waitlist.setCustomerReplySid(messageSid);
@@ -47,16 +43,38 @@ public class InboundSmsService {
     }
 
     private String normalizePhone(String value) {
-        if (value == null) {
-            return null;
+        if (value == null) return null;
+
+        String s = value.trim();
+        boolean hadPlus = s.startsWith("+");
+
+        // remove everything except digits
+        String digits = s.replaceAll("[^0-9]", "");
+
+        if (digits.isEmpty()) return s;
+
+        // if original had plus, return +<digits>
+        if (hadPlus) {
+            return "+" + digits;
         }
-        String normalized = value.replace(" ", "").trim();
-        if (normalized.startsWith("+")) {
-            return normalized;
+
+        // common Indian formats:
+        // 10 digits -> assume +91
+        if (digits.length() == 10) {
+            return "+91" + digits;
         }
-        if (normalized.startsWith("0")) {
-            return "+91" + normalized.substring(1);
+
+        // leading 0 + 10 digits (11 total) -> drop leading 0 and add +91
+        if (digits.length() == 11 && digits.startsWith("0")) {
+            return "+91" + digits.substring(1);
         }
-        return normalized;
+
+        // leading country code without plus e.g. 919876543210 -> add +
+        if (digits.length() >= 11 && (digits.startsWith("91") || digits.length() > 10)) {
+            return "+" + digits;
+        }
+
+        // fallback: return raw digits
+        return digits;
     }
 }

@@ -24,7 +24,7 @@ public class InboundVoiceService {
             return false;
         }
 
-        Optional<Waitlist> latestWaitlist = waitlistRepository.findByGuestPhone(normalizePhone(fromPhoneNumber));
+        Optional<Waitlist> latestWaitlist = waitlistRepository.findFirstByGuestPhoneOrderByIdDesc(normalizePhone(fromPhoneNumber));
         if (latestWaitlist.isEmpty()) {
             log.warn("No waitlist entry found for inbound voice from {}", fromPhoneNumber);
             return false;

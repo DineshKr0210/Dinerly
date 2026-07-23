@@ -32,7 +32,7 @@ class InboundSmsServiceTest {
                 .status(Waitlist.WaitlistStatus.NOTIFIED)
                 .build();
 
-        when(waitlistRepository.findByGuestPhone("+919876543210")).thenReturn(Optional.of(waitlist));
+        when(waitlistRepository.findFirstByGuestPhoneOrderByIdDesc("+919876543210")).thenReturn(Optional.of(waitlist));
 
         boolean processed = inboundSmsService.processInboundSms(
                 "+919876543210",
@@ -55,7 +55,7 @@ class InboundSmsServiceTest {
                 .status(Waitlist.WaitlistStatus.NOTIFIED)
                 .build();
 
-        when(waitlistRepository.findByGuestPhone("+919876543211")).thenReturn(Optional.of(waitlist));
+        when(waitlistRepository.findFirstByGuestPhoneOrderByIdDesc("+919876543211")).thenReturn(Optional.of(waitlist));
 
         boolean processed = inboundSmsService.processInboundSms(
                 "+919876543211",

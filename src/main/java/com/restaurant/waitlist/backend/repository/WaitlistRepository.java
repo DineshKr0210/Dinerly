@@ -18,7 +18,7 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
 
     List<Waitlist> findByRestaurantIdAndStatus(Long restaurantId, Waitlist.WaitlistStatus status);
 
-    Optional<Waitlist> findByGuestPhone(String guestPhone);
+        Optional<Waitlist> findFirstByGuestPhoneOrderByIdDesc(String guestPhone);
 
     // Return the most recent waitlist entry (by joined_at desc then id desc) for a given restaurant and guest phone
     @Query(value = "SELECT * FROM waitlist w WHERE w.restaurant_id = :restaurantId AND w.guest_phone = :guestPhone ORDER BY w.id DESC LIMIT 1", nativeQuery = true)
