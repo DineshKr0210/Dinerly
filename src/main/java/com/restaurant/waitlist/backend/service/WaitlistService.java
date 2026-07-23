@@ -38,15 +38,69 @@ public class WaitlistService {
         Waitlist waitlist = Waitlist.builder()
                 .restaurant(restaurant)
                 .guestName(request.getName())
-                .guestPhone(request.getPhone())
+                .guestPhone(normalizePhone(request.getPhone()))
                 .partySize(request.getPartySize())
                 .preference(request.getPreference())
                 .notes(request.getNotes())
                 .status(Waitlist.WaitlistStatus.PENDING)
+                .lastActiveStatus(Waitlist.WaitlistStatus.PENDING)
                 .build();
 
         waitlist = waitlistRepository.save(waitlist);
         return WaitlistResponse.fromWaitlist(waitlist);
+    }
+
+    public WaitlistResponse rejoinWaitlist(JoinWaitlistRequest request) {
+        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        String normalizedPhone = normalizePhone(request.getPhone());
+        Waitlist existing = waitlistRepository.findLatestByRestaurantIdAndGuestPhone(request.getRestaurantId(), normalizedPhone)
+                .orElse(null);
+
+        if (existing != null && existing.getStatus() != Waitlist.WaitlistStatus.CANCELLED) {
+            return WaitlistResponse.fromWaitlist(existing);
+        }
+
+        if (existing == null) {
+            existing = Waitlist.builder()
+                    .restaurant(restaurant)
+                    .guestName(request.getName())
+                    .guestPhone(normalizedPhone)
+                    .partySize(request.getPartySize())
+                    .preference(request.getPreference())
+                    .notes(request.getNotes())
+                    .status(Waitlist.WaitlistStatus.PENDING)
+                    .lastActiveStatus(Waitlist.WaitlistStatus.PENDING)
+                    .build();
+        } else {
+            existing.setRestaurant(restaurant);
+            existing.setGuestName(request.getName());
+            existing.setGuestPhone(normalizedPhone);
+            existing.setPartySize(request.getPartySize());
+            existing.setPreference(request.getPreference());
+            existing.setNotes(request.getNotes());
+
+            Waitlist.WaitlistStatus restoredStatus = existing.getLastActiveStatus() != null
+                    ? existing.getLastActiveStatus()
+                    : resolveRejoinStatus(existing);
+
+            existing.setStatus(restoredStatus);
+            existing.setLastActiveStatus(restoredStatus);
+            existing.setCancelledAt(null);
+
+            if (existing.getStatus() == Waitlist.WaitlistStatus.WAITING || existing.getStatus() == Waitlist.WaitlistStatus.NOTIFIED) {
+                long activeCount = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurant.getId(), java.sql.Date.valueOf(java.time.LocalDate.now())).stream()
+                        .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
+                        .count();
+                existing.setPosition((int) activeCount + 1);
+            } else {
+                existing.setPosition(null);
+            }
+        }
+
+        existing = waitlistRepository.save(existing);
+        return WaitlistResponse.fromWaitlist(existing);
     }
 
     public WaitlistResponse getWaitlistStatus(Long restaurantId, String phone) {
@@ -70,7 +124,7 @@ public class WaitlistService {
                 .collect(Collectors.toList());
     }
 
-    public void removeFromWaitlist(Long restaurantId, Long waitlistId) {
+    public WaitlistResponse removeFromWaitlist(Long restaurantId, Long waitlistId) {
         Waitlist waitlist = waitlistRepository.findById(waitlistId)
                 .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
 
@@ -78,8 +132,14 @@ public class WaitlistService {
             throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
         }
 
+        waitlist.setLastActiveStatus(waitlist.getStatus() == null || waitlist.getStatus() == Waitlist.WaitlistStatus.CANCELLED
+                ? waitlist.getLastActiveStatus()
+                : waitlist.getStatus());
         waitlist.setStatus(Waitlist.WaitlistStatus.CANCELLED);
+        waitlist.setCancelledAt(java.time.LocalDateTime.now());
         waitlistRepository.save(waitlist);
+
+        return WaitlistResponse.fromWaitlist(waitlist);
     }
     public WaitlistDashboardStatsResponse getDashboardStats(Long restaurantId) {
         restaurantRepository.findById(restaurantId)
@@ -166,6 +226,43 @@ public class WaitlistService {
         return restaurantRepository.findAll().stream()
                 .map(RestaurantResponse::fromRestaurant)
                 .collect(Collectors.toList());
+    }
+
+    private Waitlist.WaitlistStatus resolveRejoinStatus(Waitlist waitlist) {
+        if (waitlist.getNotifiedAt() != null) {
+            return Waitlist.WaitlistStatus.NOTIFIED;
+        }
+        if (waitlist.getApprovedAt() != null) {
+            return Waitlist.WaitlistStatus.WAITING;
+        }
+        return Waitlist.WaitlistStatus.PENDING;
+    }
+
+    private String normalizePhone(String value) {
+        if (value == null) {
+            return null;
+        }
+        String s = value.trim();
+        if (s.isBlank()) {
+            return s;
+        }
+        String digits = s.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) {
+            return s;
+        }
+        if (s.startsWith("+")) {
+            return "+" + digits;
+        }
+        if (digits.length() == 10) {
+            return "+91" + digits;
+        }
+        if (digits.length() == 11 && digits.startsWith("0")) {
+            return "+91" + digits.substring(1);
+        }
+        if (digits.length() >= 11 && (digits.startsWith("91") || digits.length() > 10)) {
+            return "+" + digits;
+        }
+        return digits;
     }
 }
 

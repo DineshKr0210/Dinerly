@@ -44,6 +44,10 @@ public class Waitlist {
     @Builder.Default
     private WaitlistStatus status = WaitlistStatus.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "last_active_status")
+    private WaitlistStatus lastActiveStatus;
+
     @Column(name = "position")
     private Integer position;
 

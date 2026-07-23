@@ -2,6 +2,7 @@ package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.request.AddGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
+import com.restaurant.waitlist.backend.dto.request.JoinWaitlistRequest;
 import com.restaurant.waitlist.backend.dto.request.UpdateRestaurantSettingsRequest;
 import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
@@ -304,8 +305,12 @@ public class RestaurantService {
         }
     }
 
-    public void removeGuest(Long restaurantId, Long waitlistId) {
-        waitlistService.removeFromWaitlist(restaurantId, waitlistId);
+    public WaitlistResponse removeGuest(Long restaurantId, Long waitlistId) {
+        return waitlistService.removeFromWaitlist(restaurantId, waitlistId);
+    }
+
+    public WaitlistResponse rejoinGuest(Long restaurantId, JoinWaitlistRequest request) {
+        return waitlistService.rejoinWaitlist(request);
     }
 
     public DashboardStatsResponse getDashboardStats(Long restaurantId) {

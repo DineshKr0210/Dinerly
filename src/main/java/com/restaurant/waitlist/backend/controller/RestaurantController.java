@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.controller;
 import com.restaurant.waitlist.backend.dto.request.AddGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.AddTableRequest;
 import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
+import com.restaurant.waitlist.backend.dto.request.JoinWaitlistRequest;
 import com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.SeatGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.UpdateRestaurantSettingsRequest;
@@ -177,14 +178,31 @@ public class RestaurantController {
         }
     }
 
+    @PostMapping("/{restaurantId}/waitlist/rejoin")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> rejoinGuest(@PathVariable Long restaurantId,
+            @Valid @RequestBody JoinWaitlistRequest request) {
+        try {
+            log.info("START: rejoinGuest | restaurantId={}, request={}", restaurantId, request);
+            request.setRestaurantId(restaurantId);
+            WaitlistResponse response = restaurantService.rejoinGuest(restaurantId, request);
+            log.info("END: rejoinGuest | success");
+            return ResponseEntity.ok(ApiResponse.success("Guest rejoined successfully", response));
+        } catch (Exception e) {
+            log.error("ERROR: rejoinGuest | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{restaurantId}/waitlist/{id}")
     @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<Void>> removeGuest(@PathVariable Long restaurantId, @PathVariable Long id) {
+    public ResponseEntity<ApiResponse<WaitlistResponse>> removeGuest(@PathVariable Long restaurantId, @PathVariable Long id) {
         try {
             log.info("START: removeGuest | restaurantId={}, id={}", restaurantId, id);
-            restaurantService.removeGuest(restaurantId, id);
+            WaitlistResponse response = restaurantService.removeGuest(restaurantId, id);
             log.info("END: removeGuest | success");
-            return ResponseEntity.ok(ApiResponse.success("Guest removed"));
+            return ResponseEntity.ok(ApiResponse.success("Guest removed", response));
         } catch (Exception e) {
             log.error("ERROR: removeGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()

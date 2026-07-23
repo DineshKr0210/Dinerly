@@ -55,13 +55,27 @@ public class WaitlistController {
         }
     }
 
+    @PostMapping("/rejoin")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> rejoinWaitlist(@Valid @RequestBody JoinWaitlistRequest request) {
+        try {
+            log.info("START: rejoinWaitlist | {}", request);
+            WaitlistResponse response = waitlistService.rejoinWaitlist(request);
+            log.info("END: rejoinWaitlist | success");
+            return ResponseEntity.ok(ApiResponse.success("Rejoined waitlist successfully", response));
+        } catch (Exception e) {
+            log.error("ERROR: rejoinWaitlist | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{restaurantId}/{id}")
-    public ResponseEntity<ApiResponse<Void>> leaveWaitlist(@PathVariable Long restaurantId, @PathVariable Long id) {
+    public ResponseEntity<ApiResponse<WaitlistResponse>> leaveWaitlist(@PathVariable Long restaurantId, @PathVariable Long id) {
         try {
             log.info("START: leaveWaitlist | restaurantId={}, id={}", restaurantId, id);
-            waitlistService.removeFromWaitlist(restaurantId, id);
+            WaitlistResponse response = waitlistService.removeFromWaitlist(restaurantId, id);
             log.info("END: leaveWaitlist | success");
-            return ResponseEntity.ok(ApiResponse.success("Removed from waitlist"));
+            return ResponseEntity.ok(ApiResponse.success("Removed from waitlist", response));
         } catch (Exception e) {
             log.error("ERROR: leaveWaitlist | {}", e.getMessage());
             return ResponseEntity.badRequest()
