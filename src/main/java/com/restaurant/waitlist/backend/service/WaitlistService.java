@@ -50,53 +50,38 @@ public class WaitlistService {
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
-    public WaitlistResponse rejoinWaitlist(JoinWaitlistRequest request) {
-        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+    public WaitlistResponse rejoinWaitlist(Long restaurantId, Long waitlistId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        String normalizedPhone = normalizePhone(request.getPhone());
-        Waitlist existing = waitlistRepository.findLatestByRestaurantIdAndGuestPhone(request.getRestaurantId(), normalizedPhone)
-                .orElse(null);
+        Waitlist existing = waitlistRepository.findById(waitlistId)
+                .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
 
-        if (existing != null && existing.getStatus() != Waitlist.WaitlistStatus.CANCELLED) {
+        if (existing.getRestaurant() == null || !existing.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
+        }
+
+        if (existing.getStatus() != Waitlist.WaitlistStatus.CANCELLED) {
             return WaitlistResponse.fromWaitlist(existing);
         }
 
-        if (existing == null) {
-            existing = Waitlist.builder()
-                    .restaurant(restaurant)
-                    .guestName(request.getName())
-                    .guestPhone(normalizedPhone)
-                    .partySize(request.getPartySize())
-                    .preference(request.getPreference())
-                    .notes(request.getNotes())
-                    .status(Waitlist.WaitlistStatus.PENDING)
-                    .lastActiveStatus(Waitlist.WaitlistStatus.PENDING)
-                    .build();
+        existing.setRestaurant(restaurant);
+
+        Waitlist.WaitlistStatus restoredStatus = existing.getLastActiveStatus() != null
+                ? existing.getLastActiveStatus()
+                : resolveRejoinStatus(existing);
+
+        existing.setStatus(restoredStatus);
+        existing.setLastActiveStatus(restoredStatus);
+        existing.setCancelledAt(null);
+
+        if (existing.getStatus() == Waitlist.WaitlistStatus.WAITING || existing.getStatus() == Waitlist.WaitlistStatus.NOTIFIED) {
+            long activeCount = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurant.getId(), java.sql.Date.valueOf(java.time.LocalDate.now())).stream()
+                    .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
+                    .count();
+            existing.setPosition((int) activeCount + 1);
         } else {
-            existing.setRestaurant(restaurant);
-            existing.setGuestName(request.getName());
-            existing.setGuestPhone(normalizedPhone);
-            existing.setPartySize(request.getPartySize());
-            existing.setPreference(request.getPreference());
-            existing.setNotes(request.getNotes());
-
-            Waitlist.WaitlistStatus restoredStatus = existing.getLastActiveStatus() != null
-                    ? existing.getLastActiveStatus()
-                    : resolveRejoinStatus(existing);
-
-            existing.setStatus(restoredStatus);
-            existing.setLastActiveStatus(restoredStatus);
-            existing.setCancelledAt(null);
-
-            if (existing.getStatus() == Waitlist.WaitlistStatus.WAITING || existing.getStatus() == Waitlist.WaitlistStatus.NOTIFIED) {
-                long activeCount = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurant.getId(), java.sql.Date.valueOf(java.time.LocalDate.now())).stream()
-                        .filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING || w.getStatus() == Waitlist.WaitlistStatus.NOTIFIED)
-                        .count();
-                existing.setPosition((int) activeCount + 1);
-            } else {
-                existing.setPosition(null);
-            }
+            existing.setPosition(null);
         }
 
         existing = waitlistRepository.save(existing);

@@ -55,11 +55,12 @@ public class WaitlistController {
         }
     }
 
-    @PostMapping("/rejoin")
-    public ResponseEntity<ApiResponse<WaitlistResponse>> rejoinWaitlist(@Valid @RequestBody JoinWaitlistRequest request) {
+    @PostMapping("/rejoin/{restaurantId}/{id}")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> rejoinWaitlist(@PathVariable Long restaurantId,
+            @PathVariable Long id) {
         try {
-            log.info("START: rejoinWaitlist | {}", request);
-            WaitlistResponse response = waitlistService.rejoinWaitlist(request);
+            log.info("START: rejoinWaitlist | restaurantId={}, id={}", restaurantId, id);
+            WaitlistResponse response = waitlistService.rejoinWaitlist(restaurantId, id);
             log.info("END: rejoinWaitlist | success");
             return ResponseEntity.ok(ApiResponse.success("Rejoined waitlist successfully", response));
         } catch (Exception e) {

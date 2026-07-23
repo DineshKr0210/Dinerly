@@ -3,7 +3,6 @@ package com.restaurant.waitlist.backend.controller;
 import com.restaurant.waitlist.backend.dto.request.AddGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.AddTableRequest;
 import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
-import com.restaurant.waitlist.backend.dto.request.JoinWaitlistRequest;
 import com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.SeatGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.UpdateRestaurantSettingsRequest;
@@ -178,14 +177,13 @@ public class RestaurantController {
         }
     }
 
-    @PostMapping("/{restaurantId}/waitlist/rejoin")
+    @PostMapping("/{restaurantId}/waitlist/rejoin/{id}")
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> rejoinGuest(@PathVariable Long restaurantId,
-            @Valid @RequestBody JoinWaitlistRequest request) {
+            @PathVariable Long id) {
         try {
-            log.info("START: rejoinGuest | restaurantId={}, request={}", restaurantId, request);
-            request.setRestaurantId(restaurantId);
-            WaitlistResponse response = restaurantService.rejoinGuest(restaurantId, request);
+            log.info("START: rejoinGuest | restaurantId={}, id={}", restaurantId, id);
+            WaitlistResponse response = restaurantService.rejoinGuest(restaurantId, id);
             log.info("END: rejoinGuest | success");
             return ResponseEntity.ok(ApiResponse.success("Guest rejoined successfully", response));
         } catch (Exception e) {
