@@ -1,4 +1,5 @@
 com/restaurant/waitlist/backend/dto/request/CreateStaffRequest.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$HoursResponse$HoursResponseBuilder.class
 com/restaurant/waitlist/backend/dto/response/ApiResponse.class
 com/restaurant/waitlist/backend/dto/response/GuestHistoryResponse$GuestHistoryResponseBuilder.class
 com/restaurant/waitlist/backend/dto/response/RestaurantOverviewResponse$FloorSummary$FloorSummaryBuilder.class
@@ -21,7 +22,6 @@ com/restaurant/waitlist/backend/controller/TwilioVoiceWebhookController.class
 com/restaurant/waitlist/backend/repository/EmailVerificationTokenRepository.class
 com/restaurant/waitlist/backend/dto/response/ReportsResponse$ReportsResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/NotifyGuestRequest.class
-com/restaurant/waitlist/backend/service/AdminService$1.class
 com/restaurant/waitlist/backend/dto/response/StaffResponse.class
 com/restaurant/waitlist/backend/entity/Restaurant.class
 com/restaurant/waitlist/backend/service/WaitlistService.class
@@ -38,7 +38,9 @@ com/restaurant/waitlist/backend/dto/response/SmsHistoryResponse$SmsHistoryRespon
 com/restaurant/waitlist/backend/repository/PasswordResetTokenRepository.class
 com/restaurant/waitlist/backend/dto/response/WaitlistResponse$WaitlistResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/SendSmsRequest$SendSmsRequestBuilder.class
+com/restaurant/waitlist/backend/dto/request/UpdateSettingsProfileRequest.class
 com/restaurant/waitlist/backend/entity/RestaurantSettings.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$PlanResponse.class
 com/restaurant/waitlist/backend/dto/response/RestaurantOverviewResponse$RestaurantOverviewResponseBuilder.class
 com/restaurant/waitlist/backend/dto/response/UserResponse.class
 com/restaurant/waitlist/backend/service/RestaurantSummaryService.class
@@ -52,7 +54,6 @@ com/restaurant/waitlist/backend/entity/Waitlist.class
 com/restaurant/waitlist/backend/service/InboundVoiceService.class
 com/restaurant/waitlist/backend/dto/request/AddTableRequest.class
 com/restaurant/waitlist/backend/entity/EmailVerificationToken$EmailVerificationTokenBuilder.class
-com/restaurant/waitlist/backend/service/AdminService.class
 com/restaurant/waitlist/backend/dto/response/NotificationSummaryResponse.class
 com/restaurant/waitlist/backend/BackendApplication.class
 com/restaurant/waitlist/backend/repository/WaitlistRepository.class
@@ -70,7 +71,6 @@ com/restaurant/waitlist/backend/security/JwtFilter.class
 com/restaurant/waitlist/backend/config/CorsConfig.class
 com/restaurant/waitlist/backend/dto/request/AddGuestRequest.class
 com/restaurant/waitlist/backend/dto/request/SendSmsRequest.class
-com/restaurant/waitlist/backend/controller/AdminController.class
 com/restaurant/waitlist/backend/dto/response/StaffResponse$StaffResponseBuilder.class
 com/restaurant/waitlist/backend/dto/response/ReportsResponse.class
 com/restaurant/waitlist/backend/entity/AuditLog.class
@@ -84,7 +84,12 @@ com/restaurant/waitlist/backend/entity/RestaurantSettings$RestaurantSettingsBuil
 com/restaurant/waitlist/backend/entity/SmsTemplate$TemplateType.class
 com/restaurant/waitlist/backend/service/EmailService.class
 com/restaurant/waitlist/backend/dto/response/TableResponse.class
+com/restaurant/waitlist/backend/controller/SettingsController.class
+com/restaurant/waitlist/backend/service/SettingsService.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$ProfileResponse.class
 com/restaurant/waitlist/backend/dto/response/SendSmsResponse.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse.class
+com/restaurant/waitlist/backend/dto/request/UpdateSettingsProfileRequest$Hours.class
 com/restaurant/waitlist/backend/entity/Waitlist$WaitlistBuilder.class
 com/restaurant/waitlist/backend/dto/response/AnalyticsResponse.class
 com/restaurant/waitlist/backend/dto/response/RestaurantSettingsResponse$RestaurantSettingsResponseBuilder.class
@@ -104,10 +109,13 @@ com/restaurant/waitlist/backend/dto/response/RestaurantResponse.class
 com/restaurant/waitlist/backend/config/SecurityConfig.class
 com/restaurant/waitlist/backend/repository/RestaurantRepository.class
 com/restaurant/waitlist/backend/repository/AuditLogRepository.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$HoursResponse.class
 com/restaurant/waitlist/backend/dto/response/TableResponse$TableResponseBuilder.class
 com/restaurant/waitlist/backend/util/Constants$WaitlistStatus.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$SettingsProfileResponseBuilder.class
 com/restaurant/waitlist/backend/repository/spec/WaitlistSpecification.class
 com/restaurant/waitlist/backend/entity/EmailVerificationToken.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$PlanResponse$PlanResponseBuilder.class
 com/restaurant/waitlist/backend/dto/response/UserResponse$UserResponseBuilder.class
 com/restaurant/waitlist/backend/service/InboundSmsService.class
 com/restaurant/waitlist/backend/controller/WaitlistController.class
@@ -115,6 +123,7 @@ com/restaurant/waitlist/backend/service/SmsService.class
 com/restaurant/waitlist/backend/service/RestaurantService.class
 com/restaurant/waitlist/backend/entity/User$UserBuilder.class
 com/restaurant/waitlist/backend/entity/Table.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$RestaurantProfileResponse$RestaurantProfileResponseBuilder.class
 com/restaurant/waitlist/backend/entity/Feedback.class
 com/restaurant/waitlist/backend/dto/request/UpdateTableStatusRequest.class
 com/restaurant/waitlist/backend/security/JwtTokenProvider.class
@@ -125,6 +134,7 @@ com/restaurant/waitlist/backend/entity/Feedback$FeedbackBuilder.class
 com/restaurant/waitlist/backend/entity/SmsTemplate.class
 com/restaurant/waitlist/backend/dto/response/NotificationSummaryResponse$NotificationSummaryResponseBuilder.class
 com/restaurant/waitlist/backend/dto/response/FeedbackInsightsResponse.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$RestaurantProfileResponse.class
 com/restaurant/waitlist/backend/util/Constants$Messages.class
 com/restaurant/waitlist/backend/dto/response/RestaurantResponse$RestaurantResponseBuilder.class
 com/restaurant/waitlist/backend/config/SmsTemplateInitializer.class
@@ -136,5 +146,6 @@ com/restaurant/waitlist/backend/dto/request/WaitlistStatusRequest.class
 com/restaurant/waitlist/backend/dto/response/SendSmsResponse$SendSmsResponseBuilder.class
 com/restaurant/waitlist/backend/service/FeedbackService.class
 com/restaurant/waitlist/backend/dto/response/DashboardStatsResponse$DashboardStatsResponseBuilder.class
+com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$ProfileResponse$ProfileResponseBuilder.class
 com/restaurant/waitlist/backend/entity/User$UserRole.class
 com/restaurant/waitlist/backend/config/OpenApiConfig.class

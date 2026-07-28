@@ -38,7 +38,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/waitlist/**").permitAll()
                         .requestMatchers("/api/twilio/**").permitAll()
                         .requestMatchers("/api/restaurants/**").hasRole("RESTAURANT")
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

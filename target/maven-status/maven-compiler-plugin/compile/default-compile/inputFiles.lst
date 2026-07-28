@@ -8,6 +8,7 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/ForgotPasswordRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/RestaurantRepository.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/WaitlistSmsResult.java
+/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/SettingsController.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/HealthController.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/AddTableRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/security/JwtTokenProvider.java
@@ -27,7 +28,6 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/UpdateTableStatusRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/spec/WaitlistSpecification.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/NotificationSummaryResponse.java
-/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/AdminService.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/EmailVerificationTokenRepository.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/entity/User.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/RegisterRequest.java
@@ -70,12 +70,12 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/entity/AuditLog.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/ResetPasswordRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/entity/Staff.java
-/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/AdminController.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/BackendApplication.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/RestaurantOverviewResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/SmsHistoryResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/StaffService.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/SmsTemplateService.java
+/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/TableService.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/StaffController.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/AuthController.java
@@ -84,6 +84,7 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/ResendVerificationRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/LoginRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/NotificationController.java
+/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/SettingsService.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/exception/GlobalExceptionHandler.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/TwilioWebhookController.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/StaffRepository.java
@@ -92,6 +93,7 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/WaitlistDashboardStatsResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/config/SmsTemplateInitializer.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/EmailService.java
+/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/UpdateSettingsProfileRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/GuestHistoryResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/ApiResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/SmsTemplateRepository.java

@@ -40,6 +40,11 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
     @Query("SELECT COUNT(w) FROM Waitlist w WHERE w.restaurant.id = ?1 AND w.status = 'SEATED'")
     long countSeatedByRestaurant(Long restaurantId);
 
+    @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE w.restaurant_id = :restaurantId AND w.sms_status = 'SENT' AND EXTRACT(YEAR FROM w.sms_sent_at) = :year AND EXTRACT(MONTH FROM w.sms_sent_at) = :month", nativeQuery = true)
+    long countSentSmsThisMonth(@Param("restaurantId") Long restaurantId,
+                               @Param("year") int year,
+                               @Param("month") int month);
+
     List<Waitlist> findByStatus(Waitlist.WaitlistStatus status);
 
      // Aggregation queries for reports (Postgres)

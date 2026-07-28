@@ -5,11 +5,9 @@ import com.restaurant.waitlist.backend.dto.request.AddTableRequest;
 import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
 import com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.SeatGuestRequest;
-import com.restaurant.waitlist.backend.dto.request.UpdateRestaurantSettingsRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
-import com.restaurant.waitlist.backend.dto.response.RestaurantSettingsResponse;
 import com.restaurant.waitlist.backend.dto.response.TableResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistSmsResult;
@@ -310,21 +308,6 @@ public class RestaurantController {
         } catch (Exception e) {
             log.error("ERROR: exportGuestHistory | {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    @GetMapping("/{restaurantId}/settings")
-    @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse>> getSettings(@PathVariable Long restaurantId) {
-        try {
-            log.info("START: getSettings | restaurantId={}", restaurantId);
-            com.restaurant.waitlist.backend.dto.response.RestaurantOverviewResponse response = restaurantService.getSettings(restaurantId);
-            log.info("END: getSettings | success");
-            return ResponseEntity.ok(ApiResponse.success("Settings retrieved", response));
-        } catch (Exception e) {
-            log.error("ERROR: getSettings | {}", e.getMessage());
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
         }
     }
 

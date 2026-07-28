@@ -31,6 +31,12 @@ public class Restaurant {
 
     private String email;
 
+    @Column(name = "open_time")
+    private String openTime;
+
+    @Column(name = "close_time")
+    private String closeTime;
+
     @Column(name = "total_tables")
     @Builder.Default
     private Integer totalTables = 0;

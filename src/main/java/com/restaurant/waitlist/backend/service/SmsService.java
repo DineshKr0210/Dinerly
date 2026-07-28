@@ -2,7 +2,6 @@ package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.response.SendCallResponse;
 import com.twilio.Twilio;
-import com.twilio.rest.api.v2010.Account;
 import com.twilio.rest.api.v2010.account.Call;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
@@ -16,6 +15,19 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+
+import java.time.LocalDate;
+
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
 
 @Service
 public class SmsService {
@@ -153,21 +165,127 @@ public class SmsService {
         sendSms(phoneNumber, message);
     }
 
-    public Map<String, String> probeAccount() {
-        Map<String, String> out = new HashMap<>();
-        try {
-            log.debug("Probing Twilio account with accountSid={}", mask(accountSid));
-            Twilio.init(accountSid, authToken);
-            Account acct = Account.fetcher(accountSid).fetch();
-            out.put("sid", mask(acct.getSid()));
-            out.put("friendlyName", acct.getFriendlyName() != null ? acct.getFriendlyName() : "");
-            out.put("status", "ok");
-            return out;
-        } catch (Exception e) {
-            log.error("Twilio probe failed: {}", e.getMessage());
-            out.put("status", "error");
-            out.put("message", e.getMessage());
-            return out;
+
+    public double getCurrentMonthEstimatedCharge(String usageFilter) {
+    try {
+
+        LocalDate now = LocalDate.now();
+        LocalDate start = now.withDayOfMonth(1);
+        LocalDate end = now.withDayOfMonth(now.lengthOfMonth());
+
+        List<String> categories = new ArrayList<>();
+
+        if (usageFilter == null || usageFilter.isBlank()) {
+
+            // Total = SMS + Voice only (same as your UI)
+            categories.add("sms-outbound-longcode");
+            categories.add("sms-inbound-longcode");
+            categories.add("calls");
+
+        } else if ("sms".equalsIgnoreCase(usageFilter)) {
+
+            categories.add("sms-outbound-longcode");
+            categories.add("sms-inbound-longcode");
+
+        } else if ("call".equalsIgnoreCase(usageFilter)
+                || "voice".equalsIgnoreCase(usageFilter)) {
+
+            categories.add("calls");
+
+        } else {
+
+            categories.add(usageFilter.toLowerCase());
+
         }
+
+        HttpClient client = HttpClient.newHttpClient();
+        ObjectMapper mapper = new ObjectMapper();
+
+        double total = 0.0;
+
+        for (String category : categories) {
+
+            String nextPageUrl = String.format(
+                    "https://api.twilio.com/2010-04-01/Accounts/%s/Usage/Records.json"
+                            + "?Category=%s"
+                            + "&StartDate=%s"
+                            + "&EndDate=%s"
+                            + "&PageSize=1000",
+                    accountSid,
+                    URLEncoder.encode(category, StandardCharsets.UTF_8),
+                    start,
+                    end);
+
+            while (nextPageUrl != null && !nextPageUrl.isBlank()) {
+
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(nextPageUrl))
+                        .header("Accept", "application/json")
+                        .header("Authorization", "Basic "
+                                + Base64.getEncoder()
+                                .encodeToString((accountSid + ":" + authToken).getBytes()))
+                        .GET()
+                        .build();
+
+                HttpResponse<String> response = client.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() < 200 || response.statusCode() >= 300) {
+
+                    log.warn("Twilio Usage API failed. Category={} Status={} Body={}",
+                            category,
+                            response.statusCode(),
+                            response.body());
+
+                    break;
+                }
+
+                JsonNode root = mapper.readTree(response.body());
+
+                JsonNode usageRecords = root.get("usage_records");
+
+                if (usageRecords != null && usageRecords.isArray()) {
+
+                    for (JsonNode record : usageRecords) {
+
+                        double price = 0.0;
+
+                        if (record.hasNonNull("price")) {
+
+                            try {
+
+                                price = Double.parseDouble(
+                                        record.get("price")
+                                                .asText()
+                                                .replaceAll("[^0-9.-]", ""));
+
+                            } catch (Exception ignored) {
+                            }
+
+                        }
+
+                        total += Math.abs(price);
+                    }
+
+                }
+
+                nextPageUrl = root.path("next_page_uri").asText("");
+
+                if (!nextPageUrl.isBlank()) {
+                    nextPageUrl = "https://api.twilio.com" + nextPageUrl;
+                } else {
+                    nextPageUrl = null;
+                }
+            }
+        }
+
+        return Math.round(total * 100.0) / 100.0;
+
+    } catch (Exception ex) {
+
+        log.error("Unable to fetch Twilio usage charges", ex);
+        return 0.0;
     }
+}
 }
