@@ -1,6 +1,9 @@
 package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.response.SendCallResponse;
+import com.restaurant.waitlist.backend.entity.NotificationSettingsPayload;
+import com.restaurant.waitlist.backend.entity.RestaurantSettings;
+import com.restaurant.waitlist.backend.repository.RestaurantSettingsRepository;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Call;
 import com.twilio.rest.api.v2010.account.Message;
@@ -51,6 +54,9 @@ public class SmsService {
     @Autowired
     private SmsTemplateService smsTemplateService;
 
+    @Autowired
+    private RestaurantSettingsRepository restaurantSettingsRepository;
+
     private String mask(String s) {
         if (s == null) return "null";
         if (s.length() <= 4) return "****";
@@ -75,7 +81,7 @@ public class SmsService {
         }
     }
 
-    public SendCallResponse makePhoneCall(String toPhoneNumber, String message) {
+    public SendCallResponse makePhoneCall(Long restaurantId, String toPhoneNumber, String message, String guestName) {
         if (toPhoneNumber == null || toPhoneNumber.isBlank()) {
             throw new RuntimeException("Guest phone number is required");
         }
@@ -85,9 +91,25 @@ public class SmsService {
 
         try {
             String voiceUrl = voiceWebhookUrl;
-            if (message != null && !message.isBlank()) {
-                String encoded = URLEncoder.encode(message, StandardCharsets.UTF_8);
-                voiceUrl = voiceWebhookUrl + (voiceWebhookUrl.contains("?") ? "&" : "?") + "message=" + encoded;
+            String callMessage = message;
+            String selectedVoice = "male";
+            if (callMessage == null || callMessage.isBlank()) {
+                callMessage = "Hi, this is Brothers Café calling to let you know your table is ready. Please head to the host stand within the next ten minutes. We look forward to seeing you!";
+            }
+            if (restaurantId != null) {
+                Map<String, String> params = new HashMap<>();
+                params.put("guestName", guestName != null && !guestName.isBlank() ? guestName : "guest");
+                params.put("restaurantName", "Brothers Café");
+                callMessage = smsTemplateService.formatMessageForRestaurant(restaurantId, "CALL_NOTIFICATION", params);
+                RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId).orElse(null);
+                NotificationSettingsPayload payload = settings != null ? settings.getNotificationSettings() : NotificationSettingsPayload.defaults();
+                if (payload.getMessageTemplates() != null && payload.getMessageTemplates().getVoice() != null && !payload.getMessageTemplates().getVoice().isBlank()) {
+                    selectedVoice = payload.getMessageTemplates().getVoice().toLowerCase();
+                }
+            }
+            if (callMessage != null && !callMessage.isBlank()) {
+                String encoded = URLEncoder.encode(callMessage, StandardCharsets.UTF_8);
+                voiceUrl = voiceWebhookUrl + (voiceWebhookUrl.contains("?") ? "&" : "?") + "message=" + encoded + "&voice=" + selectedVoice;
             }
             log.debug("Placing Twilio voice call to {} with webhook {} and action {}", toPhoneNumber, voiceUrl, voiceWebhookActionUrl);
             Twilio.init(accountSid, authToken);
@@ -115,6 +137,10 @@ public class SmsService {
         }
     }
 
+    public double getCurrentMonthEstimatedCharge() {
+        return getCurrentMonthEstimatedCharge(null);
+    }
+
     public void sendWaitlistNotificationSms(String phoneNumber, String guestName, String estimatedWait) {
         Map<String, String> params = new HashMap<>();
         params.put("guestName", guestName);
@@ -125,26 +151,26 @@ public class SmsService {
         sendSms(phoneNumber, message);
     }
 
-    public String sendWaitlistNotificationSms(String phoneNumber, String guestName, String estimatedWait, Integer position) {
-        String message = "Hi " + guestName + ",\n\n"
-                + "Your table is almost ready at Dinerly.\n\n"
-                + "Please reply with one of the following:\n"
-                + "1️⃣ On my way\n"
-                + "2️⃣ Arriving in 5 minutes\n"
-                + "3️⃣ Unable to make it\n\n"
-                + "You can also send any custom message or questions by replying to this SMS.\n\n"
-                + "Thank you!";
+    public String sendWaitlistNotificationSms(Long restaurantId, String phoneNumber, String guestName, String estimatedWait, Integer position) {
+        Map<String, String> params = new HashMap<>();
+        params.put("guestName", guestName);
+        params.put("estimatedWait", estimatedWait != null ? estimatedWait : "");
+        params.put("position", position != null ? " Your position is " + position + "." : "");
+        params.put("restaurantName", "Brothers Café");
+
+        String message = smsTemplateService.formatMessageForRestaurant(restaurantId, "WAITLIST_NOTIFICATION", params);
         sendSms(phoneNumber, message);
         return message;
     }
 
-    public String sendApprovedNotificationSms(String phoneNumber, String guestName, String estimatedWait, Integer position) {
+    public String sendApprovedNotificationSms(Long restaurantId, String phoneNumber, String guestName, String estimatedWait, Integer position) {
         Map<String, String> params = new HashMap<>();
         params.put("guestName", guestName);
-        params.put("estimatedWait", estimatedWait);
-        params.put("position", (position != null) ? (" Your position: " + position + ".") : "");
+        params.put("estimatedWait", estimatedWait != null ? estimatedWait : "");
+        params.put("position", (position != null) ? (" Your position is " + position + ".") : "");
+        params.put("restaurantName", "Brothers Café");
 
-        String message = smsTemplateService.formatMessage("WAITLIST_APPROVED", params);
+        String message = smsTemplateService.formatMessageForRestaurant(restaurantId, "WAITLIST_APPROVED", params);
         sendSms(phoneNumber, message);
         return message;
     }
@@ -157,11 +183,12 @@ public class SmsService {
         sendSms(phoneNumber, message);
     }
 
-    public void sendJoinConfirmationSms(String phoneNumber, String guestName) {
+    public void sendJoinConfirmationSms(Long restaurantId, String phoneNumber, String guestName) {
         Map<String, String> params = new HashMap<>();
         params.put("guestName", guestName);
+        params.put("restaurantName", "Brothers Café");
 
-        String message = smsTemplateService.formatMessage("WAITLIST_JOIN_CONFIRMATION", params);
+        String message = smsTemplateService.formatMessageForRestaurant(restaurantId, "WAITLIST_JOIN_CONFIRMATION", params);
         sendSms(phoneNumber, message);
     }
 

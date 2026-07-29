@@ -5,10 +5,13 @@ import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
 import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
+import com.restaurant.waitlist.backend.entity.NotificationSettingsPayload;
 import com.restaurant.waitlist.backend.entity.Restaurant;
+import com.restaurant.waitlist.backend.entity.RestaurantSettings;
 import com.restaurant.waitlist.backend.entity.Table;
 import com.restaurant.waitlist.backend.entity.Waitlist;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.repository.RestaurantSettingsRepository;
 import com.restaurant.waitlist.backend.repository.TableRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +34,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static org.apache.commons.lang3.StringUtils.length;
 
 @Service
 public class RestaurantService {
@@ -57,6 +62,9 @@ public class RestaurantService {
 
     @Autowired
     private SmsService smsService;
+
+    @Autowired
+    private RestaurantSettingsRepository restaurantSettingsRepository;
 
     public RestaurantResponse createRestaurant(CreateRestaurantRequest request) {
         Restaurant restaurant = Restaurant.builder()
@@ -98,6 +106,18 @@ public class RestaurantService {
         }
 
         waitlist = waitlistRepository.save(waitlist);
+
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId).orElse(null);
+        NotificationSettingsPayload payload = settings != null ? settings.getNotificationSettings() : NotificationSettingsPayload.defaults();
+        boolean shouldSendJoinSms = payload.getGuestNotifications() != null && Boolean.TRUE.equals(payload.getGuestNotifications().getJoinedwaitlistsmsenabled());
+        if (shouldSendJoinSms) {
+            try {
+                smsService.sendJoinConfirmationSms(restaurantId, waitlist.getGuestPhone(), waitlist.getGuestName());
+            } catch (Exception e) {
+                log.warn("Join confirmation SMS failed for waitlist id={} restaurantId={}: {}", waitlist.getId(), restaurantId, e.getMessage());
+            }
+        }
+
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
@@ -147,8 +167,13 @@ public class RestaurantService {
         String smsError = null;
         String message = null;
 
-        try {
-                message = smsService.sendWaitlistNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), null, null);
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId).orElse(null);
+        NotificationSettingsPayload payload = settings != null ? settings.getNotificationSettings() : NotificationSettingsPayload.defaults();
+        boolean shouldSendNotifySms = payload.getGuestNotifications() != null && Boolean.TRUE.equals(payload.getGuestNotifications().getNotifysmsenabled());
+
+        if (shouldSendNotifySms) {
+            try {
+                message = smsService.sendWaitlistNotificationSms(restaurantId, waitlist.getGuestPhone(), waitlist.getGuestName(), null, null);
                 waitlist.setSmsMessage(message);
                 waitlist.setSmsStatus("SENT");
                 waitlist.setSmsSentAt(LocalDateTime.now());
@@ -160,7 +185,23 @@ public class RestaurantService {
                 waitlist.setSmsStatus("FAILED");
                 waitlist.setSmsError(smsError);
             }
-
+        } else {
+            waitlist.setSmsStatus("DISABLED");
+            waitlist.setSmsMessage("Notification SMS disabled in settings");
+            waitlist.setSmsError(null);
+        }
+        log.info("guestName = {}", length(waitlist.getGuestName()));
+        log.info("guestPhone = {}", length(waitlist.getGuestPhone()));
+        log.info("preference = {}", length(waitlist.getPreference()));
+        log.info("notes = {}", length(waitlist.getNotes()));
+        log.info("smsMessage = {}", length(waitlist.getSmsMessage()));
+        log.info("smsStatus = {}", length(waitlist.getSmsStatus()));
+        log.info("smsError = {}", length(waitlist.getSmsError()));
+        log.info("latestCustomerReply = {}", length(waitlist.getLatestCustomerReply()));
+        log.info("customerReplySid = {}", length(waitlist.getCustomerReplySid()));
+        log.info("latestVoiceReply = {}", length(waitlist.getLatestVoiceReply()));
+        log.info("voiceReplyDigits = {}", length(waitlist.getVoiceReplyDigits()));
+        log.info("tableName = {}", length(waitlist.getTableName()));
         waitlistRepository.save(waitlist);
 
         return new WaitlistSmsResult(WaitlistResponse.fromWaitlist(waitlist), smsSent, smsError);
@@ -228,10 +269,16 @@ public class RestaurantService {
         boolean smsSent = false;
         String smsError = null;
         String message = null;
-        try {
+
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId).orElse(null);
+        NotificationSettingsPayload payload = settings != null ? settings.getNotificationSettings() : NotificationSettingsPayload.defaults();
+        boolean shouldSendApproveSms = payload.getGuestNotifications() != null && Boolean.TRUE.equals(payload.getGuestNotifications().getApprovesmsenabled());
+
+        if (shouldSendApproveSms) {
+            try {
                 String estimatedTime = waitlist.getEstimatedWaitTime() != null ? waitlist.getEstimatedWaitTime().toString() : "Soon";
                 Integer position = waitlist.getPosition() != null ? waitlist.getPosition() : null;
-                message = smsService.sendApprovedNotificationSms(waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
+                message = smsService.sendApprovedNotificationSms(restaurantId, waitlist.getGuestPhone(), waitlist.getGuestName(), estimatedTime, position);
                 waitlist.setSmsMessage(message);
                 waitlist.setSmsStatus("SENT");
                 waitlist.setSmsSentAt(LocalDateTime.now());
@@ -243,6 +290,11 @@ public class RestaurantService {
                 waitlist.setSmsStatus("FAILED");
                 waitlist.setSmsError(smsError);
             }
+        } else {
+            waitlist.setSmsStatus("DISABLED");
+            waitlist.setSmsMessage("Approval SMS disabled in settings");
+            waitlist.setSmsError(null);
+        }
         waitlistRepository.save(waitlist);
 
         return new WaitlistSmsResult(WaitlistResponse.fromWaitlist(waitlist), smsSent, smsError);

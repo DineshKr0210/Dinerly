@@ -5,8 +5,11 @@ import com.restaurant.waitlist.backend.dto.response.SendCallResponse;
 import com.restaurant.waitlist.backend.dto.response.SendSmsResponse;
 import com.restaurant.waitlist.backend.dto.response.SmsHistoryResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
+import com.restaurant.waitlist.backend.entity.NotificationSettingsPayload;
+import com.restaurant.waitlist.backend.entity.RestaurantSettings;
 import com.restaurant.waitlist.backend.entity.Waitlist;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.repository.RestaurantSettingsRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -28,6 +31,9 @@ public class NotificationService {
 
     @Autowired
     private SmsService smsService;
+
+    @Autowired
+    private RestaurantSettingsRepository restaurantSettingsRepository;
 
     public NotificationSummaryResponse getSummary(Long restaurantId) {
         restaurantRepository.findById(restaurantId)
@@ -139,11 +145,22 @@ public class NotificationService {
             throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
         }
 
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId).orElse(null);
+        NotificationSettingsPayload payload = settings != null ? settings.getNotificationSettings() : NotificationSettingsPayload.defaults();
+        boolean shouldMakeCall = payload.getGuestNotifications() != null && Boolean.TRUE.equals(payload.getGuestNotifications().getNotifycallenabled());
+
+        if (!shouldMakeCall) {
+            return SendCallResponse.builder()
+                    .callInitiated(false)
+                    .error("Call notifications disabled in settings")
+                    .build();
+        }
+
         try {
             String callMessage = (message == null || message.isBlank())
-                    ? "Hello, this is the restaurant. Your table is ready. Please answer the phone."
+                    ? "Hi, this is Brothers Café calling to let you know your table is ready. Please head to the host stand within the next ten minutes. We look forward to seeing you!"
                     : message;
-            return smsService.makePhoneCall(waitlist.getGuestPhone(), callMessage);
+            return smsService.makePhoneCall(restaurantId, waitlist.getGuestPhone(), callMessage, waitlist.getGuestName());
         } catch (Exception e) {
             return SendCallResponse.builder()
                     .callInitiated(false)

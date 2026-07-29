@@ -1,5 +1,6 @@
 package com.restaurant.waitlist.backend.dto.response;
 
+import com.restaurant.waitlist.backend.entity.NotificationSettingsPayload;
 import com.restaurant.waitlist.backend.entity.RestaurantSettings;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ public class RestaurantSettingsResponse {
     private Integer bufferTime;
     private String operatingHours;
     private Integer maxWaitlistSize;
+    private NotificationSettingsPayload notificationSettings;
 
     public static RestaurantSettingsResponse fromSettings(RestaurantSettings settings) {
         return RestaurantSettingsResponse.builder()
@@ -28,6 +30,7 @@ public class RestaurantSettingsResponse {
                 .bufferTime(settings.getBufferTime())
                 .operatingHours(settings.getOperatingHours())
                 .maxWaitlistSize(settings.getMaxWaitlistSize())
+                .notificationSettings(settings.getNotificationSettings())
                 .build();
     }
 }

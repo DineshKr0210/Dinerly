@@ -1,10 +1,12 @@
 package com.restaurant.waitlist.backend.dto.request;
 
-import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.restaurant.waitlist.backend.entity.NotificationSettingsPayload;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdateRestaurantSettingsRequest {
     private Boolean sendSmsNotifications;
     private Boolean sendEmailNotifications;
@@ -20,5 +22,7 @@ public class UpdateRestaurantSettingsRequest {
 
     @Positive(message = "Max waitlist size must be positive")
     private Integer maxWaitlistSize;
+
+    private NotificationSettingsPayload notificationSettings;
 }
 

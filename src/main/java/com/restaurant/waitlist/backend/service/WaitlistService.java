@@ -6,9 +6,12 @@ import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistDashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.entity.Restaurant;
+import com.restaurant.waitlist.backend.entity.RestaurantSettings;
 import com.restaurant.waitlist.backend.entity.Table;
 import com.restaurant.waitlist.backend.entity.Waitlist;
+import com.restaurant.waitlist.backend.entity.WaitlistSettingsPayload;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.repository.RestaurantSettingsRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -31,9 +34,38 @@ public class WaitlistService {
     @Autowired
     private SmsService smsService;
 
+    @Autowired
+    private RestaurantSettingsRepository restaurantSettingsRepository;
+
     public WaitlistResponse joinWaitlist(JoinWaitlistRequest request) {
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(request.getRestaurantId()).orElse(null);
+        WaitlistSettingsPayload waitlistSettings = settings != null ? settings.getWaitlistSettings() : WaitlistSettingsPayload.defaults();
+
+        if (request.getPartySize() != null && waitlistSettings.getMaxPartySize() != null && request.getPartySize() > waitlistSettings.getMaxPartySize()) {
+            throw new RuntimeException("Party size exceeds the configured maximum of " + waitlistSettings.getMaxPartySize());
+        }
+
+        if (Boolean.TRUE.equals(waitlistSettings.getWalkInsOnly())) {
+            throw new RuntimeException("Online requests are not accepted when walk-ins only is enabled");
+        }
+
+        if (Boolean.TRUE.equals(waitlistSettings.getPauseNewJoinsAfterClosing())) {
+            String closeTime = restaurant.getCloseTime();
+            if (closeTime != null && !closeTime.isBlank()) {
+                LocalTime closingTime = LocalTime.parse(closeTime);
+                LocalTime currentTime = LocalTime.now();
+                if (!currentTime.isBefore(closingTime)) {
+                    throw new RuntimeException("New joins are paused after the restaurant closing time");
+                }
+            }
+        }
+
+        if (Boolean.FALSE.equals(waitlistSettings.getAcceptOnlineJoin())) {
+            throw new RuntimeException("Online join requests are currently disabled");
+        }
 
         Waitlist waitlist = Waitlist.builder()
                 .restaurant(restaurant)

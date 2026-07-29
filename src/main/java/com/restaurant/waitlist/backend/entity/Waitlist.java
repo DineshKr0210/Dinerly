@@ -61,7 +61,7 @@ public class Waitlist {
     @Column(name = "seated_at")
     private LocalDateTime seatedAt;
 
-    @Column(name = "sms_message")
+    @Column(name = "sms_message",  columnDefinition = "TEXT")
     private String smsMessage;
 
     @Column(name = "sms_status")
