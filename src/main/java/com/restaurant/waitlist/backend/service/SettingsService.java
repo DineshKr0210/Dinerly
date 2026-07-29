@@ -1,5 +1,9 @@
 package com.restaurant.waitlist.backend.service;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
 import com.restaurant.waitlist.backend.dto.request.AdvancedSettingsRequest;
 import com.restaurant.waitlist.backend.dto.request.HolidayHourRequest;
 import com.restaurant.waitlist.backend.dto.request.UpdateHolidayHourRequest;
@@ -24,8 +28,23 @@ import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 @Service
 public class SettingsService {
@@ -309,6 +328,142 @@ public class SettingsService {
         restaurantSettingsRepository.save(settings);
 
         return HolidayHourResponse.fromPayload(holidayHour);
+    }
+
+    public byte[] getOrCreateQrCodeImage(Long restaurantId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        String qrUrl = getStoredQrUrl(restaurantId);
+        if (qrUrl == null) {
+            qrUrl = createQrUrl(restaurant);
+            saveQrUrl(restaurantId, qrUrl);
+        }
+
+        return generateQrCodeImage(qrUrl);
+    }
+
+    public Map<String, Object> createQrCode(Long restaurantId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        String existingQrUrl = getStoredQrUrl(restaurantId);
+        if (existingQrUrl != null) {
+            throw new RuntimeException("QR code already exists for this restaurant");
+        }
+
+        String qrUrl = createQrUrl(restaurant);
+        saveQrUrl(restaurantId, qrUrl);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("restaurantId", restaurantId);
+        response.put("qrUrl", qrUrl);
+        return response;
+    }
+
+    public Map<String, Object> deleteQrCode(Long restaurantId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        Path propertiesPath = resolveApplicationPropertiesPath();
+        if (propertiesPath == null || !Files.exists(propertiesPath)) {
+            throw new RuntimeException("QR code not found for this restaurant");
+        }
+
+        Properties properties = new Properties();
+        try (InputStream inputStream = Files.newInputStream(propertiesPath)) {
+            properties.load(inputStream);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read application properties", e);
+        }
+
+        String key = "restaurant.qr." + restaurantId + ".url";
+        if (!properties.containsKey(key)) {
+            throw new RuntimeException("QR code not found for this restaurant");
+        }
+
+        properties.remove(key);
+        try (OutputStream outputStream = Files.newOutputStream(propertiesPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
+            properties.store(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), "Generated QR URLs");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete QR URL from application properties", e);
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("restaurantId", restaurantId);
+        response.put("restaurantName", restaurant.getName());
+        response.put("deleted", true);
+        return response;
+    }
+
+    private String createQrUrl(Restaurant restaurant) {
+        String slug = restaurant.getName() == null ? "restaurant" : restaurant.getName()
+                .toLowerCase()
+                .trim()
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-|-$", "");
+        return "https://dev.dinerly.ca/" + restaurant.getId() + "/join/" + slug;
+    }
+
+    private byte[] generateQrCodeImage(String content) {
+        try {
+            BitMatrix bitMatrix = new MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, 300, 300);
+            BufferedImage image = MatrixToImageWriter.toBufferedImage(bitMatrix);
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", outputStream);
+            return outputStream.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate QR code", e);
+        }
+    }
+
+    private String getStoredQrUrl(Long restaurantId) {
+        Path propertiesPath = resolveApplicationPropertiesPath();
+        if (propertiesPath == null || !Files.exists(propertiesPath)) {
+            return null;
+        }
+
+        Properties properties = new Properties();
+        try (InputStream inputStream = Files.newInputStream(propertiesPath)) {
+            properties.load(inputStream);
+        } catch (IOException e) {
+            return null;
+        }
+
+        return properties.getProperty("restaurant.qr." + restaurantId + ".url");
+    }
+
+    private void saveQrUrl(Long restaurantId, String qrUrl) {
+        Path propertiesPath = resolveApplicationPropertiesPath();
+        if (propertiesPath == null) {
+            return;
+        }
+
+        Properties properties = new Properties();
+        if (Files.exists(propertiesPath)) {
+            try (InputStream inputStream = Files.newInputStream(propertiesPath)) {
+                properties.load(inputStream);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read application properties", e);
+            }
+        }
+
+        properties.setProperty("restaurant.qr." + restaurantId + ".url", qrUrl);
+        try (OutputStream outputStream = Files.newOutputStream(propertiesPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
+            properties.store(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), "Generated QR URLs");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save QR URL to application properties", e);
+        }
+    }
+
+    private Path resolveApplicationPropertiesPath() {
+        Path currentDir = Paths.get(System.getProperty("user.dir"));
+        Path candidate = currentDir.resolve("src/main/resources/application.properties");
+        if (Files.exists(candidate)) {
+            return candidate;
+        }
+        Path fallback = currentDir.resolve("application.properties");
+        return Files.exists(fallback) ? fallback : null;
     }
 
     private RestaurantSettings createDefaultSettings(Restaurant restaurant) {

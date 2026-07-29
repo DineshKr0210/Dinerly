@@ -27,6 +27,7 @@ com/restaurant/waitlist/backend/repository/EmailVerificationTokenRepository.clas
 com/restaurant/waitlist/backend/dto/response/ReportsResponse$ReportsResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/NotifyGuestRequest.class
 com/restaurant/waitlist/backend/dto/response/StaffResponse.class
+com/restaurant/waitlist/backend/entity/AdvancedSettingsPayload$AdvancedSettingsPayloadBuilder.class
 com/restaurant/waitlist/backend/entity/Restaurant.class
 com/restaurant/waitlist/backend/service/WaitlistService.class
 com/restaurant/waitlist/backend/repository/FeedbackRepository.class
@@ -37,6 +38,7 @@ com/restaurant/waitlist/backend/dto/response/RestaurantOverviewResponse$FloorSum
 com/restaurant/waitlist/backend/dto/response/FeedbackInsightsResponse$FeedbackInsightsResponseBuilder.class
 com/restaurant/waitlist/backend/entity/AuditLog$AuditLogBuilder.class
 com/restaurant/waitlist/backend/dto/request/SeatGuestRequest.class
+com/restaurant/waitlist/backend/entity/AdvancedSettingsPayload.class
 com/restaurant/waitlist/backend/dto/response/GuestHistoryResponse.class
 com/restaurant/waitlist/backend/dto/response/SmsHistoryResponse$SmsHistoryResponseBuilder.class
 com/restaurant/waitlist/backend/repository/PasswordResetTokenRepository.class
@@ -59,6 +61,7 @@ com/restaurant/waitlist/backend/util/Constants.class
 com/restaurant/waitlist/backend/dto/response/SmsTemplateResponse.class
 com/restaurant/waitlist/backend/controller/TableController.class
 com/restaurant/waitlist/backend/entity/Waitlist.class
+com/restaurant/waitlist/backend/dto/response/AdvancedSettingsResponse$AdvancedSettingsResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/HolidayHourRequest.class
 com/restaurant/waitlist/backend/service/InboundVoiceService.class
 com/restaurant/waitlist/backend/dto/request/AddTableRequest.class
@@ -93,11 +96,13 @@ com/restaurant/waitlist/backend/entity/Staff.class
 com/restaurant/waitlist/backend/entity/SmsTemplate$SmsTemplateBuilder.class
 com/restaurant/waitlist/backend/controller/NotificationController.class
 com/restaurant/waitlist/backend/entity/RestaurantSettings$RestaurantSettingsBuilder.class
+com/restaurant/waitlist/backend/dto/request/AdvancedSettingsRequest.class
 com/restaurant/waitlist/backend/entity/SmsTemplate$TemplateType.class
 com/restaurant/waitlist/backend/service/EmailService.class
 com/restaurant/waitlist/backend/dto/response/TableResponse.class
 com/restaurant/waitlist/backend/controller/SettingsController.class
 com/restaurant/waitlist/backend/service/SettingsService.class
+com/restaurant/waitlist/backend/dto/response/AdvancedSettingsResponse.class
 com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$ProfileResponse.class
 com/restaurant/waitlist/backend/dto/response/SendSmsResponse.class
 com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse.class

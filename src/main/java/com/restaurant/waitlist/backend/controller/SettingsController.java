@@ -17,6 +17,8 @@ import com.restaurant.waitlist.backend.dto.response.WaitlistSettingsResponse;
 import com.restaurant.waitlist.backend.service.SettingsService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -85,9 +87,8 @@ public class SettingsController {
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> updateNotificationSettings(
             @PathVariable Long restaurantId,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody UpdateRestaurantSettingsRequest request) {
         try {
-            UpdateRestaurantSettingsRequest request = parseNotificationSettingsRequest(body);
             RestaurantSettingsResponse response = settingsService.updateRestaurantSettings(restaurantId, request);
             return ResponseEntity.ok(ApiResponse.success("Notification settings updated", response));
         } catch (Exception e) {
@@ -127,6 +128,28 @@ public class SettingsController {
         try {
             AdvancedSettingsResponse response = settingsService.updateAdvancedSettings(restaurantId, request);
             return ResponseEntity.ok(ApiResponse.success("Advanced settings updated", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping(value = "/{restaurantId}/qr-code", produces = MediaType.IMAGE_PNG_VALUE)
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<byte[]> getQrCode(@PathVariable Long restaurantId) {
+        try {
+            byte[] imageBytes = settingsService.getOrCreateQrCodeImage(restaurantId);
+            return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(imageBytes);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @DeleteMapping("/{restaurantId}/qr-code")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteQrCode(@PathVariable Long restaurantId) {
+        try {
+            Map<String, Object> response = settingsService.deleteQrCode(restaurantId);
+            return ResponseEntity.ok(ApiResponse.success("QR code deleted", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
