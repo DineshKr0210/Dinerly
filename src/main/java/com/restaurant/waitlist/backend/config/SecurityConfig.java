@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.security.JwtFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -33,6 +35,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/auth/register", "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/encode-password").permitAll()
+                        .requestMatchers("/api/users/**").hasRole("RESTAURANT")
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                         // Allow guests to access waitlist public endpoints without authenticating
                         .requestMatchers("/api/waitlist/**").permitAll()

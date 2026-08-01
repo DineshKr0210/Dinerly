@@ -17,6 +17,7 @@ public class DatabaseSchemaUpdater {
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified boolean NOT NULL DEFAULT false");
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS enabled boolean NOT NULL DEFAULT true");
         jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true");
+        jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at timestamp NULL");
         jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN is_active SET DEFAULT true");
         jdbcTemplate.execute("UPDATE users SET is_active = true WHERE is_active IS NULL");
         jdbcTemplate.execute("UPDATE users SET enabled = true WHERE enabled IS NULL");

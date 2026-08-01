@@ -6,12 +6,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
 @jakarta.persistence.Table(name = "users")
+@SQLDelete(sql = "UPDATE users SET deleted_at = CURRENT_TIMESTAMP, enabled = false WHERE id = ?")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -47,6 +49,9 @@ public class User {
     @Column(nullable = false)
     @Builder.Default
     private Boolean enabled = true;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @CreationTimestamp
     @Column(updatable = false)

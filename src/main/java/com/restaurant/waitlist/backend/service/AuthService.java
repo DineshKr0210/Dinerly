@@ -106,19 +106,32 @@ public class AuthService {
 
     @Transactional
     public void registerGuest(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        User existingUser = userRepository.findByEmailIncludingDeleted(request.getEmail()).orElse(null);
+
+        if (existingUser != null && existingUser.getDeletedAt() == null) {
             throw new RuntimeException("Email is already registered");
         }
 
-        User user = User.builder()
-                .name(request.getName())
-                .email(request.getEmail())
-                .phone(request.getPhone())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(User.UserRole.GUEST)
-                .emailVerified(false)
-                .enabled(true)
-                .build();
+        User user = existingUser;
+        if (user == null) {
+            user = User.builder()
+                    .name(request.getName())
+                    .email(request.getEmail())
+                    .phone(request.getPhone())
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .role(User.UserRole.GUEST)
+                    .emailVerified(false)
+                    .enabled(true)
+                    .build();
+        } else {
+            user.setName(request.getName());
+            user.setPhone(request.getPhone());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setRole(User.UserRole.GUEST);
+            user.setEmailVerified(false);
+            user.setEnabled(true);
+            user.setDeletedAt(null);
+        }
 
         userRepository.save(user);
         EmailVerificationToken token = createVerificationToken(user);
