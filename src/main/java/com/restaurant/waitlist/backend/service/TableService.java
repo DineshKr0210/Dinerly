@@ -70,6 +70,10 @@ public class TableService {
             throw new RuntimeException("Tables do not belong to the specified restaurant");
         }
 
+        if (primaryTable.getStatus() != Table.TableStatus.OPEN || secondaryTable.getStatus() != Table.TableStatus.OPEN) {
+            throw new RuntimeException("Both tables must be open to merge");
+        }
+
         primaryTable.setMergedTableId(secondaryTable.getId());
         secondaryTable.setMergedTableId(secondaryTable.getId());
 
