@@ -16,6 +16,8 @@ public class RestaurantResponse {
     private String address;
     private String phone;
     private String email;
+    private String openTime;
+    private String closeTime;
     private Integer totalTables;
     private Boolean walkInsOnly;
     private Boolean acceptOnlineJoin;
@@ -35,6 +37,8 @@ public class RestaurantResponse {
                 .address(restaurant.getAddress())
                 .phone(restaurant.getPhone())
                 .email(restaurant.getEmail())
+                .openTime(restaurant.getOpenTime())
+                .closeTime(restaurant.getCloseTime())
                 .totalTables(restaurant.getTotalTables())
                 .walkInsOnly(waitlistSettings.getWalkInsOnly())
                 .acceptOnlineJoin(waitlistSettings.getAcceptOnlineJoin())

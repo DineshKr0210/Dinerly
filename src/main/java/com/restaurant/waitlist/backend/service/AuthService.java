@@ -7,9 +7,11 @@ import com.restaurant.waitlist.backend.dto.response.LoginResponse;
 import com.restaurant.waitlist.backend.dto.response.UserResponse;
 import com.restaurant.waitlist.backend.entity.EmailVerificationToken;
 import com.restaurant.waitlist.backend.entity.PasswordResetToken;
+import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.entity.User;
 import com.restaurant.waitlist.backend.repository.EmailVerificationTokenRepository;
 import com.restaurant.waitlist.backend.repository.PasswordResetTokenRepository;
+import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +46,9 @@ public class AuthService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private RestaurantRepository restaurantRepository;
 
     public LoginResponse login(LoginRequest loginRequest) {
         User user = userRepository.findByEmail(loginRequest.getEmail())
@@ -84,10 +89,18 @@ public class AuthService {
 
         String token = generateToken(user);
         UserResponse userResponse = UserResponse.fromUser(user);
+        String restaurantName = null;
+
+        if (user.getRestaurantId() != null) {
+            restaurantName = restaurantRepository.findById(user.getRestaurantId())
+                    .map(Restaurant::getName)
+                    .orElse(null);
+        }
 
         return LoginResponse.builder()
                 .token(token)
                 .user(userResponse)
+                .restaurantName(restaurantName)
                 .build();
     }
 
