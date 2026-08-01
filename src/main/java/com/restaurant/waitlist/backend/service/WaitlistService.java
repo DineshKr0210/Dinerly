@@ -241,7 +241,11 @@ public class WaitlistService {
 
     public List<RestaurantResponse> getAllRestaurants() {
         return restaurantRepository.findAll().stream()
-                .map(RestaurantResponse::fromRestaurant)
+                .map(restaurant -> {
+                    RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurant.getId())
+                            .orElse(null);
+                    return RestaurantResponse.fromRestaurant(restaurant, settings);
+                })
                 .collect(Collectors.toList());
     }
 

@@ -37,6 +37,9 @@ public class Table {
     @Builder.Default
     private TableStatus status = TableStatus.OPEN;
 
+    @Column(name = "merged_table_id")
+    private Long mergedTableId;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

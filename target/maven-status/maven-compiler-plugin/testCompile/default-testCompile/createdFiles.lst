@@ -2,6 +2,7 @@ com/restaurant/waitlist/backend/service/EmailServiceTest.class
 com/restaurant/waitlist/backend/service/WaitlistServiceWaitlistSettingsTest.class
 com/restaurant/waitlist/backend/service/InboundSmsServiceTest.class
 com/restaurant/waitlist/backend/service/NotificationSettingsServiceTest.class
+com/restaurant/waitlist/backend/service/TableServiceMergeTest.class
 com/restaurant/waitlist/backend/BackendApplicationTests.class
 com/restaurant/waitlist/backend/service/NotificationServiceCallTest.class
 com/restaurant/waitlist/backend/service/SmsTemplateServiceTest.class

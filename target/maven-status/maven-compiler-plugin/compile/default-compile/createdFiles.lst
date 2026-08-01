@@ -53,6 +53,7 @@ com/restaurant/waitlist/backend/dto/response/RestaurantOverviewResponse$Restaura
 com/restaurant/waitlist/backend/dto/response/UserResponse.class
 com/restaurant/waitlist/backend/service/RestaurantSummaryService.class
 com/restaurant/waitlist/backend/entity/HolidayHoursPayload$HolidayHoursPayloadBuilder.class
+com/restaurant/waitlist/backend/dto/request/MergeTablesRequest.class
 com/restaurant/waitlist/backend/repository/SmsTemplateRepository.class
 com/restaurant/waitlist/backend/controller/StaffController.class
 com/restaurant/waitlist/backend/entity/Table$TableBuilder.class
@@ -97,6 +98,7 @@ com/restaurant/waitlist/backend/entity/SmsTemplate$SmsTemplateBuilder.class
 com/restaurant/waitlist/backend/controller/NotificationController.class
 com/restaurant/waitlist/backend/entity/RestaurantSettings$RestaurantSettingsBuilder.class
 com/restaurant/waitlist/backend/dto/request/AdvancedSettingsRequest.class
+com/restaurant/waitlist/backend/dto/request/MoveToWaitingRequest$MoveToWaitingRequestBuilder.class
 com/restaurant/waitlist/backend/entity/SmsTemplate$TemplateType.class
 com/restaurant/waitlist/backend/service/EmailService.class
 com/restaurant/waitlist/backend/dto/response/TableResponse.class
@@ -137,6 +139,7 @@ com/restaurant/waitlist/backend/entity/EmailVerificationToken.class
 com/restaurant/waitlist/backend/entity/WaitlistSettingsPayload.class
 com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$PlanResponse$PlanResponseBuilder.class
 com/restaurant/waitlist/backend/dto/response/UserResponse$UserResponseBuilder.class
+com/restaurant/waitlist/backend/dto/request/MoveToWaitingRequest.class
 com/restaurant/waitlist/backend/service/InboundSmsService.class
 com/restaurant/waitlist/backend/controller/WaitlistController.class
 com/restaurant/waitlist/backend/service/SmsService.class
@@ -146,6 +149,7 @@ com/restaurant/waitlist/backend/entity/NotificationSettingsPayload$StaffNotifica
 com/restaurant/waitlist/backend/entity/Table.class
 com/restaurant/waitlist/backend/dto/response/SettingsProfileResponse$RestaurantProfileResponse$RestaurantProfileResponseBuilder.class
 com/restaurant/waitlist/backend/entity/Feedback.class
+com/restaurant/waitlist/backend/dto/request/MergeTablesRequest$MergeTablesRequestBuilder.class
 com/restaurant/waitlist/backend/entity/NotificationSettingsPayload$MessageTemplates$MessageTemplatesBuilder.class
 com/restaurant/waitlist/backend/dto/request/UpdateTableStatusRequest.class
 com/restaurant/waitlist/backend/entity/NotificationSettingsPayload$GuestNotifications.class

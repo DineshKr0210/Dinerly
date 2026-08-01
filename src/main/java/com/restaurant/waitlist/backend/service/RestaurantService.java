@@ -2,6 +2,7 @@ package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.request.AddGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
+import com.restaurant.waitlist.backend.dto.request.MoveToWaitingRequest;
 import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
@@ -242,6 +243,37 @@ public class RestaurantService {
             w.setPosition(p++);
         }
         waitlistRepository.saveAll(todaysActive);
+        return WaitlistResponse.fromWaitlist(waitlist);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public WaitlistResponse moveToWaiting(Long restaurantId, Long waitlistId, MoveToWaitingRequest request) {
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
+        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
+        }
+        if (waitlist.getStatus() == Waitlist.WaitlistStatus.CANCELLED) {
+            throw new RuntimeException("Waitlist entry was already cancelled");
+        }
+        if (waitlist.getStatus() == Waitlist.WaitlistStatus.SEATED) {
+            throw new RuntimeException("Waitlist entry is already seated");
+        }
+
+        if (request != null && request.getPartySize() != null) {
+            waitlist.setPartySize(request.getPartySize());
+        }
+        if (request != null && request.getEstimatedWaitTime() != null) {
+            waitlist.setEstimatedWaitTime(request.getEstimatedWaitTime());
+        }
+        if (request != null && request.getStatus() != null && !request.getStatus().isBlank()) {
+            waitlist.setStatus(Waitlist.WaitlistStatus.valueOf(request.getStatus().toUpperCase()));
+        } else {
+            waitlist.setStatus(Waitlist.WaitlistStatus.WAITING);
+        }
+        waitlist.setPosition(null);
+        waitlist.setNotifiedAt(null);
+        waitlistRepository.save(waitlist);
+
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 

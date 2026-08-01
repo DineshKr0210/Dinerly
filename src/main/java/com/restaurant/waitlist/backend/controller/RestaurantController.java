@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.controller;
 import com.restaurant.waitlist.backend.dto.request.AddGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.AddTableRequest;
 import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
+import com.restaurant.waitlist.backend.dto.request.MoveToWaitingRequest;
 import com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.SeatGuestRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
@@ -170,6 +171,23 @@ public class RestaurantController {
             return ResponseEntity.ok(ApiResponse.success("Guest seated successfully", response));
         } catch (Exception e) {
             log.error("ERROR: seatGuest | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{restaurantId}/waitlist/{waitlistId}/move-to-waiting")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> moveToWaiting(@PathVariable Long restaurantId,
+            @PathVariable Long waitlistId,
+            @Valid @RequestBody MoveToWaitingRequest request) {
+        try {
+            log.info("START: moveToWaiting | restaurantId={}, waitlistId={}, request={}", restaurantId, waitlistId, request);
+            WaitlistResponse response = restaurantService.moveToWaiting(restaurantId, waitlistId, request);
+            log.info("END: moveToWaiting | success");
+            return ResponseEntity.ok(ApiResponse.success("Guest moved to waiting successfully", response));
+        } catch (Exception e) {
+            log.error("ERROR: moveToWaiting | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }

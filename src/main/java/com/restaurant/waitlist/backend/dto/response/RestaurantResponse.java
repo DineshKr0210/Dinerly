@@ -1,6 +1,8 @@
 package com.restaurant.waitlist.backend.dto.response;
 
 import com.restaurant.waitlist.backend.entity.Restaurant;
+import com.restaurant.waitlist.backend.entity.RestaurantSettings;
+import com.restaurant.waitlist.backend.entity.WaitlistSettingsPayload;
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,10 +17,18 @@ public class RestaurantResponse {
     private String phone;
     private String email;
     private Integer totalTables;
+    private Boolean walkInsOnly;
+    private Boolean acceptOnlineJoin;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public static RestaurantResponse fromRestaurant(Restaurant restaurant) {
+        return fromRestaurant(restaurant, null);
+    }
+
+    public static RestaurantResponse fromRestaurant(Restaurant restaurant, RestaurantSettings settings) {
+        WaitlistSettingsPayload waitlistSettings = settings != null ? settings.getWaitlistSettings() : WaitlistSettingsPayload.defaults();
+
         return RestaurantResponse.builder()
                 .id(restaurant.getId())
                 .name(restaurant.getName())
@@ -26,6 +36,8 @@ public class RestaurantResponse {
                 .phone(restaurant.getPhone())
                 .email(restaurant.getEmail())
                 .totalTables(restaurant.getTotalTables())
+                .walkInsOnly(waitlistSettings.getWalkInsOnly())
+                .acceptOnlineJoin(waitlistSettings.getAcceptOnlineJoin())
                 .createdAt(restaurant.getCreatedAt())
                 .updatedAt(restaurant.getUpdatedAt())
                 .build();
