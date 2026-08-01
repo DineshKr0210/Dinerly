@@ -8,7 +8,6 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.servers.Server;
-import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -38,9 +37,9 @@ public class OpenApiConfig {
                                 .name("MIT")
                                 .url("https://opensource.org/licenses/MIT")))
                 .servers(List.of(
-                        new Server().url("http://localhost:8080").description("Development"),
-                        new Server().url("https://staging.dinerly.com").description("Staging"),
-                        new Server().url("https://api.dinerly.com").description("Production")))
+                        new Server().url("http://localhost:8080").description("Local"),
+                        new Server().url("https://dev.dinerly.ca").description("Development"),
+                        new Server().url("https://dinerly.ca").description("Production")))
                 .components(new Components()
                         .addSecuritySchemes("bearerAuth", new io.swagger.v3.oas.models.security.SecurityScheme()
                                 .type(io.swagger.v3.oas.models.security.SecurityScheme.Type.HTTP)
@@ -50,59 +49,4 @@ public class OpenApiConfig {
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
     }
 
-    @Bean
-    public GroupedOpenApi authenticationApi() {
-        return GroupedOpenApi.builder()
-                .group("Authentication")
-                .pathsToMatch("/api/auth/**")
-                .build();
-    }
-
-    @Bean
-    public GroupedOpenApi restaurantApi() {
-        return GroupedOpenApi.builder()
-                .group("Restaurant")
-                .pathsToMatch("/api/restaurants/**")
-                .build();
-    }
-
-    @Bean
-    public GroupedOpenApi waitlistApi() {
-        return GroupedOpenApi.builder()
-                .group("Waitlist")
-                .pathsToMatch("/api/waitlist/**")
-                .build();
-    }
-
-    @Bean
-    public GroupedOpenApi settingsApi() {
-        return GroupedOpenApi.builder()
-                .group("Settings")
-                .pathsToMatch("/api/settings/**")
-                .build();
-    }
-
-    @Bean
-    public GroupedOpenApi notificationApi() {
-        return GroupedOpenApi.builder()
-                .group("Notifications")
-                .pathsToMatch("/api/notifications/**")
-                .build();
-    }
-
-    @Bean
-    public GroupedOpenApi paymentApi() {
-        return GroupedOpenApi.builder()
-                .group("Payments")
-                .pathsToMatch("/api/payments/**")
-                .build();
-    }
-
-    @Bean
-    public GroupedOpenApi webhookApi() {
-        return GroupedOpenApi.builder()
-                .group("Webhooks")
-                .pathsToMatch("/api/webhooks/**")
-                .build();
-    }
 }
