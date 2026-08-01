@@ -31,7 +31,7 @@ public class SwaggerUiController {
     public ResponseEntity<Resource> customSwaggerThemeJs() {
         Resource resource = new ClassPathResource("static/swagger-ui/swagger-theme.js");
         return ResponseEntity.ok()
-                .contentType(MediaType.valueOf("application/javascript"))
+                .contentType(MediaType.valueOf("text/javascript"))
                 .body(resource);
     }
 
