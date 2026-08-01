@@ -255,9 +255,6 @@ public class RestaurantService {
         if (waitlist.getStatus() == Waitlist.WaitlistStatus.CANCELLED) {
             throw new RuntimeException("Waitlist entry was already cancelled");
         }
-        if (waitlist.getStatus() == Waitlist.WaitlistStatus.SEATED) {
-            throw new RuntimeException("Waitlist entry is already seated");
-        }
 
         if (request != null && request.getPartySize() != null) {
             waitlist.setPartySize(request.getPartySize());
