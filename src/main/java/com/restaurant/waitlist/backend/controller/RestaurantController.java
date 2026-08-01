@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
 import com.restaurant.waitlist.backend.dto.request.MoveToWaitingRequest;
 import com.restaurant.waitlist.backend.dto.request.NotifyGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.SeatGuestRequest;
+import com.restaurant.waitlist.backend.dto.request.UpdateSeatedGuestRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
@@ -171,6 +172,23 @@ public class RestaurantController {
             return ResponseEntity.ok(ApiResponse.success("Guest seated successfully", response));
         } catch (Exception e) {
             log.error("ERROR: seatGuest | {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{restaurantId}/waitlist/{waitlistId}/update-seated")
+    @PreAuthorize("hasRole('RESTAURANT')")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> updateSeatedGuest(@PathVariable Long restaurantId,
+            @PathVariable Long waitlistId,
+            @Valid @RequestBody UpdateSeatedGuestRequest request) {
+        try {
+            log.info("START: updateSeatedGuest | restaurantId={}, waitlistId={}, request={}", restaurantId, waitlistId, request);
+            WaitlistResponse response = restaurantService.updateSeatedGuest(restaurantId, waitlistId, request);
+            log.info("END: updateSeatedGuest | success");
+            return ResponseEntity.ok(ApiResponse.success("Seated guest updated successfully", response));
+        } catch (Exception e) {
+            log.error("ERROR: updateSeatedGuest | {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }

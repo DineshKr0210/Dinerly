@@ -20,6 +20,7 @@ com/restaurant/waitlist/backend/repository/FeedbackRepository.class
 com/restaurant/waitlist/backend/service/TableService.class
 com/restaurant/waitlist/backend/dto/response/FeedbackInsightsResponse$FeedbackInsightsResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/SeatGuestRequest.class
+com/restaurant/waitlist/backend/dto/request/UpdateSeatedGuestRequest.class
 com/restaurant/waitlist/backend/dto/response/GuestHistoryResponse.class
 com/restaurant/waitlist/backend/dto/response/WaitlistResponse$WaitlistResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/SendSmsRequest$SendSmsRequestBuilder.class

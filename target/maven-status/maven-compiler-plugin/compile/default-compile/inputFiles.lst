@@ -33,6 +33,7 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/NotificationSummaryResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/EmailVerificationTokenRepository.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/entity/User.java
+/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/UpdateSeatedGuestRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/RegisterRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/AuthService.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/NotifyGuestRequest.java

@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.service;
 import com.restaurant.waitlist.backend.dto.request.AddGuestRequest;
 import com.restaurant.waitlist.backend.dto.request.CreateRestaurantRequest;
 import com.restaurant.waitlist.backend.dto.request.MoveToWaitingRequest;
+import com.restaurant.waitlist.backend.dto.request.UpdateSeatedGuestRequest;
 import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
@@ -243,6 +244,27 @@ public class RestaurantService {
             w.setPosition(p++);
         }
         waitlistRepository.saveAll(todaysActive);
+        return WaitlistResponse.fromWaitlist(waitlist);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public WaitlistResponse updateSeatedGuest(Long restaurantId, Long waitlistId, UpdateSeatedGuestRequest request) {
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
+        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
+        }
+        if (waitlist.getStatus() != Waitlist.WaitlistStatus.SEATED) {
+            throw new RuntimeException("Waitlist entry must be seated before updating the seated record");
+        }
+
+        if (request != null && request.getPartySize() != null) {
+            waitlist.setPartySize(request.getPartySize());
+        }
+        if (request != null && request.getTableName() != null && !request.getTableName().isBlank()) {
+            waitlist.setTableName(request.getTableName());
+        }
+
+        waitlistRepository.save(waitlist);
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
