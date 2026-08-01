@@ -183,13 +183,14 @@ public class SmsService {
         sendSms(phoneNumber, message);
     }
 
-    public void sendJoinConfirmationSms(Long restaurantId, String phoneNumber, String guestName) {
+    public String sendJoinConfirmationSms(Long restaurantId, String phoneNumber, String guestName) {
         Map<String, String> params = new HashMap<>();
         params.put("guestName", guestName);
         params.put("restaurantName", "Brothers Café");
 
         String message = smsTemplateService.formatMessageForRestaurant(restaurantId, "WAITLIST_JOIN_CONFIRMATION", params);
         sendSms(phoneNumber, message);
+        return message;
     }
 
 

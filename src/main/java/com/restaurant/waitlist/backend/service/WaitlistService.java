@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistDashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
+import com.restaurant.waitlist.backend.entity.NotificationSettingsPayload;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.entity.RestaurantSettings;
 import com.restaurant.waitlist.backend.entity.Table;
@@ -77,6 +78,28 @@ public class WaitlistService {
                 .status(Waitlist.WaitlistStatus.PENDING)
                 .lastActiveStatus(Waitlist.WaitlistStatus.PENDING)
                 .build();
+
+
+        NotificationSettingsPayload payload = settings != null ? settings.getNotificationSettings() : NotificationSettingsPayload.defaults();
+        boolean shouldSendJoinSms = payload.getGuestNotifications() != null
+                && Boolean.TRUE.equals(payload.getGuestNotifications().getJoinedwaitlistsmsenabled());
+
+        if (shouldSendJoinSms) {
+            try {
+                String message = smsService.sendJoinConfirmationSms(request.getRestaurantId(), waitlist.getGuestPhone(), waitlist.getGuestName());
+                waitlist.setSmsMessage(message);
+                waitlist.setSmsStatus("SENT");
+                waitlist.setSmsSentAt(LocalDateTime.now());
+                waitlist.setSmsError(null);
+            } catch (Exception e) {
+                waitlist.setSmsStatus("FAILED");
+                waitlist.setSmsError(e.getMessage());
+            }
+        } else {
+            waitlist.setSmsStatus("DISABLED");
+            waitlist.setSmsMessage("Join confirmation SMS disabled in settings");
+            waitlist.setSmsError(null);
+        }
 
         waitlist = waitlistRepository.save(waitlist);
         return WaitlistResponse.fromWaitlist(waitlist);
