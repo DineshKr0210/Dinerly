@@ -109,7 +109,13 @@ public class SmsService {
             }
             if (callMessage != null && !callMessage.isBlank()) {
                 String encoded = URLEncoder.encode(callMessage, StandardCharsets.UTF_8);
-                voiceUrl = voiceWebhookUrl + (voiceWebhookUrl.contains("?") ? "&" : "?") + "message=" + encoded + "&voice=" + selectedVoice;
+                String normalizedVoice = selectedVoice != null ? selectedVoice.toLowerCase() : "male";
+                if ("female".equals(normalizedVoice)) {
+                    normalizedVoice = "female";
+                } else {
+                    normalizedVoice = "male";
+                }
+                voiceUrl = voiceWebhookUrl + (voiceWebhookUrl.contains("?") ? "&" : "?") + "message=" + encoded + "&voice=" + normalizedVoice;
             }
             log.debug("Placing Twilio voice call to {} with webhook {} and action {}", toPhoneNumber, voiceUrl, voiceWebhookActionUrl);
             Twilio.init(accountSid, authToken);

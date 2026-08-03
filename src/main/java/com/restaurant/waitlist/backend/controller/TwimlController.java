@@ -21,21 +21,37 @@ public class TwimlController {
     public ResponseEntity<String> voiceWebhook(@RequestParam(value = "message", required = false) String message,
                                                @RequestParam(value = "To", required = false) String to,
                                                @RequestParam(value = "From", required = false) String from,
-                                               @RequestParam(value = "CallSid", required = false) String callSid) {
+                                               @RequestParam(value = "CallSid", required = false) String callSid,
+                                               @RequestParam(value = "voice", required = false) String voice) {
         String prompt = "Hi guest, your table is ready at the restaurant. Please press 1 if you can attend, or press 2 if you cannot.";
         if (message != null && !message.isBlank()) {
             prompt = URLDecoder.decode(message, StandardCharsets.UTF_8);
         }
 
+        String selectedVoice = resolveVoice(voice);
         String twiml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<Response>"
-                + "<Say voice=\"Polly.Joanna\">" + prompt + "</Say>"
+                + "<Say voice=\"" + selectedVoice + "\">" + prompt + "</Say>"
                 + "<Gather numDigits=\"1\" action=\"/api/twilio/voice-event\" method=\"POST\">"
-                + "<Say voice=\"Polly.Joanna\">Press 1 if you can attend, or press 2 if you cannot attend.</Say>"
+                + "<Say voice=\"" + selectedVoice + "\">Press 1 if you can attend, or press 2 if you cannot attend.</Say>"
                 + "</Gather>"
-                + "<Say voice=\"Polly.Joanna\">We did not receive a selection. Goodbye.</Say>"
+                + "<Say voice=\"" + selectedVoice + "\">We did not receive a selection. Goodbye.</Say>"
                 + "</Response>";
 
         return ResponseEntity.ok(twiml);
+    }
+
+    private String resolveVoice(String voice) {
+        if (voice == null || voice.isBlank()) {
+            return "Polly.Joanna";
+        }
+        String normalized = voice.trim().toLowerCase();
+        if ("female".equals(normalized)) {
+            return "Polly.Joanna";
+        }
+        if ("male".equals(normalized)) {
+            return "Polly.Matthew";
+        }
+        return "Polly.Joanna";
     }
 }

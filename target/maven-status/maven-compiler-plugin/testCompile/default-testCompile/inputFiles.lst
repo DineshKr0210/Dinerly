@@ -4,6 +4,7 @@
 /Users/dineshkumar/Downloads/backend/src/test/java/com/restaurant/waitlist/backend/service/AuthServiceSoftDeleteTest.java
 /Users/dineshkumar/Downloads/backend/src/test/java/com/restaurant/waitlist/backend/BackendApplicationTests.java
 /Users/dineshkumar/Downloads/backend/src/test/java/com/restaurant/waitlist/backend/service/WaitlistServiceWaitlistSettingsTest.java
+/Users/dineshkumar/Downloads/backend/src/test/java/com/restaurant/waitlist/backend/controller/TwimlControllerTest.java
 /Users/dineshkumar/Downloads/backend/src/test/java/com/restaurant/waitlist/backend/service/TableServiceMergeTest.java
 /Users/dineshkumar/Downloads/backend/src/test/java/com/restaurant/waitlist/backend/service/EmailServiceTest.java
 /Users/dineshkumar/Downloads/backend/src/test/java/com/restaurant/waitlist/backend/service/SmsTemplateServiceTest.java
