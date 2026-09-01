@@ -40,6 +40,7 @@ public class SecurityConfig {
                         // Allow guests to access waitlist public endpoints without authenticating
                         .requestMatchers("/api/waitlist/**").permitAll()
                         .requestMatchers("/api/twilio/**").permitAll()
+                        .requestMatchers("/api/menu/**").permitAll()
                         .requestMatchers("/api/restaurants/**").hasRole("RESTAURANT")
                         .anyRequest().authenticated()
                 )
