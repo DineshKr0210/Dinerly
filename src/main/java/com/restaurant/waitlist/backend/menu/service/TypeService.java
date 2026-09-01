@@ -5,5 +5,5 @@ import com.restaurant.waitlist.backend.menu.dto.TypeDTO;
 import java.util.List;
 
 public interface TypeService {
-    List<TypeDTO> getAllTypes();
+    List<TypeDTO> getAllTypes(Long locationId);
 }

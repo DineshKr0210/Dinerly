@@ -19,8 +19,8 @@ public class TypeServiceImpl implements TypeService {
 
     @Override
     @Cacheable("AllTypes")
-    public List<TypeDTO> getAllTypes() {
-        return typeRepository.findAll().stream()
+    public List<TypeDTO> getAllTypes(Long locationId) {
+        return typeRepository.findAllByRestaurant(locationId).stream()
                 .map(TypeMapper::toDTO)
                 .collect(Collectors.toList());
     }

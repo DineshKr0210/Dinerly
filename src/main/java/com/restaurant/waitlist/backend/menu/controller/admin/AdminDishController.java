@@ -21,15 +21,15 @@ public class AdminDishController {
     private final DishService dishService;
 
     @GetMapping("/category/{categoryName}")
-    public ResponseEntity<List<DishDTO>> getDishesByCategory(
-            @PathVariable String categoryName) {
+        public ResponseEntity<List<DishDTO>> getDishesByCategory(
+            @PathVariable String categoryName, @RequestParam Long locationId) {
 
-        List<DishDTO> dishes = dishService.getDishesByCategoryAdmin(categoryName);
+        List<DishDTO> dishes = dishService.getDishesByCategoryAdmin(categoryName, locationId);
 
         return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache())
-                .body(dishes);
-    }
+            .cacheControl(CacheControl.noCache())
+            .body(dishes);
+        }
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DishDTO> createDish(@Valid @ModelAttribute DishRequestDTO dto) {
         return ResponseEntity.ok(dishService.createDish(dto));
@@ -42,14 +42,14 @@ public class AdminDishController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDish(@PathVariable Long id) {
-        dishService.deleteDishById(id);
+    public ResponseEntity<Void> deleteDish(@PathVariable Long id, @RequestParam Long locationId) {
+        dishService.deleteDishById(id, locationId);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/restore")
-    public ResponseEntity<Void> restore(@PathVariable Long id) {
-        dishService.restoreDishById(id);
+    public ResponseEntity<Void> restore(@PathVariable Long id, @RequestParam Long locationId) {
+        dishService.restoreDishById(id, locationId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -14,6 +14,8 @@ public class CategoryDTO {
     private Long id;
     private String name;
     private String description;
+    private Long locationId;
+    private String location;
     private List<DishDTO> dishes;
     private Status status;
 }

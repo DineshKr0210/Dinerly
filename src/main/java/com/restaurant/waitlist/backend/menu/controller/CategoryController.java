@@ -16,24 +16,24 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
+    public ResponseEntity<List<CategoryDTO>> getAllCategories(@RequestParam Long locationId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
-                .body(categoryService.getAllCategories());
+                .body(categoryService.getAllCategories(locationId));
     }
 
     @GetMapping("/with-dishes")
-    public ResponseEntity<List<CategoryDTO>> getAllCategoriesWithDishes() {
+    public ResponseEntity<List<CategoryDTO>> getAllCategoriesWithDishes(@RequestParam Long locationId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
-                .body(categoryService.getAllCategoriesWithDishes());
+                .body(categoryService.getAllCategoriesWithDishes(locationId));
     }
 
     @GetMapping("/{id}/dishes")
-    public ResponseEntity<CategoryDTO> getCategoryWithDishes(@PathVariable Long id) {
+    public ResponseEntity<CategoryDTO> getCategoryWithDishes(@PathVariable Long id, @RequestParam Long locationId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
-                .body(categoryService.getCategoryWithDishes(id));
+                .body(categoryService.getCategoryWithDishes(id, locationId));
     }
 
 }

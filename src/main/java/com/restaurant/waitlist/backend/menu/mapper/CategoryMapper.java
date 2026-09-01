@@ -13,6 +13,8 @@ public class CategoryMapper {
                 .id(category.getId() != null ? Long.valueOf(category.getId()) : null)
                 .name(category.getName())
                 .description(category.getDescription())
+                .locationId(category.getRestaurant() != null ? category.getRestaurant().getId() : null)
+                .location(category.getRestaurant() != null ? category.getRestaurant().getName() : null)
                 .dishes(category.getDishes() != null ?
                         category.getDishes().stream()
                                 .map(DishMapper::toDTO)
@@ -27,6 +29,8 @@ public class CategoryMapper {
         return CategoryDTO.builder()
                 .id(Long.valueOf(category.getId() != null ? category.getId() : null))
                 .name(category.getName())
+                .locationId(category.getRestaurant() != null ? category.getRestaurant().getId() : null)
+                .location(category.getRestaurant() != null ? category.getRestaurant().getName() : null)
                 .status(category.getStatus())
                 .build();
     }

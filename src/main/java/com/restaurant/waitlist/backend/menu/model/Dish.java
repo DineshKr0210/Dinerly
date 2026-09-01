@@ -25,6 +25,10 @@ public class Dish {
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "restaurant_id")
+    private com.restaurant.waitlist.backend.entity.Restaurant restaurant;
+
     @Column(name = "dish_name", nullable = false, length = 200)
     private String dishName;
 

@@ -6,17 +6,17 @@ import com.restaurant.waitlist.backend.menu.dto.DishRequestDTO;
 import java.util.List;
 
 public interface DishService {
-    List<DishDTO> getAllDishesWithRelations();
-    List<DishDTO> getDishesByCategory(String categoryName);
-    List<DishDTO> getDishesByType(String type);
+    List<DishDTO> getAllDishesWithRelations(Long locationId);
+    List<DishDTO> getDishesByCategory(String categoryName, Long locationId);
+    List<DishDTO> getDishesByType(String type, Long locationId);
     DishDTO createDish(DishRequestDTO dto);
     DishDTO updateDish(Long id, DishRequestDTO dto);
-    void deleteDishById(Long id) ;
+    void deleteDishById(Long id, Long locationId) ;
 
-    List<DishDTO> getDishesByCategoryAdmin(String categoryName);
+    List<DishDTO> getDishesByCategoryAdmin(String categoryName, Long locationId);
 
-    void restoreDishById(Long id);
+    void restoreDishById(Long id, Long locationId);
 
-    List<DishDTO> getDishesByID(Long id);
+    List<DishDTO> getDishesByID(Long id, Long locationId);
 
 }

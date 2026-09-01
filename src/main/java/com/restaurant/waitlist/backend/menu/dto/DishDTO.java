@@ -21,6 +21,8 @@ public class DishDTO {
     private Integer calories;
     private String imageUrl;
     private String category;
+    private Long locationId;
+    private String location;
     private List<TypeDTO> types;
     private Status status;
 

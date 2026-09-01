@@ -117,6 +117,7 @@ com/restaurant/waitlist/backend/entity/HolidayHourPayload.class
 com/restaurant/waitlist/backend/menu/model/enums/Status.class
 com/restaurant/waitlist/backend/dto/response/RestaurantOverviewResponse$FloorSummary$FloorSummaryBuilder.class
 com/restaurant/waitlist/backend/menu/model/Category$CategoryBuilder.class
+com/restaurant/waitlist/backend/menu/controller/admin/AdminMenuController.class
 com/restaurant/waitlist/backend/entity/NotificationSettingsPayload.class
 com/restaurant/waitlist/backend/repository/UserRepository.class
 com/restaurant/waitlist/backend/dto/request/ResendVerificationRequest.class

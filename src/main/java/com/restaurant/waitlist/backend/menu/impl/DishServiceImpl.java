@@ -15,6 +15,8 @@ import com.restaurant.waitlist.backend.menu.model.enums.DishType;
 import com.restaurant.waitlist.backend.menu.model.enums.Status;
 import com.restaurant.waitlist.backend.menu.service.DishService;
 import com.restaurant.waitlist.backend.menu.service.GitHubImageService;
+import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.entity.Restaurant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -32,36 +34,38 @@ public class DishServiceImpl implements DishService {
     private final CategoryRepository categoryRepository;
     private final TypeRepository typeRepository;
     private final GitHubImageService gitHubImageService;
+    private final RestaurantRepository restaurantRepository;
 
     @Override
     @Cacheable("AllDishes")
-    public List<DishDTO> getAllDishesWithRelations() {
-        return dishRepository.getAllDishesWithRelations().stream()
+    public List<DishDTO> getAllDishesWithRelations(Long locationId) {
+        return dishRepository.getAllDishesWithRelationsByRestaurant(locationId).stream()
                 .map(DishMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Cacheable("DishesByCategory")
-    public List<DishDTO> getDishesByCategory(String categoryName) {
-        return dishRepository.getDishesByCategory(categoryName).stream()
+    public List<DishDTO> getDishesByCategory(String categoryName, Long locationId) {
+        return dishRepository.getDishesByCategoryAndRestaurant(categoryName, locationId).stream()
                 .map(DishMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Cacheable("DishesByType")
-    public List<DishDTO> getDishesByType(String type) {
+    public List<DishDTO> getDishesByType(String type, Long locationId) {
         DishType parsed = DishType.valueOf(type.toUpperCase());
-        return dishRepository.getDishesByType(parsed).stream()
+        return dishRepository.getDishesByTypeAndRestaurant(parsed, locationId).stream()
                 .map(DishMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Cacheable("DishesByID")
-    public List<DishDTO> getDishesByID(Long id) {
+    public List<DishDTO> getDishesByID(Long id, Long locationId) {
         return dishRepository.findById(id).stream()
+                .filter(d -> locationId == null || d.getRestaurant() == null || d.getRestaurant().getId().equals(locationId))
                 .map(DishMapper::toDTO)
                 .collect(Collectors.toList());
     }
@@ -71,15 +75,19 @@ public class DishServiceImpl implements DishService {
     public DishDTO createDish(DishRequestDTO dto) {
         validateDish(dto);
 
-        if (dishRepository.existsByDishNameIgnoreCaseAndStatus(dto.getDishName(), Status.ACTIVE)) {
-            throw new BadRequestException("Dish with this name already exists");
+        // validate restaurant
+        Restaurant restaurant = restaurantRepository.findById(dto.getLocationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
+
+        if (dishRepository.existsByDishNameIgnoreCaseAndRestaurantIdAndStatus(dto.getDishName(), restaurant.getId(), Status.ACTIVE)) {
+            throw new BadRequestException("Dish with this name already exists for this location");
         }
 
         Category category = categoryRepository
                 .findByNameIgnoreCaseAndStatus(dto.getCategoryName(), Status.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
-        List<Type> types = typeRepository.findByNameInAndStatus(dto.getTypeNames(), Status.ACTIVE);
+        List<Type> types = typeRepository.findByNameInAndStatusAndRestaurantId(dto.getTypeNames(), Status.ACTIVE, restaurant.getId());
         if (types.size() != dto.getTypeNames().size()) {
             throw new ResourceNotFoundException("One or more dish types not found");
         }
@@ -90,6 +98,7 @@ public class DishServiceImpl implements DishService {
                 .dishName(dto.getDishName())
                 .category(category)
                 .types(types)
+            .restaurant(restaurant)
                 .price(dto.getPrice())
                 .calories(dto.getCalories())
                 .description(dto.getDescription())
@@ -112,16 +121,25 @@ public class DishServiceImpl implements DishService {
                 .findByNameIgnoreCaseAndStatus(dto.getCategoryName(), Status.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
-        List<Type> types = typeRepository.findByNameInAndStatus(dto.getTypeNames(), Status.ACTIVE);
+        // validate restaurant and uniqueness if needed
+        Restaurant restaurant = restaurantRepository.findById(dto.getLocationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
+
+        List<Type> types = typeRepository.findByNameInAndStatusAndRestaurantId(dto.getTypeNames(), Status.ACTIVE, restaurant.getId());
         if (types.size() != dto.getTypeNames().size()) {
             throw new BadRequestException("One or more dish types are invalid");
         }
 
         String imageUrl = gitHubImageService.uploadImage(dto.getImage());
-
+        if (!dish.getDishName().equalsIgnoreCase(dto.getDishName()) || (dish.getRestaurant() == null || !dish.getRestaurant().getId().equals(restaurant.getId()))) {
+            if (dishRepository.existsByDishNameIgnoreCaseAndRestaurantIdAndStatus(dto.getDishName(), restaurant.getId(), Status.ACTIVE)) {
+                throw new BadRequestException("Dish with this name already exists for this location");
+            }
+        }
         dish.setDishName(dto.getDishName());
         dish.setCategory(category);
         dish.setTypes(types);
+        dish.setRestaurant(restaurant);
         dish.setPrice(dto.getPrice());
         dish.setCalories(dto.getCalories());
         dish.setDescription(dto.getDescription());
@@ -133,27 +151,36 @@ public class DishServiceImpl implements DishService {
     @Override
     @Transactional
     @CacheEvict(value = {"AllDishes", "DishesByCategory", "DishesByType", "DishesByID"}, allEntries = true)
-    public void deleteDishById(Long id) {
+    public void deleteDishById(Long id, Long locationId) {
 
         Dish dish = dishRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dish not found with id: " + id));
+
+        if (locationId != null && dish.getRestaurant() != null && !dish.getRestaurant().getId().equals(locationId)) {
+            throw new ResourceNotFoundException("Dish not found for this location");
+        }
 
         dishRepository.softDeleteById(dish.getId());
     }
 
     @Override
-    public List<DishDTO> getDishesByCategoryAdmin(String categoryName) {
-        return dishRepository.getDishesByCategoryAdmin(categoryName).stream()
+    public List<DishDTO> getDishesByCategoryAdmin(String categoryName, Long locationId) {
+        return dishRepository.getDishesByCategoryAdminAndRestaurant(categoryName, locationId).stream()
                 .map(DishMapper::toDTO)
-                .collect(Collectors.toList());    }
+                .collect(Collectors.toList());
+    }
 
     @Override
     @Transactional
     @CacheEvict(value = {"AllDishes", "DishesByCategory", "DishesByType", "DishesByID"}, allEntries = true)
-    public void restoreDishById(Long id) {
+    public void restoreDishById(Long id, Long locationId) {
 
         Dish dish = dishRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Dish not found with id: " + id));
+
+        if (locationId != null && dish.getRestaurant() != null && !dish.getRestaurant().getId().equals(locationId)) {
+            throw new ResourceNotFoundException("Dish not found for this location");
+        }
 
         dishRepository.restoreById(dish.getId());
     }

@@ -16,9 +16,9 @@ public class TypeController {
     private final TypeService typeService;
 
     @GetMapping
-    public ResponseEntity<List<TypeDTO>> getAllCategories() {
+    public ResponseEntity<List<TypeDTO>> getAllCategories(@RequestParam Long locationId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
-                .body(typeService.getAllTypes());
+                .body(typeService.getAllTypes(locationId));
     }
 }

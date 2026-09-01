@@ -12,6 +12,10 @@ public class DishRequestDTO {
     @NotBlank(message = "Dish name is mandatory")
     private String dishName;
 
+    @NotNull(message = "Location ID is mandatory")
+    @Positive(message = "Location ID must be a positive number")
+    private Long locationId;
+
     @NotBlank(message = "Category name is mandatory")
     private String categoryName;
 

@@ -10,6 +10,8 @@ public class TypeMapper {
                 .id(type.getId() != null ? Long.valueOf(type.getId()) : null)
                 .name(type.getName())
                 .status(type.getStatus())
+            .locationId(type.getRestaurant() != null ? type.getRestaurant().getId() : null)
+            .location(type.getRestaurant() != null ? type.getRestaurant().getName() : null)
                 .build();
     }
 }

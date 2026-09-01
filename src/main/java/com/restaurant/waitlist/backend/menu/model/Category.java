@@ -2,6 +2,7 @@ package com.restaurant.waitlist.backend.menu.model;
 
 import com.restaurant.waitlist.backend.menu.model.enums.Status;
 import jakarta.persistence.*;
+import com.restaurant.waitlist.backend.entity.Restaurant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +22,7 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String name;
 
     @Column(columnDefinition = "TEXT")
@@ -29,6 +30,10 @@ public class Category {
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = false)
     private List<Dish> dishes;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "restaurant_id")
+    private Restaurant restaurant;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

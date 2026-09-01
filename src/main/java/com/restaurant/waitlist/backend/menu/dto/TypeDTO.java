@@ -15,4 +15,6 @@ public class TypeDTO {
     private Long id;
     private DishType name;
     private Status status;
+    private Long locationId;
+    private String location;
 }

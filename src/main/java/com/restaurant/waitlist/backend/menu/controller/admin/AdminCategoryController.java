@@ -20,10 +20,10 @@ public class AdminCategoryController {
     private final CategoryService categoryService;
 
     @GetMapping
-    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
+    public ResponseEntity<List<CategoryDTO>> getAllCategories(@RequestParam Long locationId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
-                .body(categoryService.getAllCategoriesadmin());
+                .body(categoryService.getAllCategoriesadmin(locationId));
     }
     @PostMapping
     public ResponseEntity<CategoryDTO> create(@Valid @RequestBody CategoryRequestDTO dto) {
@@ -37,13 +37,13 @@ public class AdminCategoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        categoryService.deleteCategoryById(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long locationId) {
+        categoryService.deleteCategoryById(id, locationId);
         return ResponseEntity.noContent().build();
     }
     @PutMapping("/{id}/restore")
-    public ResponseEntity<Void> restore(@PathVariable Long id) {
-        categoryService.restoreCategoryById(id);
+    public ResponseEntity<Void> restore(@PathVariable Long id, @RequestParam Long locationId) {
+        categoryService.restoreCategoryById(id, locationId);
         return ResponseEntity.noContent().build();
     }
 }

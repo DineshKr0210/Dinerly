@@ -13,7 +13,9 @@ public class DishMapper {
                 .name(dish.getDishName())
                 .description(dish.getDescription())
                 .price(dish.getPrice())
-                .category(dish.getCategory() != null ? dish.getCategory().getName() : null)
+            .category(dish.getCategory() != null ? dish.getCategory().getName() : null)
+            .locationId(dish.getRestaurant() != null ? dish.getRestaurant().getId() : null)
+            .location(dish.getRestaurant() != null ? dish.getRestaurant().getName() : null)
                 .calories(dish.getCalories()!= null ? dish.getCalories() : null)
                 .imageUrl(dish.getImageUrl()!= null ? dish.getImageUrl() : null)
                 .types(
