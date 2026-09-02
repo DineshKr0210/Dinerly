@@ -7,6 +7,7 @@ import com.restaurant.waitlist.backend.menu.service.CategoryService;
 import com.restaurant.waitlist.backend.menu.service.DishService;
 import com.restaurant.waitlist.backend.menu.service.TypeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/menu")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('GUEST','ADMIN')")
 public class MenuController {
 
     private final CategoryService categoryService;

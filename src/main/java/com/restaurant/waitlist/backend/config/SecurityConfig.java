@@ -35,13 +35,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/auth/register", "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/encode-password").permitAll()
-                        .requestMatchers("/api/users/**").hasRole("RESTAURANT")
+                        .requestMatchers("/api/users/**").hasAnyRole("RESTAURANT","ADMIN")
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-docs", "/swagger-docs/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                         // Allow guests to access waitlist public endpoints without authenticating
                         .requestMatchers("/api/waitlist/**").permitAll()
                         .requestMatchers("/api/twilio/**").permitAll()
-                        .requestMatchers("/api/menu/**").permitAll()
-                        .requestMatchers("/api/restaurants/**").hasRole("RESTAURANT")
+                        .requestMatchers("/api/menu/**").hasAnyRole("GUEST", "ADMIN")
+                        .requestMatchers("/api/restaurants/**").hasAnyRole("RESTAURANT","ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
