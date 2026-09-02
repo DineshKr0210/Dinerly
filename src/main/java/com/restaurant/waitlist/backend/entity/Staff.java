@@ -32,6 +32,18 @@ public class Staff {
     @Column(nullable = false)
     private String role;
 
+    @Column(nullable = true)
+    private String email;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    @Builder.Default
+    private StaffStatus status = StaffStatus.ACTIVE;
+
+    public enum StaffStatus {
+        ACTIVE, INVITED
+    }
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

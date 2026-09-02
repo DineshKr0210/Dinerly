@@ -48,19 +48,6 @@ public class SettingsController {
         }
     }
 
-    @PutMapping("/{restaurantId}/profile")
-    @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<SettingsProfileResponse>> updateProfileSettings(
-            @PathVariable Long restaurantId,
-            @RequestBody UpdateSettingsProfileRequest request) {
-        try {
-            SettingsProfileResponse response = settingsService.updateProfileSettings(restaurantId, request);
-            return ResponseEntity.ok(ApiResponse.success("Profile settings updated", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
     @GetMapping("/{restaurantId}/notifications")
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> getNotificationSettings(@PathVariable Long restaurantId) {
@@ -83,51 +70,12 @@ public class SettingsController {
         }
     }
 
-    @PutMapping("/{restaurantId}/notifications")
-    @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> updateNotificationSettings(
-            @PathVariable Long restaurantId,
-            @RequestBody UpdateRestaurantSettingsRequest request) {
-        try {
-            RestaurantSettingsResponse response = settingsService.updateRestaurantSettings(restaurantId, request);
-            return ResponseEntity.ok(ApiResponse.success("Notification settings updated", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{restaurantId}/waitlist-settings")
-    @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<WaitlistSettingsResponse>> updateWaitlistSettings(
-            @PathVariable Long restaurantId,
-            @RequestBody UpdateWaitlistSettingsRequest request) {
-        try {
-            WaitlistSettingsResponse response = settingsService.updateWaitlistSettings(restaurantId, request);
-            return ResponseEntity.ok(ApiResponse.success("Waitlist settings updated", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
     @GetMapping("/{restaurantId}/advanced")
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<AdvancedSettingsResponse>> getAdvancedSettings(@PathVariable Long restaurantId) {
         try {
             AdvancedSettingsResponse response = settingsService.getAdvancedSettings(restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Advanced settings retrieved", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{restaurantId}/advanced")
-    @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<AdvancedSettingsResponse>> updateAdvancedSettings(
-            @PathVariable Long restaurantId,
-            @RequestBody AdvancedSettingsRequest request) {
-        try {
-            AdvancedSettingsResponse response = settingsService.updateAdvancedSettings(restaurantId, request);
-            return ResponseEntity.ok(ApiResponse.success("Advanced settings updated", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
@@ -144,17 +92,6 @@ public class SettingsController {
         }
     }
 
-    @DeleteMapping("/{restaurantId}/qr-code")
-    @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteQrCode(@PathVariable Long restaurantId) {
-        try {
-            Map<String, Object> response = settingsService.deleteQrCode(restaurantId);
-            return ResponseEntity.ok(ApiResponse.success("QR code deleted", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
     @GetMapping("/{restaurantId}/holiday-hours")
     @PreAuthorize("hasRole('RESTAURANT')")
     public ResponseEntity<ApiResponse<HolidayHoursResponse>> getHolidayHours(@PathVariable Long restaurantId) {
@@ -165,49 +102,5 @@ public class SettingsController {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
-
-    @PostMapping("/{restaurantId}/holiday-hours")
-    @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<HolidayHourResponse>> addHolidayHour(
-            @PathVariable Long restaurantId,
-            @RequestBody HolidayHourRequest request) {
-        try {
-            HolidayHourResponse response = settingsService.addHolidayHour(restaurantId, request);
-            return ResponseEntity.ok(ApiResponse.success("Holiday hour added", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    @PutMapping("/{restaurantId}/holiday-hours/{holidayHourId}")
-    @PreAuthorize("hasRole('RESTAURANT')")
-    public ResponseEntity<ApiResponse<HolidayHourResponse>> updateHolidayHour(
-            @PathVariable Long restaurantId,
-            @PathVariable String holidayHourId,
-            @RequestBody UpdateHolidayHourRequest request) {
-        try {
-            HolidayHourResponse response = settingsService.updateHolidayHour(restaurantId, holidayHourId, request);
-            return ResponseEntity.ok(ApiResponse.success("Holiday hour updated", response));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    UpdateRestaurantSettingsRequest parseNotificationSettingsRequest(Object body) {
-        if (body == null) {
-            return new UpdateRestaurantSettingsRequest();
-        }
-
-        if (body instanceof Map<?, ?> map) {
-            Object payloadNode = map.containsKey("data") && map.get("data") instanceof Map<?, ?>
-                    ? map.get("data")
-                    : body;
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            return objectMapper.convertValue(payloadNode, UpdateRestaurantSettingsRequest.class);
-        }
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.convertValue(body, UpdateRestaurantSettingsRequest.class);
-    }
 }
+

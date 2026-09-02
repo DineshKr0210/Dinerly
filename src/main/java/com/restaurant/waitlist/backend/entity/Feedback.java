@@ -35,6 +35,12 @@ public class Feedback {
     @Column(columnDefinition = "TEXT")
     private String tags;
 
+    @Column(columnDefinition = "TEXT")
+    private String reply;
+
+    @Column(name = "replied_at")
+    private java.time.LocalDateTime repliedAt;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

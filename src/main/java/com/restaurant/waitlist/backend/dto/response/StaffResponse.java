@@ -10,12 +10,16 @@ public class StaffResponse {
     private Long id;
     private String name;
     private String role;
+    private String email;
+    private String status;
 
     public static StaffResponse fromStaff(Staff staff) {
         return StaffResponse.builder()
                 .id(staff.getId())
                 .name(staff.getName())
                 .role(staff.getRole())
+                .email(staff.getEmail())
+                .status(staff.getStatus() != null ? staff.getStatus().name() : null)
                 .build();
     }
 }

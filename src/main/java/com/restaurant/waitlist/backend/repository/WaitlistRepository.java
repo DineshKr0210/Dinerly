@@ -55,6 +55,13 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                       @Param("fromDate") java.sql.Date fromDate,
                                       @Param("toDate") java.sql.Date toDate);
 
+    @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE w.restaurant_id = :restaurantId" +
+            " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
+            " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+    long countByRestaurantIdInDateRange(@Param("restaurantId") Long restaurantId,
+                                       @Param("fromDate") java.sql.Date fromDate,
+                                       @Param("toDate") java.sql.Date toDate);
+
      @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE w.restaurant_id = :restaurantId AND w.status = :status" +
              " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
              " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
@@ -70,6 +77,41 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
       Double averageSeatedDurationMinutes(@Param("restaurantId") Long restaurantId,
                                           @Param("fromDate") java.sql.Date fromDate,
                                           @Param("toDate") java.sql.Date toDate);
+
+    @Query(value = "SELECT COUNT(*) FROM waitlist w " +
+            "WHERE (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+            "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+    long countAllInDateRange(@Param("fromDate") java.sql.Date fromDate,
+                             @Param("toDate") java.sql.Date toDate);
+
+    @Query(value = "SELECT w.restaurant_id as restaurantId, r.name as name, COUNT(*) as joins " +
+            "FROM waitlist w JOIN restaurants r ON w.restaurant_id = r.id " +
+            "WHERE (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+            "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE)) " +
+            "GROUP BY w.restaurant_id, r.name " +
+            "ORDER BY joins DESC LIMIT :limit", nativeQuery = true)
+    java.util.List<Object[]> topRestaurantsByJoins(@Param("fromDate") java.sql.Date fromDate,
+                                                  @Param("toDate") java.sql.Date toDate,
+                                                  @Param("limit") int limit);
+
+    @Query(value = "SELECT w.restaurant_id as restaurantId, r.name as name, COUNT(*) as joins " +
+            "FROM waitlist w JOIN restaurants r ON w.restaurant_id = r.id " +
+            "WHERE w.restaurant_id = :restaurantId " +
+            "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+            "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE)) " +
+            "GROUP BY w.restaurant_id, r.name " +
+            "ORDER BY joins DESC LIMIT :limit", nativeQuery = true)
+    java.util.List<Object[]> topRestaurantByJoinsForLocation(@Param("restaurantId") Long restaurantId,
+                                                            @Param("fromDate") java.sql.Date fromDate,
+                                                            @Param("toDate") java.sql.Date toDate,
+                                                            @Param("limit") int limit);
+
+    @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, MAX(DATE(w.joined_at)) as lastVisit " +
+            "FROM waitlist w " +
+            "WHERE (:restaurantId IS NULL OR w.restaurant_id = :restaurantId) " +
+            "GROUP BY w.guest_name, w.guest_phone " +
+            "ORDER BY visits DESC", nativeQuery = true)
+    java.util.List<CustomerAggregation> aggregateCustomers(@Param("restaurantId") Long restaurantId);
 
        @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId " +
                "AND (:status IS NULL OR w.status = :status) " +

@@ -32,6 +32,8 @@
 		<maven.compiler.target>21</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<lombok.version>1.18.30</lombok.version>
+		<!-- upgraded Lombok for Java 21+ compatibility -->
+		<lombok.version>1.18.36</lombok.version>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot Core -->
@@ -122,7 +124,6 @@
 			<artifactId>lombok</artifactId>
 			<version>${lombok.version}</version>
 			<scope>compile</scope>
-			<optional>true</optional>
 		</dependency>
 
 		<!-- Testing -->
