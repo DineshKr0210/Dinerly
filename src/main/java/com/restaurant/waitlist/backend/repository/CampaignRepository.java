@@ -22,4 +22,6 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
     java.util.List<Campaign> findByRestaurantId(Long restaurantId);
     java.util.List<Campaign> findAllByOrderByCreatedAtDesc();
+
+    org.springframework.data.domain.Page<Campaign> findByStatusAndScheduledAtBefore(String status, java.time.LocalDateTime before, org.springframework.data.domain.Pageable pageable);
 }

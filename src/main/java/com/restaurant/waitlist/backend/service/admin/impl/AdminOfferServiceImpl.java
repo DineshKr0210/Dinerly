@@ -45,7 +45,8 @@ public class AdminOfferServiceImpl implements AdminOfferService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .status(request.getStatus())
-                .value(request.getValue())
+            .value(request.getValue())
+            .pointsCost(request.getPointsCost())
                 .build();
         Offer saved = offerRepository.save(o);
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
@@ -71,6 +72,7 @@ public class AdminOfferServiceImpl implements AdminOfferService {
         o.setEndDate(request.getEndDate());
         o.setStatus(request.getStatus());
         o.setValue(request.getValue());
+        o.setPointsCost(request.getPointsCost());
         Offer saved = offerRepository.save(o);
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
                 .restaurantId(r.getId())
@@ -104,6 +106,7 @@ public class AdminOfferServiceImpl implements AdminOfferService {
                 .endDate(o.getEndDate())
                 .status(o.getStatus())
                 .value(o.getValue())
+                .pointsCost(o.getPointsCost())
                 .redemptions(redemptions)
                 .build();
     }

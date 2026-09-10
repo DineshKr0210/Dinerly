@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.controller.admin;
 
 import com.restaurant.waitlist.backend.dto.request.UpdateSmsTemplateRequest;
+import com.restaurant.waitlist.backend.dto.request.CreateSmsTemplateRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.MarketingCampaignRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.SmsTemplateResponse;
@@ -40,6 +41,18 @@ public class AdminMarketingController {
                                                                            @RequestBody UpdateSmsTemplateRequest request) {
         SmsTemplateResponse resp = adminMarketingService.updateTemplate(id, request.getMessageTemplate(), request.getDescription());
         return ResponseEntity.ok(ApiResponse.success("Template updated", resp));
+    }
+
+    @PostMapping("/templates")
+    public ResponseEntity<ApiResponse<SmsTemplateResponse>> createTemplate(@RequestBody CreateSmsTemplateRequest request) {
+        SmsTemplateResponse resp = adminMarketingService.createTemplate(request.getTemplateType(), request.getMessageTemplate(), request.getDescription());
+        return ResponseEntity.ok(ApiResponse.success("Template created", resp));
+    }
+
+    @DeleteMapping("/templates/{id}")
+    public ResponseEntity<ApiResponse<Object>> deleteTemplate(@PathVariable Long id) {
+        adminMarketingService.deleteTemplate(id);
+        return ResponseEntity.ok(ApiResponse.success("Template deleted", null));
     }
 
     @PostMapping("/campaigns/send")

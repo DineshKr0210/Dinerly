@@ -17,5 +17,6 @@ public class OfferResponse {
     private LocalDate endDate;
     private String status;
     private BigDecimal value;
+    private Long pointsCost;
     private Long redemptions;
 }

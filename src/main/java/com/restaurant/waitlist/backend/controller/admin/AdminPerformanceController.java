@@ -36,4 +36,16 @@ public class AdminPerformanceController {
         java.util.Map<String, Object> data = adminPerformanceService.getReviewsPerformance(period);
         return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", data));
     }
+
+    @GetMapping("/rewards-offers")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.admin.RewardsOffersPerformanceResponse>> rewardsOffersPerformance(
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(required = false) String period,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        com.restaurant.waitlist.backend.dto.response.admin.RewardsOffersPerformanceResponse resp = adminPerformanceService.getRewardsOffersPerformance(locationId, period, page, size);
+        return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", resp));
+    }
 }

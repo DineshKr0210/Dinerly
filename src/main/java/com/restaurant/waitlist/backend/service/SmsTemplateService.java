@@ -149,5 +149,41 @@ public class SmsTemplateService {
             smsTemplateRepository.save(approvedTemplate);
         }
     }
+
+    public com.restaurant.waitlist.backend.entity.SmsTemplate getTemplateById(Long id) {
+        return smsTemplateRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("SMS template not found id=" + id));
+    }
+
+    public String formatMessageByTemplateId(Long templateId, java.util.Map<String, String> params) {
+        com.restaurant.waitlist.backend.entity.SmsTemplate t = getTemplateById(templateId);
+        return formatCustomTemplate(t.getMessageTemplate(), params == null ? java.util.Collections.emptyMap() : params);
+    }
+
+    public String formatMessageForRestaurantByTemplateId(Long restaurantId, Long templateId, java.util.Map<String, String> params) {
+        com.restaurant.waitlist.backend.entity.SmsTemplate t = getTemplateById(templateId);
+        java.util.Map<String, String> p = params == null ? new java.util.HashMap<>() : new java.util.HashMap<>(params);
+        p.putIfAbsent("restaurantName", "Brothers Café");
+        return formatCustomTemplate(t.getMessageTemplate(), p);
+    }
+
+    public SmsTemplate createTemplate(String templateType, String messageTemplate, String description) {
+        if (smsTemplateRepository.findByTemplateType(templateType).isPresent()) {
+            throw new RuntimeException("Template type already exists: " + templateType);
+        }
+        SmsTemplate t = SmsTemplate.builder()
+                .templateType(templateType)
+                .messageTemplate(messageTemplate)
+                .description(description)
+                .build();
+        return smsTemplateRepository.save(t);
+    }
+
+    public void deleteTemplate(Long id) {
+        if (!smsTemplateRepository.existsById(id)) {
+            throw new RuntimeException("Template not found: " + id);
+        }
+        smsTemplateRepository.deleteById(id);
+    }
 }
 

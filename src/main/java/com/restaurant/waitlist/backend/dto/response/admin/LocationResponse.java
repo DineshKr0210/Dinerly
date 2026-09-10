@@ -20,4 +20,5 @@ public class LocationResponse {
     private String menuTemplate;
     private Integer seats;
     private Boolean locationOpen;
+    private String status;
 }

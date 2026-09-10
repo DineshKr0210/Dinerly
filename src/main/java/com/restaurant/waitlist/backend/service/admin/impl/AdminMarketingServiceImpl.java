@@ -43,6 +43,27 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
     }
 
     @Override
+    public SmsTemplateResponse createTemplate(String templateType, String messageTemplate, String description) {
+        com.restaurant.waitlist.backend.entity.SmsTemplate t = smsTemplateService.createTemplate(templateType, messageTemplate, description);
+        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
+                .restaurantId(0L)
+                .action("CREATE_SMS_TEMPLATE")
+                .details("Created SMS template type=" + templateType)
+                .build());
+        return SmsTemplateResponse.fromSmsTemplate(t);
+    }
+
+    @Override
+    public void deleteTemplate(Long id) {
+        smsTemplateService.deleteTemplate(id);
+        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
+                .restaurantId(0L)
+                .action("DELETE_SMS_TEMPLATE")
+                .details("Deleted SMS template id=" + id)
+                .build());
+    }
+
+    @Override
     public int sendCampaign(MarketingCampaignRequest request) {
         if (request.getPhoneNumbers() == null || request.getPhoneNumbers().isEmpty()) return 0;
         int sent = 0;

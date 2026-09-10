@@ -8,6 +8,7 @@ import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.CampaignRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import com.restaurant.waitlist.backend.service.SmsService;
+import com.restaurant.waitlist.backend.service.SmsTemplateService;
 import com.restaurant.waitlist.backend.service.admin.AdminCampaignService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
     private final CampaignRepository campaignRepository;
     private final WaitlistRepository waitlistRepository;
     private final SmsService smsService;
+    private final SmsTemplateService smsTemplateService;
     private final AuditLogRepository auditLogRepository;
 
     @Override
@@ -182,7 +184,15 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
             try {
                 String message = c.getMessage();
                 if ((message == null || message.isBlank()) && c.getTemplateId() != null) {
-                    message = "";
+                    try {
+                        if (c.getRestaurantId() != null) {
+                            message = smsTemplateService.formatMessageForRestaurantByTemplateId(c.getRestaurantId(), c.getTemplateId(), java.util.Map.of());
+                        } else {
+                            message = smsTemplateService.formatMessageByTemplateId(c.getTemplateId(), java.util.Map.of());
+                        }
+                    } catch (Exception ignored) {
+                        message = "";
+                    }
                 }
                 if (message != null && !message.isBlank()) {
                     smsService.sendSms(to, message);

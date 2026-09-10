@@ -25,4 +25,5 @@ public class OfferRequest {
     private String status;
 
     private BigDecimal value;
+    private Long pointsCost;
 }

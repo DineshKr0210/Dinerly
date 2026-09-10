@@ -49,7 +49,7 @@ public class AdminCampaignController {
 
     @PostMapping("/{id}/publish")
     public ResponseEntity<ApiResponse<CampaignResponse>> publish(@PathVariable Long id,
-                                                                 @RequestParam(defaultValue = "true") boolean immediate) throws Exception {
+                                                                 @RequestParam(defaultValue = "false") boolean immediate) throws Exception {
         CampaignResponse resp = adminCampaignService.publishCampaign(id, immediate);
         return ResponseEntity.ok(ApiResponse.success("Campaign published", resp));
     }

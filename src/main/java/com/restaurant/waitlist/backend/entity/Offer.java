@@ -48,4 +48,7 @@ public class Offer {
 
     @Column(name = "value")
     private BigDecimal value;
+
+    @Column(name = "points_cost")
+    private Long pointsCost;
 }

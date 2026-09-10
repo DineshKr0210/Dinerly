@@ -9,4 +9,6 @@ public interface AdminMarketingService {
     List<SmsTemplateResponse> listTemplates();
     SmsTemplateResponse updateTemplate(Long id, String messageTemplate, String description);
     int sendCampaign(MarketingCampaignRequest request);
+    SmsTemplateResponse createTemplate(String templateType, String messageTemplate, String description);
+    void deleteTemplate(Long id);
 }

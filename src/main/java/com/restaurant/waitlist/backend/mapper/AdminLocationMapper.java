@@ -18,6 +18,7 @@ public class AdminLocationMapper {
                 .menuTemplate(r.getMenuTemplate())
                 .seats(r.getSeats())
                 .locationOpen(r.getLocationOpen())
+                .status(r.getLocationOpen() != null && r.getLocationOpen() ? "OPEN" : "CLOSED")
                 .build();
     }
 }
