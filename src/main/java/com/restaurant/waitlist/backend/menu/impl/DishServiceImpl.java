@@ -87,7 +87,8 @@ public class DishServiceImpl implements DishService {
                 .findByNameIgnoreCaseAndStatus(dto.getCategoryName(), Status.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
-        List<Type> types = typeRepository.findByNameInAndStatusAndRestaurantId(dto.getTypeNames(), Status.ACTIVE, restaurant.getId());
+        List<DishType> requestedTypes = dto.getTypeNames().stream().map(t -> DishType.valueOf(t.toUpperCase())).collect(java.util.stream.Collectors.toList());
+        List<Type> types = typeRepository.findByNameInAndStatusAndRestaurantId(requestedTypes, Status.ACTIVE, restaurant.getId());
         if (types.size() != dto.getTypeNames().size()) {
             throw new ResourceNotFoundException("One or more dish types not found");
         }
@@ -125,7 +126,8 @@ public class DishServiceImpl implements DishService {
         Restaurant restaurant = restaurantRepository.findById(dto.getLocationId())
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found"));
 
-        List<Type> types = typeRepository.findByNameInAndStatusAndRestaurantId(dto.getTypeNames(), Status.ACTIVE, restaurant.getId());
+        List<DishType> requestedTypes = dto.getTypeNames().stream().map(t -> DishType.valueOf(t.toUpperCase())).collect(java.util.stream.Collectors.toList());
+        List<Type> types = typeRepository.findByNameInAndStatusAndRestaurantId(requestedTypes, Status.ACTIVE, restaurant.getId());
         if (types.size() != dto.getTypeNames().size()) {
             throw new BadRequestException("One or more dish types are invalid");
         }

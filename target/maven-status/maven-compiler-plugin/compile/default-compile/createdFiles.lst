@@ -73,6 +73,7 @@ com/restaurant/waitlist/backend/controller/RestaurantController.class
 com/restaurant/waitlist/backend/repository/TableRepository.class
 com/restaurant/waitlist/backend/dto/response/admin/OfferResponse.class
 com/restaurant/waitlist/backend/dto/request/RegisterRequest.class
+com/restaurant/waitlist/backend/repository/RedemptionRepositoryCustom.class
 com/restaurant/waitlist/backend/dto/response/WaitlistSettingsResponse$WaitlistSettingsResponseBuilder.class
 com/restaurant/waitlist/backend/dto/request/admin/ReviewReplyRequest$ReviewReplyRequestBuilder.class
 com/restaurant/waitlist/backend/controller/admin/AdminCustomerController.class
@@ -216,6 +217,7 @@ com/restaurant/waitlist/backend/controller/admin/AdminReportController.class
 com/restaurant/waitlist/backend/service/admin/impl/AdminReviewServiceImpl.class
 com/restaurant/waitlist/backend/dto/request/admin/MarketingCampaignRequest.class
 com/restaurant/waitlist/backend/dto/response/SmsHistoryResponse$SmsHistoryResponseBuilder.class
+com/restaurant/waitlist/backend/repository/RedemptionRepositoryImpl.class
 com/restaurant/waitlist/backend/repository/PasswordResetTokenRepository.class
 com/restaurant/waitlist/backend/dto/response/admin/AdminDashboardResponse.class
 com/restaurant/waitlist/backend/dto/response/admin/RedemptionResponse$RedemptionResponseBuilder.class

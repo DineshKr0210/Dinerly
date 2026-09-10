@@ -19,4 +19,5 @@ public class RedemptionResponse {
     private String guest;
     private LocalDateTime redeemedAt;
     private BigDecimal value;
+    private Long pointsRedeemed;
 }
