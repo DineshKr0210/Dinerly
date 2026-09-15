@@ -1,7 +1,9 @@
 package com.restaurant.waitlist.backend.controller.admin;
 
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
-import com.restaurant.waitlist.backend.dto.response.admin.WaitlistPerformanceSummary;
+import com.restaurant.waitlist.backend.dto.response.admin.ReviewsPerformanceResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.RewardsOffersPerformanceResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.WaitlistPerformanceResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminPerformanceService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,32 +22,33 @@ public class AdminPerformanceController {
 
     @GetMapping("/waitlist")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<WaitlistPerformanceSummary>> waitlistPerformance(
+    public ResponseEntity<ApiResponse<WaitlistPerformanceResponse>> waitlistPerformance(
             @RequestParam(required = false) Long locationId,
-            @RequestParam(required = false) String period
+            @RequestParam(required = false, defaultValue = "pastMonth") String period
     ) {
-        WaitlistPerformanceSummary summary = adminPerformanceService.getWaitlistPerformance(locationId, period);
-        return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", summary));
+        WaitlistPerformanceResponse response = adminPerformanceService.getWaitlistPerformance(locationId, period);
+        return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", response));
     }
 
     @GetMapping("/reviews")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> reviewsPerformance(
-            @RequestParam(required = false) String period
+    public ResponseEntity<ApiResponse<ReviewsPerformanceResponse>> reviewsPerformance(
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(required = false, defaultValue = "pastMonth") String period
     ) {
-        java.util.Map<String, Object> data = adminPerformanceService.getReviewsPerformance(period);
-        return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", data));
+        ReviewsPerformanceResponse response = adminPerformanceService.getReviewsPerformance(locationId, period);
+        return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", response));
     }
 
     @GetMapping("/rewards-offers")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.admin.RewardsOffersPerformanceResponse>> rewardsOffersPerformance(
+    public ResponseEntity<ApiResponse<RewardsOffersPerformanceResponse>> rewardsOffersPerformance(
             @RequestParam(required = false) Long locationId,
-            @RequestParam(required = false) String period,
+            @RequestParam(required = false, defaultValue = "pastMonth") String period,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        com.restaurant.waitlist.backend.dto.response.admin.RewardsOffersPerformanceResponse resp = adminPerformanceService.getRewardsOffersPerformance(locationId, period, page, size);
-        return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", resp));
+        RewardsOffersPerformanceResponse response = adminPerformanceService.getRewardsOffersPerformance(locationId, period, page, size);
+        return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", response));
     }
 }

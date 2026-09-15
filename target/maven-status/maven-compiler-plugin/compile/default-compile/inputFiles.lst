@@ -8,6 +8,7 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/ForgotPasswordRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/menu/mapper/CategoryMapper.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/entity/RewardTier.java
+/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/admin/ReviewsPerformanceResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/RestaurantRepository.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/menu/impl/GitHubImageServiceImpl.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/WaitlistSmsResult.java
@@ -21,6 +22,7 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/admin/OfferRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/entity/EmailVerificationToken.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/RedemptionRepositoryImpl.java
+/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/admin/AvailabilityResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/TwimlController.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/admin/MarketingCampaignRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/RestaurantResponse.java
@@ -160,6 +162,7 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/admin/AdminLocationService.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/LoginResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/admin/RewardSettingsRequest.java
+/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/admin/WaitlistPerformanceResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/UserResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/SendCallResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/repository/RedemptionRepositoryCustom.java

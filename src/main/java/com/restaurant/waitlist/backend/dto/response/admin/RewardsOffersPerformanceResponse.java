@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -13,24 +12,38 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RewardsOffersPerformanceResponse {
-    private long activeCampaigns;
-    private long guestsReached;
-    private long redemptions;
-    private BigDecimal revenueInfluenced;
-    private List<CampaignRow> campaigns;
+    private Summary summary;
+    private List<TrendPoint> trend;
+    private List<LeaderboardEntry> leaderboard;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class CampaignRow {
-        private Long id;
-        private String name;
-        private String channel;
-        private String audience;
-        private Integer reach;
-        private Integer redemptions;
-        private String status;
-        private java.time.LocalDateTime scheduledAt;
+    public static class Summary {
+        private long redemptions;
+        private long pointsRedeemed;
+        private long activeOffers;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TrendPoint {
+        private String date;
+        private String label;
+        private long value;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class LeaderboardEntry {
+        private String location;
+        private long redemptions;
+        private long pointsRedeemed;
+        private long activeOffers;
     }
 }

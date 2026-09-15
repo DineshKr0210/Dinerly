@@ -16,5 +16,19 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
 
     @Query("SELECT AVG(f.rating) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId")
     Double averageRatingByRestaurantId(Long restaurantId);
+
+    @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId")
+    long countByWaitlistRestaurantId(Long restaurantId);
+
+    @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId AND f.reply IS NOT NULL AND TRIM(f.reply) <> ''")
+    long countRepliedByWaitlistRestaurantId(Long restaurantId);
+
+    @Query(value = "SELECT DATE(f.created_at) AS day, COUNT(*) AS reviews " +
+            "FROM feedback f LEFT JOIN waitlist w ON f.waitlist_id = w.id " +
+            "WHERE (:restaurantId IS NULL OR w.restaurant_id = :restaurantId) " +
+            "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(f.created_at) >= CAST(:fromDate AS DATE)) " +
+            "AND (CAST(:toDate AS DATE) IS NULL OR DATE(f.created_at) <= CAST(:toDate AS DATE)) " +
+            "GROUP BY DATE(f.created_at) ORDER BY DATE(f.created_at)", nativeQuery = true)
+    java.util.List<Object[]> countReviewsByDay(Long restaurantId, java.sql.Date fromDate, java.sql.Date toDate);
 }
 

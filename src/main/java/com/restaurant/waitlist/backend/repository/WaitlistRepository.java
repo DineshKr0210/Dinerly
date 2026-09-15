@@ -106,6 +106,16 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                                             @Param("toDate") java.sql.Date toDate,
                                                             @Param("limit") int limit);
 
+    @Query(value = "SELECT DATE(w.joined_at) AS day, COUNT(*) AS joins " +
+            "FROM waitlist w " +
+            "WHERE (:restaurantId IS NULL OR w.restaurant_id = :restaurantId) " +
+            "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+            "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE)) " +
+            "GROUP BY DATE(w.joined_at) ORDER BY DATE(w.joined_at)", nativeQuery = true)
+    java.util.List<Object[]> countJoinsByDay(@Param("restaurantId") Long restaurantId,
+                                            @Param("fromDate") java.sql.Date fromDate,
+                                            @Param("toDate") java.sql.Date toDate);
+
     @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, MAX(DATE(w.joined_at)) as lastVisit " +
             "FROM waitlist w " +
             "WHERE (:restaurantId IS NULL OR w.restaurant_id = :restaurantId) " +
