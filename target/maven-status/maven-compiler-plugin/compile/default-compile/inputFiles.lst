@@ -40,7 +40,6 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/WaitlistController.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/CreateSmsTemplateRequest.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/entity/User.java
-/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/GuestPointsController.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/admin/CampaignResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/admin/LocationResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/menu/dto/DishDTO.java
@@ -62,7 +61,6 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/admin/ReceiptClaimResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/response/StaffResponse.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/dto/request/UpdateWaitlistSettingsRequest.java
-/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/GuestRewardControllerV2.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/admin/impl/AdminRewardServiceImpl.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/InboundVoiceService.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/ReceiptClaimService.java
@@ -110,7 +108,6 @@
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/menu/model/Category.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/GuestOfferService.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/admin/AdminPerformanceController.java
-/Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/controller/GuestOfferControllerV2.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/menu/exceptions/ResourceNotFoundException.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/admin/impl/AdminCampaignServiceImpl.java
 /Users/dineshkumar/Downloads/backend/src/main/java/com/restaurant/waitlist/backend/service/admin/impl/AdminMarketingServiceImpl.java

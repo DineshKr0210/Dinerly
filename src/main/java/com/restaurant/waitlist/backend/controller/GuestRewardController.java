@@ -21,7 +21,7 @@ import java.io.IOException;
 @RequestMapping("/api/rewards")
 @RequiredArgsConstructor
 @Slf4j
-public class GuestRewardControllerV2 {
+public class GuestRewardController {
 
     private final GuestRewardsService guestRewardsService;
     private final ReceiptClaimService receiptClaimService;
