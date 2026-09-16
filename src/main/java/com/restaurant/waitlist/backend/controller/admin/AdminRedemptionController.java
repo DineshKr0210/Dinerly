@@ -12,13 +12,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/redemptions")
@@ -31,28 +30,115 @@ public class AdminRedemptionController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<RedemptionResponse>>> list(
             @RequestParam(required = false) Long locationId,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<RedemptionResponse> resp = adminRedemptionService.listRedemptions(locationId, from, to, pageable);
+        Page<RedemptionResponse> resp = adminRedemptionService.listRedemptions(locationId, status, from, to, pageable);
         return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", resp));
+    }
+
+    @GetMapping("/{redemptionId}")
+    public ResponseEntity<ApiResponse<RedemptionResponse>> getById(@PathVariable Long redemptionId) {
+        RedemptionResponse resp = adminRedemptionService.getRedemptionById(redemptionId);
+        return ResponseEntity.ok(ApiResponse.success("Redemption retrieved successfully", resp));
+    }
+
+    @GetMapping("/by-code/{code}")
+    public ResponseEntity<ApiResponse<RedemptionResponse>> getByCode(@PathVariable String code) {
+        RedemptionResponse resp = adminRedemptionService.getRedemptionByCode(code);
+        return ResponseEntity.ok(ApiResponse.success("Redemption retrieved by code successfully", resp));
+    }
+
+    @GetMapping("/by-status/{status}")
+    public ResponseEntity<ApiResponse<Page<RedemptionResponse>>> getByStatus(
+            @PathVariable String status,
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<RedemptionResponse> resp = adminRedemptionService.getByStatus(status, locationId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Redemptions retrieved by status successfully", resp));
+    }
+
+    @GetMapping("/expired-codes")
+    public ResponseEntity<ApiResponse<Page<RedemptionResponse>>> getExpiredCodes(
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<RedemptionResponse> resp = adminRedemptionService.getExpiredCodes(locationId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Expired codes retrieved successfully", resp));
+    }
+
+    @PutMapping("/{redemptionId}/cancel")
+    public ResponseEntity<ApiResponse<RedemptionResponse>> cancelRedemption(
+            @PathVariable Long redemptionId,
+            @RequestParam(required = false) String reason) {
+        RedemptionResponse resp = adminRedemptionService.cancelRedemption(redemptionId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Redemption cancelled successfully", resp));
+    }
+
+    @PutMapping("/{redemptionId}/expire")
+    public ResponseEntity<ApiResponse<RedemptionResponse>> expireCode(@PathVariable Long redemptionId) {
+        RedemptionResponse resp = adminRedemptionService.expireRedemption(redemptionId);
+        return ResponseEntity.ok(ApiResponse.success("Redemption code expired successfully", resp));
+    }
+
+    @PostMapping("/expire-bulk")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> expireBulk(@RequestBody Map<String, Object> request) {
+        @SuppressWarnings("unchecked")
+        List<Long> redemptionIds = (List<Long>) request.get("redemptionIds");
+        String reason = (String) request.get("reason");
+        Map<String, Object> resp = adminRedemptionService.expireBulkRedemptions(redemptionIds, reason);
+        return ResponseEntity.ok(ApiResponse.success("Bulk expiry completed successfully", resp));
     }
 
     @GetMapping(value = "/export", produces = "text/csv")
     public ResponseEntity<byte[]> export(
             @RequestParam(required = false) Long locationId,
+            @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
     ) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        adminRedemptionService.exportRedemptionsCsv(locationId, from, to, out);
+        adminRedemptionService.exportRedemptionsCsv(locationId, status, from, to, out);
         byte[] csv = out.toByteArray();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=redemptions.csv")
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(csv);
+    }
+
+    @GetMapping("/statistics")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getStatistics(
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+        Map<String, Object> resp = adminRedemptionService.getStatistics(locationId, from, to);
+        return ResponseEntity.ok(ApiResponse.success("Statistics retrieved successfully", resp));
+    }
+
+    @GetMapping("/by-offer/{offerId}")
+    public ResponseEntity<ApiResponse<Page<RedemptionResponse>>> getByOffer(
+            @PathVariable Long offerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<RedemptionResponse> resp = adminRedemptionService.getByOffer(offerId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Redemptions retrieved by offer successfully", resp));
+    }
+
+    @GetMapping("/by-user/{userId}")
+    public ResponseEntity<ApiResponse<Page<RedemptionResponse>>> getByUser(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<RedemptionResponse> resp = adminRedemptionService.getByUser(userId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Redemptions retrieved by user successfully", resp));
     }
 }

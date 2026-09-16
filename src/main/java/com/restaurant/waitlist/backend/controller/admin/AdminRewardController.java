@@ -16,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/rewards")
@@ -51,6 +52,20 @@ public class AdminRewardController {
         return ResponseEntity.ok(ApiResponse.success("Tier deleted successfully"));
     }
 
+    @GetMapping("/tiers/{tierId}")
+    public ResponseEntity<ApiResponse<RewardTierResponse>> getTierById(@PathVariable Long tierId) {
+        RewardTierResponse resp = adminRewardService.getTierById(tierId);
+        return ResponseEntity.ok(ApiResponse.success("Tier retrieved successfully", resp));
+    }
+
+    @PutMapping("/tiers/{tierId}/duplicate")
+    public ResponseEntity<ApiResponse<RewardTierResponse>> duplicateTier(
+            @PathVariable Long tierId,
+            @RequestParam(required = false) String newName) {
+        RewardTierResponse resp = adminRewardService.duplicateTier(tierId, newName);
+        return ResponseEntity.ok(ApiResponse.success("Tier duplicated successfully", resp));
+    }
+
     @GetMapping("/ways-to-earn")
     public ResponseEntity<ApiResponse<List<WayToEarnRequest>>> waysToEarn() {
         List<WayToEarnRequest> resp = adminRewardService.listWaysToEarn();
@@ -73,5 +88,33 @@ public class AdminRewardController {
     public ResponseEntity<ApiResponse<RewardSettingsRequest>> updateSettings(@Valid @RequestBody RewardSettingsRequest request) {
         RewardSettingsRequest resp = adminRewardService.updateSettings(request);
         return ResponseEntity.ok(ApiResponse.success("Settings updated successfully", resp));
+    }
+
+    @GetMapping("/statistics")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getStatistics(
+            @RequestParam(required = false) Long restaurantId) {
+        Map<String, Object> resp = adminRewardService.getStatistics(restaurantId);
+        return ResponseEntity.ok(ApiResponse.success("Statistics retrieved successfully", resp));
+    }
+
+    @GetMapping("/user-tier-distribution")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUserTierDistribution(
+            @RequestParam(required = false) Long restaurantId) {
+        Map<String, Object> resp = adminRewardService.getUserTierDistribution(restaurantId);
+        return ResponseEntity.ok(ApiResponse.success("User tier distribution retrieved successfully", resp));
+    }
+
+    @DeleteMapping("/ways-to-earn/{ruleId}")
+    public ResponseEntity<ApiResponse<Object>> deleteWayToEarn(@PathVariable Long ruleId) {
+        adminRewardService.deleteWayToEarn(ruleId);
+        return ResponseEntity.ok(ApiResponse.success("Way to earn deleted successfully"));
+    }
+
+    @PutMapping("/ways-to-earn/{ruleId}")
+    public ResponseEntity<ApiResponse<WayToEarnRequest>> updateWayToEarn(
+            @PathVariable Long ruleId,
+            @Valid @RequestBody WayToEarnRequest request) {
+        WayToEarnRequest resp = adminRewardService.updateWayToEarn(ruleId, request);
+        return ResponseEntity.ok(ApiResponse.success("Way to earn updated successfully", resp));
     }
 }
