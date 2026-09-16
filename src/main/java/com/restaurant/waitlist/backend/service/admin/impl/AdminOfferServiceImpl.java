@@ -39,21 +39,11 @@ public class AdminOfferServiceImpl implements AdminOfferService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .status(request.getStatus())
-                .discountType(request.getDiscountType() != null ? Offer.DiscountType.valueOf(request.getDiscountType()) : null)
                 .discountValue(request.getDiscountValue())
                 .discountLabel(request.getDiscountLabel())
                 .description(request.getDescription())
-                .restrictions(request.getRestrictions())
                 .photoUrl(request.getPhotoUrl())
-                .rating(request.getRating())
-                .ratingCount(request.getRatingCount())
-                .category(request.getCategory())
                 .perUserLimit(request.getPerUserLimit())
-                .perUserDailyLimit(request.getPerUserDailyLimit())
-                .inventory(request.getInventory())
-                .originalPrice(request.getOriginalPrice())
-                .value(request.getValue())
-                .pointsCost(request.getPointsCost())
                 .build();
         Offer saved = offerRepository.save(o);
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
@@ -78,21 +68,11 @@ public class AdminOfferServiceImpl implements AdminOfferService {
         o.setStartDate(request.getStartDate());
         o.setEndDate(request.getEndDate());
         o.setStatus(request.getStatus());
-        o.setDiscountType(request.getDiscountType() != null ? Offer.DiscountType.valueOf(request.getDiscountType()) : null);
         o.setDiscountValue(request.getDiscountValue());
         o.setDiscountLabel(request.getDiscountLabel());
         o.setDescription(request.getDescription());
-        o.setRestrictions(request.getRestrictions());
         o.setPhotoUrl(request.getPhotoUrl());
-        o.setRating(request.getRating());
-        o.setRatingCount(request.getRatingCount());
-        o.setCategory(request.getCategory());
         o.setPerUserLimit(request.getPerUserLimit());
-        o.setPerUserDailyLimit(request.getPerUserDailyLimit());
-        o.setInventory(request.getInventory());
-        o.setOriginalPrice(request.getOriginalPrice());
-        o.setValue(request.getValue());
-        o.setPointsCost(request.getPointsCost());
         Offer saved = offerRepository.save(o);
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
                 .restaurantId(r.getId())
@@ -125,21 +105,11 @@ public class AdminOfferServiceImpl implements AdminOfferService {
                 .startDate(o.getStartDate())
                 .endDate(o.getEndDate())
                 .status(o.getStatus())
-                .discountType(o.getDiscountType() != null ? o.getDiscountType().toString() : null)
                 .discountValue(o.getDiscountValue())
                 .discountLabel(o.getDiscountLabel())
                 .description(o.getDescription())
-                .restrictions(o.getRestrictions())
                 .photoUrl(o.getPhotoUrl())
-                .rating(o.getRating())
-                .ratingCount(o.getRatingCount())
-                .category(o.getCategory())
                 .perUserLimit(o.getPerUserLimit())
-                .perUserDailyLimit(o.getPerUserDailyLimit())
-                .inventory(o.getInventory())
-                .originalPrice(o.getOriginalPrice())
-                .value(o.getValue())
-                .pointsCost(o.getPointsCost())
                 .redemptions(redemptions)
                 .build();
     }
@@ -175,21 +145,11 @@ public class AdminOfferServiceImpl implements AdminOfferService {
             .startDate(original.getStartDate())
             .endDate(original.getEndDate())
             .status("INACTIVE")
-            .discountType(original.getDiscountType())
             .discountValue(original.getDiscountValue())
             .discountLabel(original.getDiscountLabel())
             .description(original.getDescription())
-            .restrictions(original.getRestrictions())
             .photoUrl(original.getPhotoUrl())
-            .rating(original.getRating())
-            .ratingCount(original.getRatingCount())
-            .category(original.getCategory())
             .perUserLimit(original.getPerUserLimit())
-            .perUserDailyLimit(original.getPerUserDailyLimit())
-            .inventory(original.getInventory())
-            .originalPrice(original.getOriginalPrice())
-            .value(original.getValue())
-            .pointsCost(original.getPointsCost())
             .build();
         duplicate = offerRepository.save(duplicate);
         return map(duplicate);

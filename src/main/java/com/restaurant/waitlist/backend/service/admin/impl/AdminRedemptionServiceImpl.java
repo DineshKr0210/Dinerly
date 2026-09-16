@@ -31,7 +31,7 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
         int page = 0;
         int size = 500;
         try (PrintWriter writer = new PrintWriter(out)) {
-            writer.println("id,itemRedeemed,location,guest,redeemedAt,value,pointsRedeemed");
+            writer.println("id,itemRedeemed,location,guest,mobileNumber,redeemedAt,value");
             org.springframework.data.domain.Page<Redemption> p;
             do {
                 p = redemptionRepository.findFiltered(locationId, from, to, org.springframework.data.domain.PageRequest.of(page, size));
@@ -41,9 +41,9 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
                             r.getOffer() != null ? r.getOffer().getName().replaceAll(",", " ") : "",
                             r.getOffer() != null && r.getOffer().getRestaurant() != null ? r.getOffer().getRestaurant().getName().replaceAll(",", " ") : "",
                             r.getGuestName() != null ? r.getGuestName().replaceAll(",", " ") : "",
+                            r.getGuestPhone() != null ? r.getGuestPhone() : "",
                             r.getRedeemedAt() != null ? r.getRedeemedAt().toString() : "",
-                                r.getValue() != null ? r.getValue().toPlainString() : "0",
-                                r.getOffer() != null && r.getOffer().getPointsCost() != null ? r.getOffer().getPointsCost().toString() : "0"
+                                r.getValue() != null ? r.getValue().toPlainString() : "0"
                     );
                     writer.println(line);
                 }
@@ -59,9 +59,10 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
         resp.setItemRedeemed(r.getOffer() != null ? r.getOffer().getName() : null);
         resp.setLocation(r.getOffer() != null && r.getOffer().getRestaurant() != null ? r.getOffer().getRestaurant().getName() : null);
         resp.setGuest(r.getGuestName());
+        resp.setMobileNumber(r.getGuestPhone());
         resp.setRedeemedAt(r.getRedeemedAt());
         resp.setValue(r.getValue());
-        resp.setPointsRedeemed(r.getOffer() != null ? r.getOffer().getPointsCost() : null);
+        resp.setPointsRedeemed(null);
         return resp;
     }
 

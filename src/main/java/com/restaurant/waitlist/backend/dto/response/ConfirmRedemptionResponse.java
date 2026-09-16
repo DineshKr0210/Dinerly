@@ -15,6 +15,7 @@ public class ConfirmRedemptionResponse {
     private String offerDescription;
     private Long userId;
     private String userEmail;
+    private String mobileNumber;
     private Long offerId;
     private String discountType;
     private java.math.BigDecimal discountValue;
