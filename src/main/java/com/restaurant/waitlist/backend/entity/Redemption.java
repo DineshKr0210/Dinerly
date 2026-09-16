@@ -6,12 +6,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@jakarta.persistence.Table(name = "redemptions")
+@jakarta.persistence.Table(name = "redemptions", uniqueConstraints = {
+    @UniqueConstraint(columnNames = "redemption_code")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -40,14 +43,28 @@ public class Redemption {
 
     @Column(name = "value")
     private BigDecimal value;
-    
-    // Explicit getters in case Lombok annotation processing isn't active
-    public Long getId() { return id; }
-    public Offer getOffer() { return offer; }
-    public Long getRestaurantId() { return restaurantId; }
-    public String getGuestName() { return guestName; }
-    public String getGuestPhone() { return guestPhone; }
-    public LocalDateTime getRedeemedAt() { return redeemedAt; }
-    public BigDecimal getValue() { return value; }
 
+    // Phase 2: 6-digit redemption code fields
+    @Column(name = "redemption_code", unique = true, length = 6)
+    private String redemptionCode; // Auto-generated 6-digit code
+
+    @Column(name = "code_expires_at")
+    private LocalDateTime codeExpiresAt; // 1-hour TTL
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private RedemptionStatus status; // GENERATED, COMPLETED, EXPIRED, CANCELLED
+
+    @Column(name = "user_id")
+    private Long userId; // Track which guest redeemed
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    public enum RedemptionStatus {
+        GENERATED,      // Code generated, shown to guest
+        COMPLETED,      // Staff entered code on POS
+        EXPIRED,        // Code TTL exceeded
+        CANCELLED       // Guest cancelled before use
+    }
 }

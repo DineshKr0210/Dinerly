@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.restaurant.waitlist.backend.service.admin.impl.AdminPerformanceServiceImplTest
--------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.959 s -- in com.restaurant.waitlist.backend.service.admin.impl.AdminPerformanceServiceImplTest
