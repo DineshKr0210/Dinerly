@@ -7,4 +7,5 @@ import lombok.Data;
 public class RedeemOfferRequest {
     @NotNull
     private Long offerId;
+    private Long locationId;
 }

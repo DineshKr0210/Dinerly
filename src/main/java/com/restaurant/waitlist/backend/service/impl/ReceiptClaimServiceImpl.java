@@ -87,7 +87,7 @@ public class ReceiptClaimServiceImpl implements ReceiptClaimService {
         // Auto-approve and credit points if enabled
         Long newBalance = pointsService.getBalance(userId);
         if (autoApproveReceipts) {
-            pointsService.credit(userId, pointsToClaim, "Receipt claim approved: " + fileUrl, "receipt_claim", claim.getId());
+            pointsService.credit(userId, pointsToClaim, "Receipt claim approved: " + fileUrl, "receipt_claim", claim.getId(), "SYSTEM");
             claim.setApprovedAt(LocalDateTime.now());
             receiptClaimRepository.save(claim);
             newBalance = pointsService.getBalance(userId);
@@ -128,7 +128,7 @@ public class ReceiptClaimServiceImpl implements ReceiptClaimService {
 
         // Credit points
         pointsService.credit(claim.getUserId(), claim.getPointsClaimed(), 
-            "Receipt approved: " + claim.getFileUrl(), "receipt_claim", receiptClaimId);
+            "Receipt approved: " + claim.getFileUrl(), "receipt_claim", receiptClaimId, "SYSTEM");
 
         // Update receipt
         claim.setStatus(ReceiptClaim.ClaimStatus.APPROVED);

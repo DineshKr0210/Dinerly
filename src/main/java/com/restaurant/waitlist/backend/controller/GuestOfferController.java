@@ -40,7 +40,7 @@ public class GuestOfferController {
                 offers = guestOfferService.getOffersByLocation(locationId, userId, pageable);
             }
 
-            return ResponseEntity.ok(ApiResponse.success(offers));
+            return ResponseEntity.ok(ApiResponse.success("Offers retrieved successfully", offers));
         } catch (Exception e) {
             log.error("Error fetching offers", e);
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -52,7 +52,7 @@ public class GuestOfferController {
         try {
             Long userId = getCurrentUserId();
             GuestOfferResponse offer = guestOfferService.getOfferDetail(id, userId);
-            return ResponseEntity.ok(ApiResponse.success(offer));
+            return ResponseEntity.ok(ApiResponse.success("Offer details retrieved successfully", offer));
         } catch (Exception e) {
             log.error("Error fetching offer detail", e);
             return ResponseEntity.notFound().build();
@@ -63,20 +63,16 @@ public class GuestOfferController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RedeemOfferResponse>> redeem(
         @PathVariable Long id,
-        @RequestParam(required = false) Long restaurantId,
-        @RequestBody(required = false) RedeemOfferRequest req
+        @RequestParam(required = false) Long locationId
     ) {
         try {
             Long userId = getCurrentUserId();
-            if (restaurantId == null && req != null) {
-                restaurantId = req.getLocationId() != null ? req.getLocationId() : 1L; // Default to 1 if not provided
-            }
-            if (restaurantId == null) {
-                restaurantId = 1L; // Default restaurant
+            if (locationId == null) {
+                locationId = 1L; // Default restaurant
             }
 
-            RedeemOfferResponse response = guestOfferService.redeemOffer(id, userId, restaurantId);
-            return ResponseEntity.ok(ApiResponse.success(response));
+            RedeemOfferResponse response = guestOfferService.redeemOffer(id, userId, locationId);
+            return ResponseEntity.ok(ApiResponse.success("Offer redeemed successfully", response));
         } catch (Exception e) {
             log.error("Error redeeming offer", e);
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -85,10 +81,10 @@ public class GuestOfferController {
 
     @PostMapping("/redeem/{code}/confirm")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<String>> confirmCode(@PathVariable String code) {
+    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> confirmCode(@PathVariable String code) {
         try {
-            guestOfferService.validateAndCompleteCode(code);
-            return ResponseEntity.ok(ApiResponse.success("Code validated and redeemed"));
+            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(code);
+            return ResponseEntity.ok(ApiResponse.success("Code validated and redeemed", response));
         } catch (Exception e) {
             log.error("Error validating code", e);
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

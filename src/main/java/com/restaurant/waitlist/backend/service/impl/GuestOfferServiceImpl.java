@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.service.impl;
 
 import com.restaurant.waitlist.backend.dto.request.RedeemOfferRequest;
+import com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse;
 import com.restaurant.waitlist.backend.dto.response.GuestOfferResponse;
 import com.restaurant.waitlist.backend.dto.response.RedeemOfferResponse;
 import com.restaurant.waitlist.backend.entity.Offer;
@@ -119,7 +120,7 @@ public class GuestOfferServiceImpl implements GuestOfferService {
 
     @Override
     @Transactional
-    public void validateAndCompleteCode(String code) {
+    public ConfirmRedemptionResponse validateAndCompleteCode(String code) {
         Optional<Redemption> redemptionOpt = redemptionRepository.findValidRedemptionCode(code);
         if (redemptionOpt.isEmpty()) {
             throw new IllegalArgumentException("Invalid or expired redemption code");
@@ -129,7 +130,24 @@ public class GuestOfferServiceImpl implements GuestOfferService {
         redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
         redemptionRepository.save(redemption);
 
+        Offer offer = redemption.getOffer();
+
         log.info("Redemption code {} marked as completed", code);
+
+        return ConfirmRedemptionResponse.builder()
+                .redemptionId(redemption.getId())
+                .redemptionCode(code)
+                .status(redemption.getStatus().name())
+                .offerName(offer.getName())
+                .offerDescription(offer.getDescription())
+                .userId(redemption.getUserId())
+                .offerId(offer.getId())
+                .discountType(offer.getDiscountType() != null ? offer.getDiscountType().name() : "UNKNOWN")
+                .discountValue(offer.getDiscountValue() != null ? offer.getDiscountValue() : redemption.getValue())
+                .discountLabel(offer.getDiscountLabel() != null ? offer.getDiscountLabel() : "Discount")
+                .confirmedAt(LocalDateTime.now())
+                .codeExpiresAt(redemption.getCodeExpiresAt())
+                .build();
     }
 
     @Override

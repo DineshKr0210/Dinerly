@@ -42,7 +42,7 @@ public class GuestRewardController {
             }
 
             GuestRewardsProfileResponse profile = guestRewardsService.getRewardsProfile(userId, restaurantId);
-            return ResponseEntity.ok(ApiResponse.success(profile));
+            return ResponseEntity.ok(ApiResponse.success("Rewards profile retrieved successfully", profile));
         } catch (Exception e) {
             log.error("Error fetching rewards profile", e);
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -62,7 +62,7 @@ public class GuestRewardController {
             }
 
             RedeemRewardResponse response = guestRewardsService.redeemReward(userId, rewardId, req.getRestaurantId());
-            return ResponseEntity.ok(ApiResponse.success(response));
+            return ResponseEntity.ok(ApiResponse.success("Reward redeemed successfully", response));
         } catch (Exception e) {
             log.error("Error redeeming reward", e);
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -84,7 +84,7 @@ public class GuestRewardController {
             }
 
             ClaimReceiptResponse response = receiptClaimService.claimReceipt(userId, restaurantId, file, receiptAmount, receiptDate);
-            return ResponseEntity.ok(ApiResponse.success(response));
+            return ResponseEntity.ok(ApiResponse.success("Receipt claimed successfully", response));
         } catch (IOException e) {
             log.error("Error processing receipt file", e);
             return ResponseEntity.badRequest().body(ApiResponse.error("Error processing file: " + e.getMessage()));

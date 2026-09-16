@@ -44,7 +44,7 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
     Optional<Object> findByRedemptionCode(String code);
 
     @Query("SELECT COUNT(r) FROM Redemption r WHERE r.offer.id = :offerId " +
-            "AND r.userId = :userId AND FUNCTION('DATE', r.createdAt) = CURRENT_DATE")
+            "AND r.userId = :userId AND FUNCTION('DATE', r.redeemedAt) = CURRENT_DATE")
     long countTodayRedemptionsByUserAndOffer(Long offerId, Long userId);
 
     @Query("SELECT COUNT(r) FROM Redemption r WHERE r.offer.id = :offerId AND r.userId = :userId")

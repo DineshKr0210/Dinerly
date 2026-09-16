@@ -45,7 +45,7 @@ public class AdminPointsController {
         Long amount = Long.valueOf(req.get("amount").toString());
         String reason = (String) req.get("reason");
         log.info("Admin debit points: userId={}, amount={}", userId, amount);
-        long newBalance = pointsService.debit(userId, amount, reason, "admin");
+        long newBalance = pointsService.debit(userId, amount, reason, "admin", null);
         return ResponseEntity.ok().body(ApiResponse.success("Points debited successfully", Map.of(
             "userId", userId,
             "pointsDeducted", amount,
@@ -62,7 +62,7 @@ public class AdminPointsController {
             "totalPointsDistributed", req.getAmount() * req.getUserIds().size()
         );
         for (Long uid : req.getUserIds()) {
-            pointsService.credit(uid, req.getAmount(), req.getReason(), "ADMIN_BULK", null, "admin");
+            pointsService.credit(uid, req.getAmount(), req.getReason(), "ADMIN_BULK", null, "ADMIN");
         }
         return ResponseEntity.ok().body(ApiResponse.success("Bulk credit completed successfully", result));
     }
@@ -71,7 +71,7 @@ public class AdminPointsController {
     public ResponseEntity<?> reverse(@RequestBody ReversePointsRequest req) {
         log.info("Admin reverse points: userId={}, amount={}", req.getUserId(), req.getAmount());
         // reverse by debiting the amount with reason
-        long newBalance = pointsService.debit(req.getUserId(), req.getAmount(), req.getReason(), "admin");
+        long newBalance = pointsService.debit(req.getUserId(), req.getAmount(), req.getReason(), "admin", null);
         return ResponseEntity.ok().body(ApiResponse.success("Points reversed successfully", Map.of(
             "userId", req.getUserId(),
             "pointsReversed", req.getAmount(),

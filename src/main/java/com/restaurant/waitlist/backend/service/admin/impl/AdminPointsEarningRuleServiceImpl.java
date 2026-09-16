@@ -6,7 +6,6 @@ import com.restaurant.waitlist.backend.entity.PointsEarningRule;
 import com.restaurant.waitlist.backend.repository.PointsEarningRuleRepository;
 import com.restaurant.waitlist.backend.service.admin.AdminPointsEarningRuleService;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -17,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,22 +26,12 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
     private static final Logger log = LoggerFactory.getLogger(AdminPointsEarningRuleServiceImpl.class);
     
     private final PointsEarningRuleRepository pointsEarningRuleRepository;
-    private final ModelMapper modelMapper;
 
     @Override
     public Page<PointsEarningRuleResponse> listEarningRules(Long restaurantId, String action, Pageable pageable) {
         log.info("Listing earning rules - restaurantId: {}, action: {}", restaurantId, action);
-        Page<PointsEarningRule> rules;
-        
-        if (restaurantId != null && action != null) {
-            rules = pointsEarningRuleRepository.findByRestaurantIdAndAction(restaurantId, action, pageable);
-        } else if (restaurantId != null) {
-            rules = pointsEarningRuleRepository.findByRestaurantId(restaurantId, pageable);
-        } else {
-            rules = pointsEarningRuleRepository.findAll(pageable);
-        }
-        
-        return rules.map(rule -> modelMapper.map(rule, PointsEarningRuleResponse.class));
+        Page<PointsEarningRule> rules = pointsEarningRuleRepository.findAll(pageable);
+        return rules.map(this::map);
     }
 
     @Override
@@ -49,15 +39,22 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
         log.info("Getting earning rule - ruleId: {}", ruleId);
         PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuntimeException("Earning rule not found"));
-        return modelMapper.map(rule, PointsEarningRuleResponse.class);
+        return map(rule);
     }
 
     @Override
     public PointsEarningRuleResponse createEarningRule(PointsEarningRuleRequest request) {
-        log.info("Creating earning rule - restaurantId: {}, action: {}", request.getRestaurantId(), request.getAction());
-        PointsEarningRule rule = modelMapper.map(request, PointsEarningRule.class);
+        log.info("Creating earning rule - action: {}", request.getAction());
+        PointsEarningRule rule = PointsEarningRule.builder()
+                .action(request.getAction())
+                .pointsValue(request.getPointsValue())
+                .description(request.getDescription())
+                .icon(request.getIcon())
+                .clickable(request.getClickable() != null && request.getClickable())
+                .actionUrl(request.getActionUrl())
+                .build();
         rule = pointsEarningRuleRepository.save(rule);
-        return modelMapper.map(rule, PointsEarningRuleResponse.class);
+        return map(rule);
     }
 
     @Override
@@ -66,9 +63,14 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
         PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuntimeException("Earning rule not found"));
         
-        modelMapper.map(request, rule);
+        rule.setAction(request.getAction());
+        rule.setPointsValue(request.getPointsValue());
+        rule.setDescription(request.getDescription());
+        rule.setIcon(request.getIcon());
+        rule.setClickable(request.getClickable() != null && request.getClickable());
+        rule.setActionUrl(request.getActionUrl());
         rule = pointsEarningRuleRepository.save(rule);
-        return modelMapper.map(rule, PointsEarningRuleResponse.class);
+        return map(rule);
     }
 
     @Override
@@ -80,10 +82,8 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
     @Override
     public List<PointsEarningRuleResponse> getByAction(Long restaurantId, String action) {
         log.info("Getting rules by action - action: {}", action);
-        List<PointsEarningRule> rules = pointsEarningRuleRepository.findByRestaurantIdAndAction(restaurantId, action);
-        return rules.stream()
-                .map(rule -> modelMapper.map(rule, PointsEarningRuleResponse.class))
-                .collect(Collectors.toList());
+        Optional<PointsEarningRule> rule = pointsEarningRuleRepository.findByRestaurantIdAndAction(restaurantId, action);
+        return rule.map(r -> List.of(map(r))).orElse(List.of());
     }
 
     @Override
@@ -104,9 +104,9 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
         PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuntimeException("Earning rule not found"));
         
-        rule.setActive(!rule.getActive());
+        rule.setClickable(!Boolean.TRUE.equals(rule.getClickable()));
         rule = pointsEarningRuleRepository.save(rule);
-        return modelMapper.map(rule, PointsEarningRuleResponse.class);
+        return map(rule);
     }
 
     @Override
@@ -141,5 +141,20 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
             "totalPointsDistributed", 0L,
             "averagePointsPerRule", 0L
         );
+    }
+
+    private PointsEarningRuleResponse map(PointsEarningRule r) {
+        return PointsEarningRuleResponse.builder()
+                .id(r.getId())
+                .restaurantId(r.getRestaurant() != null ? r.getRestaurant().getId() : null)
+                .action(r.getAction())
+                .pointsValue(r.getPointsValue())
+                .description(r.getDescription())
+                .icon(r.getIcon())
+                .clickable(r.getClickable())
+                .actionUrl(r.getActionUrl())
+                .createdAt(r.getCreatedAt())
+                .updatedAt(r.getUpdatedAt())
+                .build();
     }
 }

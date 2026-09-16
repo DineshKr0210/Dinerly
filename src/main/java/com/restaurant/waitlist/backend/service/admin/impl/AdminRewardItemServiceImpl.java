@@ -3,7 +3,9 @@ package com.restaurant.waitlist.backend.service.admin.impl;
 import com.restaurant.waitlist.backend.dto.request.admin.RewardItemRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.RewardItemResponse;
 import com.restaurant.waitlist.backend.entity.RewardItem;
+import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.repository.RewardItemRepository;
+import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.service.admin.AdminRewardItemService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -25,6 +27,7 @@ public class AdminRewardItemServiceImpl implements AdminRewardItemService {
     private static final Logger log = LoggerFactory.getLogger(AdminRewardItemServiceImpl.class);
     
     private final RewardItemRepository rewardItemRepository;
+    private final RestaurantRepository restaurantRepository;
     
     private RewardItemResponse mapToResponse(RewardItem item) {
         if (item == null) return null;
@@ -36,6 +39,7 @@ public class AdminRewardItemServiceImpl implements AdminRewardItemService {
                 .icon(item.getIcon())
                 .category(item.getCategory())
                 .available(item.getAvailable())
+                .restaurantId(item.getRestaurant() != null ? item.getRestaurant().getId() : null)
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
@@ -44,19 +48,8 @@ public class AdminRewardItemServiceImpl implements AdminRewardItemService {
     @Override
     public Page<RewardItemResponse> listRewardItems(Long restaurantId, String category, Boolean available, Pageable pageable) {
         log.info("Listing reward items - restaurantId: {}, category: {}, available: {}", restaurantId, category, available);
-        Page<RewardItem> items;
-        
-        if (restaurantId != null && category != null && available != null) {
-            items = rewardItemRepository.findByRestaurantIdAndCategoryAndAvailableTrue(restaurantId, category, pageable);
-        } else if (restaurantId != null && available != null) {
-            items = rewardItemRepository.findByRestaurantIdAndAvailableTrue(restaurantId, pageable);
-        } else if (restaurantId != null) {
-            items = rewardItemRepository.findByRestaurantId(restaurantId, pageable);
-        } else {
-            items = rewardItemRepository.findAll(pageable);
-        }
-        
-        return items.map(item -> modelMapper.map(item, RewardItemResponse.class));
+        Page<RewardItem> items = rewardItemRepository.findAll(pageable);
+        return items.map(this::mapToResponse);
     }
 
     @Override
@@ -70,7 +63,12 @@ public class AdminRewardItemServiceImpl implements AdminRewardItemService {
     @Override
     public RewardItemResponse createRewardItem(RewardItemRequest request) {
         log.info("Creating reward item - restaurantId: {}, title: {}", request.getRestaurantId(), request.getTitle());
+        
+        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+                .orElseThrow(() -> new RuntimeException("Restaurant not found with id: " + request.getRestaurantId()));
+        
         RewardItem item = RewardItem.builder()
+                .restaurant(restaurant)
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .pointsCost(request.getPointsCost())
@@ -87,6 +85,12 @@ public class AdminRewardItemServiceImpl implements AdminRewardItemService {
         log.info("Updating reward item - itemId: {}", itemId);
         RewardItem item = rewardItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Reward item not found"));
+        
+        if (request.getRestaurantId() != null) {
+            Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+                    .orElseThrow(() -> new RuntimeException("Restaurant not found with id: " + request.getRestaurantId()));
+            item.setRestaurant(restaurant);
+        }
         
         item.setTitle(request.getTitle());
         item.setDescription(request.getDescription());
@@ -138,8 +142,12 @@ public class AdminRewardItemServiceImpl implements AdminRewardItemService {
     @Override
     public Page<RewardItemResponse> getByCategory(Long restaurantId, String category, Pageable pageable) {
         log.info("Getting items by category - category: {}", category);
-        Page<RewardItem> items = rewardItemRepository.findByRestaurantIdAndCategoryAndAvailableTrue(restaurantId, category, pageable);
-        return items.map(this::mapToResponse);
+        List<RewardItem> items = rewardItemRepository.findByRestaurantIdAndCategoryAndAvailableTrue(restaurantId, category);
+        return new org.springframework.data.domain.PageImpl<>(
+            items.stream().map(this::mapToResponse).toList(),
+            pageable,
+            items.size()
+        );
     }
 
     @Override

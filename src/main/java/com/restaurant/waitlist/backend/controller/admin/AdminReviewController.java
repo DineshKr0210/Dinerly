@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.controller.admin;
 import com.restaurant.waitlist.backend.dto.request.admin.ReviewReplyRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.ReviewResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminReviewService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -13,6 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/reviews")
@@ -45,5 +48,23 @@ public class AdminReviewController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    @GetMapping("/analytics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ReviewAnalyticsResponse>> getReviewAnalytics(
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(defaultValue = "30") int days) {
+        ReviewAnalyticsResponse analytics = adminReviewService.getReviewAnalytics(locationId, days);
+        return ResponseEntity.ok(ApiResponse.success("Review analytics retrieved", analytics));
+    }
+
+    @GetMapping("/rating-distribution")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> getRatingDistribution(
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(defaultValue = "30") int days) {
+        Map<String, Long> distribution = adminReviewService.getRatingDistribution(locationId, days);
+        return ResponseEntity.ok(ApiResponse.success("Rating distribution retrieved", distribution));
     }
 }

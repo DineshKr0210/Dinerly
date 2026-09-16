@@ -50,4 +50,82 @@ public class AdminReviewServiceImpl implements AdminReviewService {
         fb.setRepliedAt(LocalDateTime.now());
         feedbackRepository.save(fb);
     }
+
+    @Override
+    public com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse getReviewAnalytics(Long locationId, int days) {
+        List<Feedback> all = feedbackRepository.findAll();
+        List<Feedback> reviews = all.stream()
+                .filter(f -> locationId == null || (f.getWaitlist() != null && f.getWaitlist().getRestaurant() != null && f.getWaitlist().getRestaurant().getId().equals(locationId)))
+                .collect(Collectors.toList());
+
+        if (reviews.isEmpty()) {
+            return com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse.builder()
+                    .averageRating(0.0)
+                    .totalReviews(0L)
+                    .needsReplyCount(0L)
+                    .replyRate(0.0)
+                    .trend("STABLE")
+                    .daysAnalyzed(days)
+                    .build();
+        }
+
+        double averageRating = reviews.stream()
+                .mapToInt(f -> f.getRating() != null ? f.getRating() : 0)
+                .average()
+                .orElse(0.0);
+
+        long needsReply = reviews.stream()
+                .filter(f -> f.getReply() == null || f.getReply().isEmpty())
+                .count();
+
+        double replyRate = reviews.size() > 0 ? ((reviews.size() - needsReply) * 100.0) / reviews.size() : 0.0;
+
+        String trend = "STABLE";
+        if (averageRating > 4.0) trend = "UP";
+        else if (averageRating < 3.0) trend = "DOWN";
+
+        long count5 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 5).count();
+        long count4 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 4).count();
+        long count3 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 3).count();
+        long count2 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 2).count();
+        long count1 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 1).count();
+
+        return com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse.builder()
+                .averageRating(averageRating)
+                .totalReviews((long) reviews.size())
+                .needsReplyCount(needsReply)
+                .replyRate(replyRate)
+                .ratingCount5Star(count5)
+                .ratingCount4Star(count4)
+                .ratingCount3Star(count3)
+                .ratingCount2Star(count2)
+                .ratingCount1Star(count1)
+                .trend(trend)
+                .daysAnalyzed(days)
+                .build();
+    }
+
+    @Override
+    public java.util.Map<String, Long> getRatingDistribution(Long locationId, int days) {
+        List<Feedback> all = feedbackRepository.findAll();
+        List<Feedback> reviews = all.stream()
+                .filter(f -> locationId == null || (f.getWaitlist() != null && f.getWaitlist().getRestaurant() != null && f.getWaitlist().getRestaurant().getId().equals(locationId)))
+                .collect(Collectors.toList());
+
+        java.util.Map<String, Long> distribution = new java.util.HashMap<>();
+        for (int i = 1; i <= 5; i++) {
+            final int rating = i;
+            long count = reviews.stream()
+                    .filter(f -> f.getRating() != null && f.getRating() == rating)
+                    .count();
+            distribution.put(rating + " star" + (count != 1 ? "s" : ""), count);
+        }
+
+        return distribution;
+    }
+
+    @Override
+    public com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse getReviewAnalyticsAllLocations(int days) {
+        return getReviewAnalytics(null, days);
+    }
 }

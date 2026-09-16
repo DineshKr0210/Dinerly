@@ -30,7 +30,7 @@ public interface GuestOfferService {
     /**
      * Validate redemption code and mark as completed
      */
-    void validateAndCompleteCode(String code);
+    com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse validateAndCompleteCode(String code);
 
     /**
      * Check if user can redeem an offer
