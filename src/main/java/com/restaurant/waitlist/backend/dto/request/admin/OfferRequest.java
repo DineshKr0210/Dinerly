@@ -2,44 +2,42 @@ package com.restaurant.waitlist.backend.dto.request.admin;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 @Data
 public class OfferRequest {
-    @NotBlank
+    @NotBlank(message = "Offer name is required")
     private String name;
 
-    @NotNull
+    @NotNull(message = "Location ID is required")
     private Long locationId;
 
-    @NotNull
+    @NotNull(message = "Start date is required")
     private LocalDate startDate;
 
-    @NotNull
+    @NotNull(message = "End date is required")
     private LocalDate endDate;
 
+    @NotBlank(message = "Status is required")
     private String status; // ACTIVE, INACTIVE, DRAFT
 
-    // Phase 1: New fields for Offer expansion
-    private String discountType; // PERCENT, FIXED, FREE_ITEM, REWARDS_ELIGIBLE
+    @NotNull(message = "Discount value is required")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Discount value must be greater than 0")
     private BigDecimal discountValue;
-    private String discountLabel; // "23% off", "$3 off"
-    private String description;
-    private List<String> restrictions; // ["Dine-in only", "Sat-Sun only"]
-    private String photoUrl;
-    private Double rating;
-    private Long ratingCount;
-    private String category; // PERCENT, FIXED, REWARDS_ELIGIBLE
-    private Integer perUserLimit;
-    private Integer perUserDailyLimit;
-    private Integer inventory;
-    private BigDecimal originalPrice;
 
-    // Legacy fields
-    private BigDecimal value;
-    private Long pointsCost;
+    @NotBlank(message = "Discount label is required")
+    private String discountLabel; // e.g., "20% off", "$5 off"
+
+    @NotBlank(message = "Description is required")
+    private String description; // Detailed offer description
+
+    private String photoUrl; // Optional offer image URL
+
+    @Min(value = 1, message = "Per user limit must be at least 1")
+    private Integer perUserLimit; // Max uses per guest
 }

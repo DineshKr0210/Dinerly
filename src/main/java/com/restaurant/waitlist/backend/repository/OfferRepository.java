@@ -23,22 +23,15 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
             "AND (:toDate IS NULL OR o.endDate <= :toDate)")
     Page<Offer> findFiltered(Long restaurantId, String status, LocalDate fromDate, LocalDate toDate, Pageable pageable);
 
-    // Phase 2: Category filtering and status filtering
-    @Query("SELECT o FROM Offer o WHERE o.restaurant.id = :restaurantId " +
-            "AND o.category = :category AND o.status = 'ACTIVE' " +
-            "AND o.endDate >= CURRENT_DATE ORDER BY o.rating DESC NULLS LAST")
-    Page<Offer> findByRestaurantIdAndCategoryAndActive(Long restaurantId, String category, Pageable pageable);
-
     @Query("SELECT o FROM Offer o WHERE o.restaurant.id = :restaurantId " +
             "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE " +
-            "ORDER BY o.rating DESC NULLS LAST")
+            "ORDER BY o.startDate DESC")
     Page<Offer> findActiveOffersByRestaurant(Long restaurantId, Pageable pageable);
 
     @Query("SELECT o FROM Offer o WHERE o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE " +
-            "ORDER BY o.rating DESC NULLS LAST")
+            "ORDER BY o.startDate DESC")
     Page<Offer> findAllActive(Pageable pageable);
 
-    // Phase 2: Redemption code lookup (will use Redemption entity)
     @Query("SELECT r FROM Redemption r WHERE r.redemptionCode = :code " +
             "AND r.status = 'GENERATED' AND r.codeExpiresAt > CURRENT_TIMESTAMP")
     Optional<Object> findByRedemptionCode(String code);

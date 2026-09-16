@@ -17,6 +17,7 @@ public class RedemptionResponse {
     private String itemRedeemed;
     private String location;
     private String guest;
+    private String mobileNumber;
     private LocalDateTime redeemedAt;
     private BigDecimal value;
     private Long pointsRedeemed;

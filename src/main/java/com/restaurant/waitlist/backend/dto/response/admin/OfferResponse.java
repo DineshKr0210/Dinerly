@@ -18,26 +18,10 @@ public class OfferResponse {
     private LocalDate startDate;
     private LocalDate endDate;
     private String status;
-
-    // Phase 1: New fields
-    private String discountType;
     private BigDecimal discountValue;
     private String discountLabel;
     private String description;
-    private List<String> restrictions;
     private String photoUrl;
-    private Double rating;
-    private Long ratingCount;
-    private String category;
     private Integer perUserLimit;
-    private Integer perUserDailyLimit;
-    private Integer inventory;
-    private BigDecimal originalPrice;
-
-    // Legacy/Computed fields
-    private BigDecimal value;
-    private Long pointsCost;
     private Long redemptions;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

@@ -40,7 +40,7 @@ public class GuestOfferServiceImpl implements GuestOfferService {
 
     @Override
     public Page<GuestOfferResponse> getOffersByLocationAndCategory(Long locationId, String category, Long userId, Pageable pageable) {
-        Page<Offer> offers = offerRepository.findByRestaurantIdAndCategoryAndActive(locationId, category, pageable);
+        Page<Offer> offers = offerRepository.findActiveOffersByRestaurant(locationId, pageable);
         return offers.map(offer -> mapToGuestResponse(offer, userId));
     }
 
@@ -69,11 +69,6 @@ public class GuestOfferServiceImpl implements GuestOfferService {
             throw new IllegalArgumentException("User cannot redeem this offer: " + getRedemptionRestrictionReason(userId, offerId));
         }
 
-        // Check inventory
-        if (offer.getInventory() != null && offer.getInventory() <= 0) {
-            throw new IllegalArgumentException("Offer is out of stock");
-        }
-
         // Generate unique 6-digit code
         String code;
         int attempts = 0;
@@ -95,16 +90,10 @@ public class GuestOfferServiceImpl implements GuestOfferService {
             .status(Redemption.RedemptionStatus.GENERATED)
             .userId(userId)
             .redeemedAt(LocalDateTime.now())
-            .value(offer.getValue())
+            .value(offer.getDiscountValue())
             .build();
 
         redemptionRepository.save(redemption);
-
-        // Decrease inventory
-        if (offer.getInventory() != null) {
-            offer.setInventory(offer.getInventory() - 1);
-            offerRepository.save(offer);
-        }
 
         log.info("Redemption code generated for offer {} by user {}: {}", offerId, userId, code);
 
@@ -141,8 +130,9 @@ public class GuestOfferServiceImpl implements GuestOfferService {
                 .offerName(offer.getName())
                 .offerDescription(offer.getDescription())
                 .userId(redemption.getUserId())
+                .mobileNumber(redemption.getGuestPhone())
                 .offerId(offer.getId())
-                .discountType(offer.getDiscountType() != null ? offer.getDiscountType().name() : "UNKNOWN")
+                .discountType("FIXED")
                 .discountValue(offer.getDiscountValue() != null ? offer.getDiscountValue() : redemption.getValue())
                 .discountLabel(offer.getDiscountLabel() != null ? offer.getDiscountLabel() : "Discount")
                 .confirmedAt(LocalDateTime.now())
@@ -183,36 +173,13 @@ public class GuestOfferServiceImpl implements GuestOfferService {
             }
         }
 
-        // Check per-user daily limit
-        if (offer.getPerUserDailyLimit() != null) {
-            long todayRedemptions = offerRepository.countTodayRedemptionsByUserAndOffer(offerId, userId);
-            if (todayRedemptions >= offer.getPerUserDailyLimit()) {
-                return "You have already redeemed this offer " + offer.getPerUserDailyLimit() + " times today";
-            }
-        }
-
-        // Check inventory
-        if (offer.getInventory() != null && offer.getInventory() <= 0) {
-            return "Offer is out of stock";
-        }
-
-        // Check points requirement (if it's a points offer)
-        if (offer.getPointsCost() != null && offer.getPointsCost() > 0) {
-            long userPoints = pointsService.getBalance(userId);
-            if (userPoints < offer.getPointsCost()) {
-                return "Insufficient points. You need " + offer.getPointsCost() + " points but have " + userPoints;
-            }
-        }
-
         return null; // Can redeem
     }
 
     private GuestOfferResponse mapToGuestResponse(Offer offer, Long userId) {
-        BigDecimal currentPrice = calculateCurrentPrice(offer);
         String reason = getRedemptionRestrictionReason(userId, offer.getId());
         boolean canRedeem = reason == null;
 
-        long todayRedemptions = userId != null ? offerRepository.countTodayRedemptionsByUserAndOffer(offer.getId(), userId) : 0;
         long totalRedemptions = userId != null ? offerRepository.countTotalRedemptionsByUserAndOffer(offer.getId(), userId) : 0;
 
         return GuestOfferResponse.builder()
@@ -223,46 +190,13 @@ public class GuestOfferServiceImpl implements GuestOfferService {
             .startDate(offer.getStartDate())
             .endDate(offer.getEndDate())
             .status(offer.getStatus())
-            .discountType(offer.getDiscountType() != null ? offer.getDiscountType().toString() : null)
             .discountValue(offer.getDiscountValue())
             .discountLabel(offer.getDiscountLabel())
             .description(offer.getDescription())
-            .restrictions(offer.getRestrictions())
             .photoUrl(offer.getPhotoUrl())
-            .rating(offer.getRating())
-            .ratingCount(offer.getRatingCount())
-            .category(offer.getCategory())
-            .originalPrice(offer.getOriginalPrice())
-            .currentPrice(currentPrice)
             .redeemable(canRedeem)
             .reasonIfNotRedeemable(reason)
-            .remainingInventory(offer.getInventory())
-            .userRedemptionsToday((int) todayRedemptions)
             .userRedemptionsTotal((int) totalRedemptions)
-            .value(offer.getValue())
-            .pointsCost(offer.getPointsCost())
             .build();
-    }
-
-    private BigDecimal calculateCurrentPrice(Offer offer) {
-        if (offer.getOriginalPrice() == null) {
-            return offer.getValue();
-        }
-
-        if (offer.getDiscountType() == null || offer.getDiscountValue() == null) {
-            return offer.getOriginalPrice();
-        }
-
-        switch (offer.getDiscountType()) {
-            case PERCENT:
-                return offer.getOriginalPrice().multiply(
-                    BigDecimal.valueOf(100 - offer.getDiscountValue().doubleValue())
-                        .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP)
-                );
-            case FIXED:
-                return offer.getOriginalPrice().subtract(offer.getDiscountValue());
-            default:
-                return offer.getOriginalPrice();
-        }
     }
 }
