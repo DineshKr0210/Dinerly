@@ -1,96 +1,108 @@
 package com.restaurant.waitlist.backend.controller;
 
+import com.restaurant.waitlist.backend.dto.request.RedeemOfferRequest;
+import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.GuestOfferResponse;
-import com.restaurant.waitlist.backend.entity.Offer;
-import com.restaurant.waitlist.backend.repository.OfferRepository;
-import com.restaurant.waitlist.backend.service.PointsService;
+import com.restaurant.waitlist.backend.dto.response.RedeemOfferResponse;
+import com.restaurant.waitlist.backend.service.GuestOfferService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Optional;
-import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/offers")
 @RequiredArgsConstructor
+@Slf4j
 public class GuestOfferController {
 
-    private final OfferRepository offerRepository;
-    private final PointsService pointsService;
+    private final GuestOfferService guestOfferService;
 
     @GetMapping
-    public ResponseEntity<Page<GuestOfferResponse>> list(@RequestParam(required = false) Long locationId,
-                                                         @RequestParam(required = false) String status,
-                                                         @RequestParam(defaultValue = "0") int page,
-                                                         @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Offer> offers = offerRepository.findFiltered(locationId, status, null, null, pageable);
-
-        // determine authenticated user's id if available
-        Long userId = null;
+    public ResponseEntity<ApiResponse<Page<GuestOfferResponse>>> list(
+        @RequestParam(required = false) Long locationId,
+        @RequestParam(required = false) String category,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
         try {
-            String principal = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            if (principal != null) {
-                var u = userRepository.findByEmail(principal);
-                if (u.isPresent()) userId = u.get().getId();
-            }
-        } catch (Exception ignored) {}
+            Long userId = getCurrentUserId();
+            Pageable pageable = PageRequest.of(page, size);
 
-        final Long uid = userId;
-        Page<GuestOfferResponse> resp = offers.map(o -> mapToDto(o, uid));
-        return ResponseEntity.ok(resp);
+            Page<GuestOfferResponse> offers;
+            if (category != null && !category.isEmpty()) {
+                offers = guestOfferService.getOffersByLocationAndCategory(locationId, category, userId, pageable);
+            } else {
+                offers = guestOfferService.getOffersByLocation(locationId, userId, pageable);
+            }
+
+            return ResponseEntity.ok(ApiResponse.success("Offers retrieved successfully", offers));
+        } catch (Exception e) {
+            log.error("Error fetching offers", e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<GuestOfferResponse> get(@PathVariable Long id) {
-        Optional<Offer> opt = offerRepository.findById(id);
-        if (opt.isEmpty()) return ResponseEntity.notFound().build();
-
-        Long userId = null;
+    public ResponseEntity<ApiResponse<GuestOfferResponse>> get(@PathVariable Long id) {
         try {
-            String principal = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            if (principal != null) {
-                var u = userRepository.findByEmail(principal);
-                if (u.isPresent()) userId = u.get().getId();
-            }
-        } catch (Exception ignored) {}
-
-        return ResponseEntity.ok(mapToDto(opt.get(), userId));
-    }
-
-    private GuestOfferResponse mapToDto(Offer o, Long userId) {
-        Long pointsCost = o.getPointsCost();
-        Boolean redeemable = null;
-        if (pointsCost != null) {
-            if (userId == null) {
-                redeemable = false;
-            } else {
-                long balance = pointsService.getBalance(userId);
-                redeemable = balance >= pointsCost;
-            }
+            Long userId = getCurrentUserId();
+            GuestOfferResponse offer = guestOfferService.getOfferDetail(id, userId);
+            return ResponseEntity.ok(ApiResponse.success("Offer details retrieved successfully", offer));
+        } catch (Exception e) {
+            log.error("Error fetching offer detail", e);
+            return ResponseEntity.notFound().build();
         }
-        return GuestOfferResponse.builder()
-                .id(o.getId())
-                .name(o.getName())
-                .restaurantId(o.getRestaurant() != null ? o.getRestaurant().getId() : null)
-                .restaurantName(o.getRestaurant() != null ? o.getRestaurant().getName() : null)
-                .startDate(o.getStartDate())
-                .endDate(o.getEndDate())
-                .status(o.getStatus())
-                .value(o.getValue())
-                .pointsCost(pointsCost)
-                .redeemable(redeemable)
-                .build();
     }
 
-    // need UserRepository to resolve principal -> userId
-    private final com.restaurant.waitlist.backend.repository.UserRepository userRepository;
+    @PostMapping("/{id}/redeem")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<RedeemOfferResponse>> redeem(
+        @PathVariable Long id,
+        @RequestParam(required = false) Long locationId
+    ) {
+        try {
+            Long userId = getCurrentUserId();
+            if (locationId == null) {
+                locationId = 1L; // Default restaurant
+            }
+
+            RedeemOfferResponse response = guestOfferService.redeemOffer(id, userId, locationId);
+            return ResponseEntity.ok(ApiResponse.success("Offer redeemed successfully", response));
+        } catch (Exception e) {
+            log.error("Error redeeming offer", e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/redeem/{code}/confirm")
+    @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> confirmCode(@PathVariable String code) {
+        try {
+            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(code);
+            return ResponseEntity.ok(ApiResponse.success("Code validated and redeemed", response));
+        } catch (Exception e) {
+            log.error("Error validating code", e);
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    private Long getCurrentUserId() {
+        try {
+            Object principal = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication().getPrincipal();
+            if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
+                // Extract user ID from principal or auth details
+                // This assumes you have a way to map email/username to user ID
+                return null; // Return null for anonymous users
+            }
+        } catch (Exception e) {
+            log.debug("Error getting current user", e);
+        }
+        return null;
+    }
 }

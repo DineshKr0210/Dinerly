@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.controller.admin;
 
 import com.restaurant.waitlist.backend.dto.request.admin.LocationRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.LocationConfigurationRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.LocationResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.LocationsPageResponse;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
@@ -12,6 +13,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/locations")
@@ -46,5 +49,23 @@ public class AdminLocationController {
     public ResponseEntity<ApiResponse<LocationResponse>> update(@PathVariable Long locationId, @Valid @RequestBody LocationRequest request) {
         LocationResponse resp = adminLocationService.updateLocation(locationId, request);
         return ResponseEntity.ok(ApiResponse.success("Location updated successfully", resp));
+    }
+
+    @GetMapping("/{locationId}/configuration")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getConfiguration(@PathVariable Long locationId) {
+        Map<String, Object> config = adminLocationService.getLocationConfiguration(locationId);
+        return ResponseEntity.ok(ApiResponse.success("Configuration retrieved", config));
+    }
+
+    @PutMapping("/configuration")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateConfiguration(@Valid @RequestBody LocationConfigurationRequest request) {
+        Map<String, Object> config = adminLocationService.updateLocationConfiguration(request);
+        return ResponseEntity.ok(ApiResponse.success("Configuration updated", config));
+    }
+
+    @GetMapping("/{locationId}/context")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getLocationContext(@PathVariable Long locationId) {
+        Map<String, Object> context = adminLocationService.getLocationContext(locationId);
+        return ResponseEntity.ok(ApiResponse.success("Location context retrieved", context));
     }
 }

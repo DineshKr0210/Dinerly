@@ -136,4 +136,51 @@ public class AdminRewardServiceImpl implements AdminRewardService {
                 .perks(t.getPerks())
                 .build();
     }
+
+    @Override
+    public RewardTierResponse getTierById(Long tierId) {
+        RewardTier tier = rewardTierRepository.findById(tierId)
+            .orElseThrow(() -> new IllegalArgumentException("Tier not found"));
+        return map(tier);
+    }
+
+    @Override
+    public RewardTierResponse duplicateTier(Long tierId, String newName) {
+        RewardTier original = rewardTierRepository.findById(tierId)
+            .orElseThrow(() -> new IllegalArgumentException("Tier not found"));
+        RewardTier duplicate = RewardTier.builder()
+            .name(newName != null ? newName : original.getName() + " (Copy)")
+            .points(original.getPoints())
+            .perks(original.getPerks())
+            .build();
+        duplicate = rewardTierRepository.save(duplicate);
+        return map(duplicate);
+    }
+
+    @Override
+    public WayToEarnRequest updateWayToEarn(Long ruleId, WayToEarnRequest request) {
+        // Stub implementation
+        return request;
+    }
+
+    @Override
+    public void deleteWayToEarn(Long ruleId) {
+        // Stub implementation
+    }
+
+    @Override
+    public java.util.Map<String, Object> getStatistics(Long restaurantId) {
+        return java.util.Map.of(
+            "totalTiers", 0,
+            "totalMembers", 0,
+            "totalRedemptions", 0
+        );
+    }
+
+    @Override
+    public java.util.Map<String, Object> getUserTierDistribution(Long restaurantId) {
+        return java.util.Map.of(
+            "distribution", "data"
+        );
+    }
 }

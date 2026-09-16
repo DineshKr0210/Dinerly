@@ -8,18 +8,26 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Map;
 
 public interface AdminRewardService {
     Page<RewardTierResponse> listTiers(Pageable pageable);
     RewardTierResponse createTier(RewardTierRequest request);
     RewardTierResponse updateTier(Long tierId, RewardTierRequest request);
     void deleteTier(Long tierId);
+    RewardTierResponse getTierById(Long tierId);
+    RewardTierResponse duplicateTier(Long tierId, String newName);
 
     List<RewardTierResponse> getAllTiers();
 
     WayToEarnRequest createWayToEarn(WayToEarnRequest request);
     List<WayToEarnRequest> listWaysToEarn();
+    WayToEarnRequest updateWayToEarn(Long ruleId, WayToEarnRequest request);
+    void deleteWayToEarn(Long ruleId);
 
     RewardSettingsRequest getSettings();
     RewardSettingsRequest updateSettings(RewardSettingsRequest request);
+    
+    Map<String, Object> getStatistics(Long restaurantId);
+    Map<String, Object> getUserTierDistribution(Long restaurantId);
 }

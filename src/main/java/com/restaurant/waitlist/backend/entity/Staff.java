@@ -41,7 +41,7 @@ public class Staff {
     private StaffStatus status = StaffStatus.ACTIVE;
 
     public enum StaffStatus {
-        ACTIVE, INVITED
+        ACTIVE, INVITED, INACTIVE
     }
 
     @CreationTimestamp

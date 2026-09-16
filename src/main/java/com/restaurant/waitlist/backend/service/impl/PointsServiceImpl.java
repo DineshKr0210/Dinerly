@@ -94,4 +94,14 @@ public class PointsServiceImpl implements PointsService {
     public Page<PointsLedger> getLedger(Long userId, Pageable pageable) {
         return ledgerRepository.findByUserId(userId, pageable);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DinerlyPoints getPointsEntity(Long userId) {
+        return pointsRepository.findByUserId(userId)
+            .orElseGet(() -> DinerlyPoints.builder()
+                .userId(userId)
+                .balance(0L)
+                .build());
+    }
 }
