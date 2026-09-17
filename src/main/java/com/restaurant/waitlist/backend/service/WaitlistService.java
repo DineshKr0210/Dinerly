@@ -1,7 +1,6 @@
 package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.request.JoinWaitlistRequest;
-import com.restaurant.waitlist.backend.dto.response.DashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistDashboardStatsResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
@@ -11,8 +10,10 @@ import com.restaurant.waitlist.backend.entity.RestaurantSettings;
 import com.restaurant.waitlist.backend.entity.Table;
 import com.restaurant.waitlist.backend.entity.Waitlist;
 import com.restaurant.waitlist.backend.entity.WaitlistSettingsPayload;
+import com.restaurant.waitlist.backend.repository.FeedbackRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantSettingsRepository;
+import com.restaurant.waitlist.backend.repository.TableRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,12 @@ public class WaitlistService {
 
     @Autowired
     private RestaurantSettingsRepository restaurantSettingsRepository;
+
+    @Autowired
+    private TableRepository tableRepository;
+
+    @Autowired
+    private FeedbackRepository feedbackRepository;
 
     public WaitlistResponse joinWaitlist(JoinWaitlistRequest request) {
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
@@ -264,12 +272,146 @@ public class WaitlistService {
 
     public List<RestaurantResponse> getAllRestaurants() {
         return restaurantRepository.findAll().stream()
-                .map(restaurant -> {
-                    RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurant.getId())
-                            .orElse(null);
-                    return RestaurantResponse.fromRestaurant(restaurant, settings);
-                })
+                .map(restaurant -> buildEnhancedRestaurantResponse(restaurant))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Build enhanced restaurant response with computed real-time data
+     * MUST HAVE: isOpen, occupiedTables, availableTables, totalWaitlistGuests, acceptingNewGuests
+     * SHOULD HAVE: averageWaitTime, currentSeatingTime, restaurantRating
+     * NICE TO HAVE: managerEmail, ownerEmail
+     */
+    private RestaurantResponse buildEnhancedRestaurantResponse(Restaurant restaurant) {
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurant.getId())
+                .orElse(null);
+        
+        // MUST HAVE: Compute real-time status
+        Boolean isOpen = isRestaurantOpen(restaurant);
+        Integer occupiedTables = countOccupiedTables(restaurant.getId());
+        Integer availableTables = (restaurant.getTotalTables() != null ? restaurant.getTotalTables() : 0) - occupiedTables;
+        Integer totalWaitlistGuests = countTotalWaitlistGuests(restaurant.getId());
+        
+        // SHOULD HAVE: Compute analytics
+        Integer averageWaitTime = calculateAverageWaitTime(restaurant.getId());
+        Integer currentSeatingTime = calculateCurrentSeatingTime(restaurant.getId());
+        Double restaurantRating = feedbackRepository.averageRatingByRestaurantId(restaurant.getId());
+        if (restaurantRating == null) {
+            restaurantRating = 0.0;
+        } else {
+            restaurantRating = Math.round(restaurantRating * 10.0) / 10.0; // Round to 1 decimal place
+        }
+        
+        // Build response with all computed data
+        return RestaurantResponse.fromRestaurant(
+                restaurant,
+                settings,
+                isOpen,
+                occupiedTables,
+                availableTables,
+                totalWaitlistGuests,
+                averageWaitTime,
+                currentSeatingTime,
+                restaurantRating
+        );
+    }
+
+    /**
+     * Check if restaurant is currently open based on openTime and closeTime
+     */
+    private Boolean isRestaurantOpen(Restaurant restaurant) {
+        if (restaurant.getOpenTime() == null || restaurant.getCloseTime() == null) {
+            return true; // No time restrictions
+        }
+        
+        try {
+            LocalTime openTime = LocalTime.parse(restaurant.getOpenTime());
+            LocalTime closeTime = LocalTime.parse(restaurant.getCloseTime());
+            LocalTime currentTime = LocalTime.now();
+            
+            // Handle case where close time is next day (e.g., 23:00 to 01:00)
+            if (closeTime.isBefore(openTime)) {
+                return currentTime.isAfter(openTime) || currentTime.isBefore(closeTime);
+            } else {
+                return !currentTime.isBefore(openTime) && currentTime.isBefore(closeTime);
+            }
+        } catch (Exception e) {
+            return true; // If parsing fails, assume open
+        }
+    }
+
+    /**
+     * Count tables with status = OCCUPIED
+     */
+    private Integer countOccupiedTables(Long restaurantId) {
+        try {
+            List<Table> occupiedTables = tableRepository.findByRestaurantIdAndStatus(restaurantId, Table.TableStatus.OCCUPIED);
+            return occupiedTables.size();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Count active waitlist guests (PENDING, WAITING, NOTIFIED statuses)
+     */
+    private Integer countTotalWaitlistGuests(Long restaurantId) {
+        try {
+            long count = waitlistRepository.countByRestaurantIdAndStatusIn(
+                    restaurantId,
+                    List.of(
+                            Waitlist.WaitlistStatus.PENDING,
+                            Waitlist.WaitlistStatus.WAITING,
+                            Waitlist.WaitlistStatus.NOTIFIED
+                    )
+            );
+            return (int) count;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Calculate average wait time from current active waitlist entries
+     */
+    private Integer calculateAverageWaitTime(Long restaurantId) {
+        try {
+            List<Waitlist> activeWaitlist = waitlistRepository.findByRestaurantIdAndStatusInOrderByIdAsc(
+                    restaurantId,
+                    List.of(
+                            Waitlist.WaitlistStatus.WAITING,
+                            Waitlist.WaitlistStatus.NOTIFIED
+                    )
+            );
+            
+            return (int) activeWaitlist.stream()
+                    .filter(w -> w.getEstimatedWaitTime() != null)
+                    .mapToInt(Waitlist::getEstimatedWaitTime)
+                    .average()
+                    .orElse(0);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Calculate average seating time (time from join to seated)
+     */
+    private Integer calculateCurrentSeatingTime(Long restaurantId) {
+        try {
+            LocalDate today = LocalDate.now();
+            java.sql.Date fromDate = java.sql.Date.valueOf(today);
+            java.sql.Date toDate = java.sql.Date.valueOf(today);
+            
+            Double avgSeatingTimeMinutes = waitlistRepository.averageSeatedDurationMinutes(restaurantId, fromDate, toDate);
+            
+            if (avgSeatingTimeMinutes != null) {
+                return avgSeatingTimeMinutes.intValue();
+            }
+            return 0;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private Waitlist.WaitlistStatus resolveRejoinStatus(Waitlist waitlist) {
