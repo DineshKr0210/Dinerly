@@ -20,10 +20,6 @@ public interface AdminRewardService {
 
     List<RewardTierResponse> getAllTiers();
 
-    WayToEarnRequest createWayToEarn(WayToEarnRequest request);
-    List<WayToEarnRequest> listWaysToEarn();
-    WayToEarnRequest updateWayToEarn(Long ruleId, WayToEarnRequest request);
-    void deleteWayToEarn(Long ruleId);
 
     RewardSettingsRequest getSettings();
     RewardSettingsRequest updateSettings(RewardSettingsRequest request);

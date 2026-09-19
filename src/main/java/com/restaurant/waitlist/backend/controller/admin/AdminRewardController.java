@@ -2,7 +2,6 @@ package com.restaurant.waitlist.backend.controller.admin;
 
 import com.restaurant.waitlist.backend.dto.request.admin.RewardSettingsRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.RewardTierRequest;
-import com.restaurant.waitlist.backend.dto.request.admin.WayToEarnRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.RewardTierResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminRewardService;
@@ -66,18 +65,6 @@ public class AdminRewardController {
         return ResponseEntity.ok(ApiResponse.success("Tier duplicated successfully", resp));
     }
 
-    @GetMapping("/ways-to-earn")
-    public ResponseEntity<ApiResponse<List<WayToEarnRequest>>> waysToEarn() {
-        List<WayToEarnRequest> resp = adminRewardService.listWaysToEarn();
-        return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", resp));
-    }
-
-    @PostMapping("/ways-to-earn")
-    public ResponseEntity<ApiResponse<WayToEarnRequest>> createWayToEarn(@Valid @RequestBody WayToEarnRequest request) {
-        WayToEarnRequest resp = adminRewardService.createWayToEarn(request);
-        return ResponseEntity.ok(ApiResponse.success("Way to earn created", resp));
-    }
-
     @GetMapping("/settings")
     public ResponseEntity<ApiResponse<RewardSettingsRequest>> getSettings() {
         RewardSettingsRequest resp = adminRewardService.getSettings();
@@ -104,17 +91,4 @@ public class AdminRewardController {
         return ResponseEntity.ok(ApiResponse.success("User tier distribution retrieved successfully", resp));
     }
 
-    @DeleteMapping("/ways-to-earn/{ruleId}")
-    public ResponseEntity<ApiResponse<Object>> deleteWayToEarn(@PathVariable Long ruleId) {
-        adminRewardService.deleteWayToEarn(ruleId);
-        return ResponseEntity.ok(ApiResponse.success("Way to earn deleted successfully"));
-    }
-
-    @PutMapping("/ways-to-earn/{ruleId}")
-    public ResponseEntity<ApiResponse<WayToEarnRequest>> updateWayToEarn(
-            @PathVariable Long ruleId,
-            @Valid @RequestBody WayToEarnRequest request) {
-        WayToEarnRequest resp = adminRewardService.updateWayToEarn(ruleId, request);
-        return ResponseEntity.ok(ApiResponse.success("Way to earn updated successfully", resp));
-    }
 }

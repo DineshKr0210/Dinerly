@@ -2,15 +2,12 @@ package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.dto.request.admin.RewardSettingsRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.RewardTierRequest;
-import com.restaurant.waitlist.backend.dto.request.admin.WayToEarnRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.RewardTierResponse;
 import com.restaurant.waitlist.backend.entity.RewardSettings;
 import com.restaurant.waitlist.backend.entity.RewardTier;
-import com.restaurant.waitlist.backend.entity.WayToEarn;
 import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RewardSettingsRepository;
 import com.restaurant.waitlist.backend.repository.RewardTierRepository;
-import com.restaurant.waitlist.backend.repository.WayToEarnRepository;
 import com.restaurant.waitlist.backend.service.admin.AdminRewardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,7 +23,6 @@ import java.util.stream.Collectors;
 public class AdminRewardServiceImpl implements AdminRewardService {
 
     private final RewardTierRepository rewardTierRepository;
-    private final WayToEarnRepository wayToEarnRepository;
     private final RewardSettingsRepository rewardSettingsRepository;
     private final AuditLogRepository auditLogRepository;
 
@@ -84,28 +80,6 @@ public class AdminRewardServiceImpl implements AdminRewardService {
         return rewardTierRepository.findAll().stream().map(this::map).collect(Collectors.toList());
     }
 
-    @Override
-    @Transactional
-    public WayToEarnRequest createWayToEarn(WayToEarnRequest request) {
-        WayToEarn w = WayToEarn.builder().action(request.getAction()).points(request.getPoints()).build();
-        wayToEarnRepository.save(w);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(0L)
-                .action("CREATE_WAY_TO_EARN")
-                .details("Action: " + request.getAction())
-                .build());
-        return request;
-    }
-
-    @Override
-    public List<WayToEarnRequest> listWaysToEarn() {
-        return wayToEarnRepository.findAll().stream().map(w -> {
-            WayToEarnRequest r = new WayToEarnRequest();
-            r.setAction(w.getAction());
-            r.setPoints(w.getPoints());
-            return r;
-        }).collect(Collectors.toList());
-    }
 
     @Override
     public RewardSettingsRequest getSettings() {
@@ -157,16 +131,6 @@ public class AdminRewardServiceImpl implements AdminRewardService {
         return map(duplicate);
     }
 
-    @Override
-    public WayToEarnRequest updateWayToEarn(Long ruleId, WayToEarnRequest request) {
-        // Stub implementation
-        return request;
-    }
-
-    @Override
-    public void deleteWayToEarn(Long ruleId) {
-        // Stub implementation
-    }
 
     @Override
     public java.util.Map<String, Object> getStatistics(Long restaurantId) {
