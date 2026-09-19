@@ -61,7 +61,7 @@ public class RestaurantController {
     }
 
     @GetMapping("/{restaurantId}/waitlist")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<WaitlistResponse>>> getWaitlist(@PathVariable Long restaurantId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String date) {
@@ -78,7 +78,7 @@ public class RestaurantController {
     }
 
     @GetMapping("/{restaurantId}/waitlist/{id}/status")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> getWaitlistStatusById(@PathVariable Long restaurantId,
             @PathVariable Long id) {
         try {
@@ -94,7 +94,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/waitlist")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> addGuest(
             @PathVariable Long restaurantId,
             @Valid @RequestBody AddGuestRequest request) {
@@ -112,7 +112,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/waitlist/{id}/notify")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistSmsResult>> notifyGuest(
             @PathVariable Long restaurantId,
             @PathVariable Long id,
@@ -130,7 +130,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/waitlist/{id}/approve")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistSmsResult>> approveGuest(@PathVariable Long restaurantId, @PathVariable Long id,
             @Valid @RequestBody NotifyGuestRequest request) {
         try {
@@ -146,7 +146,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/waitlist/{id}/update-estimate")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> updateEstimate(@PathVariable Long restaurantId, @PathVariable Long id,
             @Valid @RequestBody NotifyGuestRequest request) {
         try {
@@ -162,7 +162,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/waitlist/{id}/seat")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> seatGuest(@PathVariable Long restaurantId, @PathVariable Long id,
             @Valid @RequestBody(required = false) SeatGuestRequest request) {
         try {
@@ -178,7 +178,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/waitlist/{waitlistId}/update-seated")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> updateSeatedGuest(@PathVariable Long restaurantId,
             @PathVariable Long waitlistId,
             @Valid @RequestBody UpdateSeatedGuestRequest request) {
@@ -195,7 +195,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/waitlist/{waitlistId}/move-to-waiting")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> moveToWaiting(@PathVariable Long restaurantId,
             @PathVariable Long waitlistId,
             @Valid @RequestBody MoveToWaitingRequest request) {
@@ -212,7 +212,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/waitlist/rejoin/{id}")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> rejoinGuest(@PathVariable Long restaurantId,
             @PathVariable Long id) {
         try {
@@ -228,7 +228,7 @@ public class RestaurantController {
     }
 
     @DeleteMapping("/{restaurantId}/waitlist/{id}")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> removeGuest(@PathVariable Long restaurantId, @PathVariable Long id) {
         try {
             log.info("START: removeGuest | restaurantId={}, id={}", restaurantId, id);
@@ -243,7 +243,7 @@ public class RestaurantController {
     }
 
     @GetMapping("/{restaurantId}/tables")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<TableResponse>>> getTables(@PathVariable Long restaurantId) {
         try {
             log.info("START: getTables | restaurantId={}", restaurantId);
@@ -258,7 +258,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/tables")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<TableResponse>> addTable(@PathVariable Long restaurantId,
             @Valid @RequestBody AddTableRequest request) {
         try {
@@ -275,7 +275,7 @@ public class RestaurantController {
     }
 
     @PostMapping("/{restaurantId}/tables/{tableId}/status")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> updateTableStatus(@PathVariable Long restaurantId, @PathVariable Long tableId,
             @RequestParam Table.TableStatus status) {
         try {
@@ -291,7 +291,7 @@ public class RestaurantController {
     }
 
     @GetMapping("/{restaurantId}/dashboard")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<DashboardStatsResponse>> getDashboard(@PathVariable Long restaurantId) {
         try {
             log.info("START: getDashboard | restaurantId={}", restaurantId);
@@ -305,7 +305,7 @@ public class RestaurantController {
         }
     }
     @GetMapping("/{restaurantId}/guest-history")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Page<WaitlistResponse>>> getGuestHistory(@PathVariable Long restaurantId,
                                                                                @RequestParam(defaultValue = "0") int page,
                                                                                @RequestParam(defaultValue = "10") int size,
@@ -329,7 +329,7 @@ public class RestaurantController {
     }
 
     @GetMapping("/{restaurantId}/guest-history/export")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> exportGuestHistory(@PathVariable Long restaurantId,
                                                 @RequestParam(required = false) String status,
                                                 @RequestParam(required = false) String date) {

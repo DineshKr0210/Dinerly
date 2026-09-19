@@ -66,6 +66,17 @@ public class EmailService {
         sendEmail(toEmail, "Table Ready - Your Waitlist Status", body, "waitlist-notification");
     }
 
+    public void sendStaffInvitationEmail(String toEmail, String staffName, String restaurantName, String invitationToken) {
+        String invitationLink = frontendUrl + "/staff/accept-invitation?token=" + invitationToken;
+        String body = "Hello " + staffName + ",\n\n"
+                + "You have been invited to join Dinerly as staff for " + restaurantName + ".\n\n"
+                + "Click the link below to accept the invitation and set up your account:\n"
+                + invitationLink + "\n\n"
+                + "This invitation link will expire in 24 hours.\n\n"
+                + "If you did not expect this invitation, please ignore this email.";
+        sendEmail(toEmail, "Dinerly Staff Invitation - " + restaurantName, body, "staff-invitation");
+    }
+
     public void sendNightlySummary(String toEmail, String restaurantName, String summaryBody) {
         sendEmail(toEmail, "Nightly summary for " + restaurantName, summaryBody, "nightly-summary");
     }

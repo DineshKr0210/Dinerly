@@ -21,7 +21,7 @@ public class TableController {
     private TableService tableService;
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> updateTableStatus(
             @PathVariable Long restaurantId,
             @PathVariable Long id,
@@ -36,7 +36,7 @@ public class TableController {
     }
 
     @PostMapping("/merge")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> mergeTables(
             @PathVariable Long restaurantId,
             @Valid @RequestBody MergeTablesRequest request) {
@@ -50,7 +50,7 @@ public class TableController {
     }
 
     @PostMapping("/unmerge")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> unmergeTables(
             @PathVariable Long restaurantId,
             @Valid @RequestBody MergeTablesRequest request) {

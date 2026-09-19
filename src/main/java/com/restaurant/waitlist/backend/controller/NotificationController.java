@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/notifications")
 @CrossOrigin(origins = "*")
-@PreAuthorize("hasRole('RESTAURANT')")
+@PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
 @SecurityRequirement(name = "bearerAuth")
 public class NotificationController {
 

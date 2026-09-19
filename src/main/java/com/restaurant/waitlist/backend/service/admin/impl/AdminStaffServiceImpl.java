@@ -1,24 +1,33 @@
 package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.dto.request.admin.AdminStaffRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.StaffSetPasswordRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.StaffUpdateRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.StaffVerifyInvitationRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.AdminStaffResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.StaffTokenVerificationResponse;
 import com.restaurant.waitlist.backend.entity.AuditLog;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.entity.Staff;
+import com.restaurant.waitlist.backend.entity.StaffInvitationToken;
+import com.restaurant.waitlist.backend.entity.User;
 import com.restaurant.waitlist.backend.mapper.AdminLocationMapper;
 import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.repository.StaffInvitationTokenRepository;
 import com.restaurant.waitlist.backend.repository.StaffRepository;
+import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.service.EmailService;
 import com.restaurant.waitlist.backend.service.admin.AdminStaffService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +41,9 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     private final RestaurantRepository restaurantRepository;
     private final EmailService emailService;
     private final AuditLogRepository auditLogRepository;
+    private final StaffInvitationTokenRepository staffInvitationTokenRepository;
+    private final UserRepository userRepository;  // ✅ NEW: For creating User records
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     public Object listStaff(Pageable pageable) {
@@ -67,17 +79,33 @@ public class AdminStaffServiceImpl implements AdminStaffService {
 
         Staff saved = staffRepository.save(staff);
 
+        // Generate invitation token (valid for 24 hours)
+        String invitationToken = StaffInvitationToken.generateToken();
+        StaffInvitationToken token = StaffInvitationToken.builder()
+                .staff(saved)
+                .token(invitationToken)
+                .expiryDate(LocalDateTime.now().plusHours(24))
+                .isUsed(false)
+                .build();
+        staffInvitationTokenRepository.save(token);
+
+        // Send invitation email with proper token
         try {
-            String body = "You have been invited to join Dinerly as " + request.getRole() + " for " + restaurant.getName();
-            emailService.sendVerificationEmail(request.getEmail(), "invite-token-placeholder");
+            emailService.sendStaffInvitationEmail(
+                    request.getEmail(),
+                    request.getName(),
+                    restaurant.getName(),
+                    invitationToken
+            );
         } catch (Exception e) {
-            // log and continue
+            // Log error but don't fail the invitation
+            System.err.println("Failed to send invitation email: " + e.getMessage());
         }
 
         AuditLog log = AuditLog.builder()
                 .restaurantId(restaurant.getId())
                 .action("STAFF_INVITED")
-                .details("Invited " + saved.getName() + " (" + saved.getEmail() + ")")
+                .details("Invited " + saved.getName() + " (" + saved.getEmail() + ") as " + saved.getRole())
                 .build();
         auditLogRepository.save(log);
 
@@ -278,5 +306,141 @@ public class AdminStaffServiceImpl implements AdminStaffService {
             activities.size()
         );
     }
-}
 
+    @Override
+    public StaffTokenVerificationResponse verifyInvitationToken(String token) {
+        StaffInvitationToken invitationToken = staffInvitationTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+
+        if (invitationToken.getIsUsed()) {
+            throw new RuntimeException("This invitation has already been used");
+        }
+
+        if (!invitationToken.isValid()) {
+            throw new RuntimeException("This invitation token has expired");
+        }
+
+        Staff staff = invitationToken.getStaff();
+        Restaurant restaurant = staff.getRestaurant();
+
+        return StaffTokenVerificationResponse.builder()
+                .valid(true)
+                .message("Invitation token is valid. Please set your password.")
+                .staffId(staff.getId())
+                .staffName(staff.getName())
+                .staffEmail(staff.getEmail())
+                .restaurantName(restaurant.getName())
+                .build();
+    }
+
+    /**
+     * Set password for staff after accepting invitation
+     * Creates corresponding User record for authentication
+     */
+    @Override
+    @Transactional
+    public AdminStaffResponse setStaffPassword(StaffSetPasswordRequest request) {
+        StaffInvitationToken invitationToken = staffInvitationTokenRepository.findByToken(request.getToken())
+                .orElseThrow(() -> new RuntimeException("Invalid invitation token"));
+
+        if (invitationToken.getIsUsed()) {
+            throw new RuntimeException("This invitation has already been used");
+        }
+
+        if (!invitationToken.isValid()) {
+            throw new RuntimeException("This invitation token has expired");
+        }
+
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        if (request.getPassword().length() < 8) {
+            throw new RuntimeException("Password must be at least 8 characters long");
+        }
+
+        Staff staff = invitationToken.getStaff();
+
+        // Encrypt and set password
+        String encryptedPassword = passwordEncoder.encode(request.getPassword());
+        staff.setPassword(encryptedPassword);
+        staff.setStatus(Staff.StaffStatus.ACTIVE);
+
+        Staff savedStaff = staffRepository.save(staff);
+
+        // ✅ NEW: Create User record for authentication
+        User user = User.builder()
+                .email(staff.getEmail())
+                .password(encryptedPassword)
+                .name(staff.getName())
+                .phone(null)
+                .role(User.UserRole.valueOf(staff.getRole().toUpperCase()))
+                .restaurantId(staff.getRestaurant().getId())
+                .staffId(staff.getId())
+                .emailVerified(true)
+                .enabled(true)
+                .build();
+        
+        User savedUser = userRepository.save(user);
+        
+        // ✅ Link User back to Staff
+        savedStaff.setUserId(savedUser.getId());
+        staffRepository.save(savedStaff);
+
+        // Mark token as used
+        invitationToken.setIsUsed(true);
+        staffInvitationTokenRepository.save(invitationToken);
+
+        // Log the action
+        AuditLog log = AuditLog.builder()
+                .restaurantId(staff.getRestaurant().getId())
+                .action("STAFF_ACTIVATED_VIA_INVITATION")
+                .details("Staff " + staff.getName() + " (" + staff.getEmail() + ") activated with role: " + staff.getRole())
+                .build();
+        auditLogRepository.save(log);
+
+        return AdminStaffResponse.builder()
+                .id(savedStaff.getId())
+                .name(savedStaff.getName())
+                .role(savedStaff.getRole())
+                .email(savedStaff.getEmail())
+                .status(savedStaff.getStatus().name())
+                .locationId(savedStaff.getRestaurant().getId())
+                .location(savedStaff.getRestaurant().getName())
+                .build();
+    }
+
+    /**
+     * Check if invitation token is still valid
+     */
+    @Override
+    public Map<String, Object> checkInvitationTokenStatus(String token) {
+        StaffInvitationToken invitationToken = staffInvitationTokenRepository.findByToken(token)
+                .orElse(null);
+
+        Map<String, Object> response = new HashMap<>();
+
+        if (invitationToken == null) {
+            response.put("valid", false);
+            response.put("message", "Invalid invitation token");
+            return response;
+        }
+
+        if (invitationToken.getIsUsed()) {
+            response.put("valid", false);
+            response.put("message", "This invitation has already been used");
+            return response;
+        }
+
+        if (!invitationToken.isValid()) {
+            response.put("valid", false);
+            response.put("message", "This invitation token has expired");
+            return response;
+        }
+
+        response.put("valid", true);
+        response.put("message", "Invitation token is valid");
+        response.put("expiresAt", invitationToken.getExpiryDate());
+        return response;
+    }
+}

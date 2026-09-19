@@ -35,6 +35,13 @@ public class Staff {
     @Column(nullable = true)
     private String email;
 
+    @Column(nullable = true, length = 255)
+    private String password;
+
+    // ✅ NEW: Link to User record for authentication
+    @Column(name = "user_id", unique = true)
+    private Long userId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     @Builder.Default

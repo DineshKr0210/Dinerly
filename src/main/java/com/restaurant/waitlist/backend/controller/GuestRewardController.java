@@ -6,12 +6,16 @@ import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.ClaimReceiptResponse;
 import com.restaurant.waitlist.backend.dto.response.GuestRewardsProfileResponse;
 import com.restaurant.waitlist.backend.dto.response.RedeemRewardResponse;
+import com.restaurant.waitlist.backend.entity.User;
+import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.service.GuestRewardsService;
 import com.restaurant.waitlist.backend.service.ReceiptClaimService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +29,7 @@ public class GuestRewardController {
 
     private final GuestRewardsService guestRewardsService;
     private final ReceiptClaimService receiptClaimService;
+    private final UserRepository userRepository;
 
     @GetMapping("/profile")
     @PreAuthorize("isAuthenticated()")
@@ -96,13 +101,23 @@ public class GuestRewardController {
 
     private Long getCurrentUserId() {
         try {
-            Object principal = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication().getPrincipal();
-            if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
-                // Extract user ID from principal or auth details
-                // This assumes you have a way to map email/username to user ID
-                return null; // Return null for anonymous users
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return null;
             }
+
+            // Get the email from the principal (it's set by JwtFilter)
+            String email = authentication.getPrincipal().toString();
+            
+            // Look up the user by email to get their ID
+            User user = userRepository.findByEmail(email).orElse(null);
+            
+            if (user == null) {
+                log.debug("User not found for email: {}", email);
+                return null;
+            }
+            
+            return user.getId();
         } catch (Exception e) {
             log.debug("Error getting current user", e);
         }

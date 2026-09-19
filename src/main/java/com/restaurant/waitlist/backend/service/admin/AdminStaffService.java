@@ -1,8 +1,10 @@
 package com.restaurant.waitlist.backend.service.admin;
 
 import com.restaurant.waitlist.backend.dto.request.admin.AdminStaffRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.StaffSetPasswordRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.StaffUpdateRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.AdminStaffResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.StaffTokenVerificationResponse;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Page;
 import java.util.Map;
@@ -25,5 +27,10 @@ public interface AdminStaffService {
     // Activity and audit
     Page<Map<String, Object>> getStaffActivityLog(Long staffId, Pageable pageable);
     Page<Map<String, Object>> getAllStaffActivityLog(Pageable pageable);
+
+    // Invitation token management
+    StaffTokenVerificationResponse verifyInvitationToken(String token);
+    AdminStaffResponse setStaffPassword(StaffSetPasswordRequest request);
+    Map<String, Object> checkInvitationTokenStatus(String token);
 }
 

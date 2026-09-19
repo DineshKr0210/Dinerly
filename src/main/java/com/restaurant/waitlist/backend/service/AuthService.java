@@ -58,7 +58,7 @@ public class AuthService {
             throw new RuntimeException("User account is disabled");
         }
 
-        if (user.getRole() == User.UserRole.RESTAURANT && !Boolean.TRUE.equals(user.getEmailVerified())) {
+        if (user.getRole() == User.UserRole.OWNER && !Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new RuntimeException("Email not verified");
         }
 

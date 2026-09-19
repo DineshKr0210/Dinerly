@@ -33,15 +33,28 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
+                        // Public endpoints
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/auth/register", "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/encode-password").permitAll()
-                        .requestMatchers("/api/users/**").hasAnyRole("RESTAURANT","ADMIN")
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-docs", "/swagger-docs/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
-                        // Allow guests to access waitlist public endpoints without authenticating
                         .requestMatchers("/api/waitlist/**").permitAll()
                         .requestMatchers("/api/twilio/**").permitAll()
+                        
+                        // Guest endpoints
                         .requestMatchers("/api/menu/**").hasAnyRole("GUEST", "ADMIN")
-                        .requestMatchers("/api/restaurants/**").hasAnyRole("RESTAURANT","ADMIN")
+                        .requestMatchers("/api/feedback/**").hasAnyRole("GUEST", "ADMIN")
+                        
+                        // ✅ Restaurant staff endpoints (all restaurant roles)
+                        .requestMatchers("/api/restaurants/**").hasAnyRole("STAFF", "HOST", "MANAGER", "OWNER", "ADMIN")
+                        .requestMatchers("/api/tables/**").hasAnyRole("HOST", "MANAGER", "OWNER", "ADMIN")
+                        
+                        // ✅ Staff management (OWNER + ADMIN only)
+                        .requestMatchers("/api/admin/staff/**").hasAnyRole("OWNER", "ADMIN")
+                        
+                        // ✅ System admin endpoints (ADMIN only)
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        
+                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

@@ -35,7 +35,7 @@ public class SettingsController {
     private SettingsService settingsService;
 
     @GetMapping("/{restaurantId}/profile")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<SettingsProfileResponse>> getProfileSettings(
             @PathVariable Long restaurantId,
             @RequestParam(required = false) Integer year,
@@ -49,7 +49,7 @@ public class SettingsController {
     }
 
     @GetMapping("/{restaurantId}/notifications")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> getNotificationSettings(@PathVariable Long restaurantId) {
         try {
             RestaurantSettingsResponse response = settingsService.getRestaurantSettings(restaurantId);
@@ -60,7 +60,7 @@ public class SettingsController {
     }
 
     @GetMapping("/{restaurantId}/waitlist-settings")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistSettingsResponse>> getWaitlistSettings(@PathVariable Long restaurantId) {
         try {
             WaitlistSettingsResponse response = settingsService.getWaitlistSettings(restaurantId);
@@ -71,7 +71,7 @@ public class SettingsController {
     }
 
     @GetMapping("/{restaurantId}/advanced")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<AdvancedSettingsResponse>> getAdvancedSettings(@PathVariable Long restaurantId) {
         try {
             AdvancedSettingsResponse response = settingsService.getAdvancedSettings(restaurantId);
@@ -82,7 +82,7 @@ public class SettingsController {
     }
 
     @GetMapping(value = "/{restaurantId}/qr-code", produces = MediaType.IMAGE_PNG_VALUE)
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<byte[]> getQrCode(@PathVariable Long restaurantId) {
         try {
             byte[] imageBytes = settingsService.getOrCreateQrCodeImage(restaurantId);
@@ -93,7 +93,7 @@ public class SettingsController {
     }
 
     @GetMapping("/{restaurantId}/holiday-hours")
-    @PreAuthorize("hasRole('RESTAURANT')")
+    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<HolidayHoursResponse>> getHolidayHours(@PathVariable Long restaurantId) {
         try {
             HolidayHoursResponse response = settingsService.getHolidayHours(restaurantId);

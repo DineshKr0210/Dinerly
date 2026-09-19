@@ -35,8 +35,13 @@ public class User {
 
     private String phone;
 
+    // ✅ Multi-tenant restaurant assignment
     @Column(name = "restaurant_id")
     private Long restaurantId;
+
+    // ✅ Link to staff record (if user is staff member)
+    @Column(name = "staff_id")
+    private Long staffId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -60,8 +65,14 @@ public class User {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    // ✅ UPDATED: Extended role enum for multi-tier access control
     public enum UserRole {
-        GUEST, RESTAURANT, ADMIN
+        GUEST,      // Customer - no staff access
+        STAFF,      // Restaurant general staff
+        HOST,       // Restaurant front desk
+        MANAGER,    // Restaurant operations manager
+        OWNER,      // Restaurant owner
+        ADMIN       // System administrator
     }
 }
 
