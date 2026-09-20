@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.dto.request.CreateStaffRequest;
 import com.restaurant.waitlist.backend.dto.response.StaffResponse;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.entity.Staff;
+import com.restaurant.waitlist.backend.entity.StaffRole;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.StaffRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ public class StaffService {
         Staff staff = Staff.builder()
                 .restaurant(restaurant)
                 .name(request.getName())
-                .role(request.getRole())
+                .role(StaffRole.fromString(request.getRole()))
                 .build();
         return StaffResponse.fromStaff(staffRepository.save(staff));
     }

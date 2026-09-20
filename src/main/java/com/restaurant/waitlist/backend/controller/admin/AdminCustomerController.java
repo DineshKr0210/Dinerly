@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.controller.admin;
 
 import com.restaurant.waitlist.backend.dto.response.admin.CustomerResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.CustomerSummaryResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminCustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminCustomerController {
 
     private final AdminCustomerService adminCustomerService;
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CustomerSummaryResponse> summary(@RequestParam(required = false) Long restaurantId) {
+        CustomerSummaryResponse resp = adminCustomerService.getCustomerSummary(restaurantId);
+        return ResponseEntity.ok(resp);
+    }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")

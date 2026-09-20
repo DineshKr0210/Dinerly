@@ -22,8 +22,14 @@ public class ReviewsPerformanceResponse {
     @AllArgsConstructor
     public static class Summary {
         private long reviewsReceived;
+        private long prevReviewsReceived;
+        private double reviewsReceivedChangePercent;
         private double averageRating;
+        private double prevAverageRating;
+        private double avgRatingChangePercent;
         private long replyRate;
+        private long prevReplyRate;
+        private double replyRateChangePercent;
     }
 
     @Data
@@ -41,6 +47,7 @@ public class ReviewsPerformanceResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class LeaderboardEntry {
+        private int rank;
         private String location;
         private long reviewsReceived;
         private double avgRating;

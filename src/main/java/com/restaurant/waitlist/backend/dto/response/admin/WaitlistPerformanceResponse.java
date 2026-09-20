@@ -22,8 +22,14 @@ public class WaitlistPerformanceResponse {
     @AllArgsConstructor
     public static class Summary {
         private long waitlistJoins;
+        private long prevWaitlistJoins;
+        private double waitlistJoinsChangePercent;
         private long guestsSeated;
+        private long prevGuestsSeated;
+        private double guestsSeatedChangePercent;
         private double averageWaitTimeMinutes;
+        private double prevAverageWaitTimeMinutes;
+        private double avgWaitChangePercent;
     }
 
     @Data
@@ -41,9 +47,11 @@ public class WaitlistPerformanceResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class LeaderboardEntry {
+        private int rank;
         private String location;
         private long waitlistJoins;
-        private long guestsSeated;
+        private long redemptions;
         private long avgWaitMinutes;
+        private double rating;
     }
 }

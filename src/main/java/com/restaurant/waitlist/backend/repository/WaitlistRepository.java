@@ -116,8 +116,11 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                             @Param("fromDate") java.sql.Date fromDate,
                                             @Param("toDate") java.sql.Date toDate);
 
-    @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, MAX(DATE(w.joined_at)) as lastVisit " +
+    @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
+            "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
+            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
             "FROM waitlist w " +
+            "JOIN restaurants r ON w.restaurant_id = r.id " +
             "WHERE (:restaurantId IS NULL OR w.restaurant_id = :restaurantId) " +
             "GROUP BY w.guest_name, w.guest_phone " +
             "ORDER BY visits DESC", nativeQuery = true)
@@ -142,5 +145,24 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                                           @Param("search") String search,
                                                           @Param("joinedDate") java.time.LocalDate joinedDate,
                                                           Pageable pageable);
+
+       // Insights feed queries
+       @Query(value = "SELECT ROUND(100.0 * COUNT(CASE WHEN w.status = 'NO_SHOW' THEN 1 END) / NULLIF(COUNT(*), 0), 2) " +
+               "FROM waitlist w WHERE w.restaurant_id = :restaurantId " +
+               "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+               "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+       Double getNoShowRateByLocation(@Param("restaurantId") Long restaurantId,
+                                      @Param("fromDate") java.sql.Date fromDate,
+                                      @Param("toDate") java.sql.Date toDate);
+
+       @Query(value = "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (w.seated_at - w.notified_at))/60), 2) - " +
+               "ROUND(AVG(w.estimated_wait_time), 2) AS wait_time_variance " +
+               "FROM waitlist w WHERE w.restaurant_id = :restaurantId " +
+               "AND w.seated_at IS NOT NULL AND w.notified_at IS NOT NULL " +
+               "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+               "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+       Double getWaitTimeAccuracyByLocation(@Param("restaurantId") Long restaurantId,
+                                           @Param("fromDate") java.sql.Date fromDate,
+                                           @Param("toDate") java.sql.Date toDate);
 }
 

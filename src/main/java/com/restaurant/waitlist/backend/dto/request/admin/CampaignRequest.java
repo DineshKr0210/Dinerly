@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.dto.request.admin;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.restaurant.waitlist.backend.enums.AudienceType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -9,12 +10,14 @@ import java.time.LocalDateTime;
 public class CampaignRequest {
     private String name;
     private String channel; // SMS or EMAIL
-    private String audience; // e.g., ALL, RECENT_30D, LAPSED_30D, GOLD_PLATINUM
+    private AudienceType audience; // ALL, RECENT_30D, LAPSED_30D, GOLD_PLATINUM, etc.
     private Long templateId;
     private String message;
     @JsonAlias({"locationId"})
     private Long restaurantId;
     private LocalDateTime scheduledAt; // optional
+    private LocalDateTime endDate; // optional
+    private Boolean hasRedemptionCode; // true = generate codes at publish, false = no codes
 
     public Long getLocationId() {
         return restaurantId;

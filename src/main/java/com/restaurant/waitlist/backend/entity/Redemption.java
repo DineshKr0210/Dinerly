@@ -58,6 +58,10 @@ public class Redemption {
     @Column(name = "user_id")
     private Long userId; // Track which guest redeemed
 
+    @ManyToOne
+    @JoinColumn(name = "campaign_id")
+    private Campaign campaign; // Track which campaign triggered this redemption
+
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 

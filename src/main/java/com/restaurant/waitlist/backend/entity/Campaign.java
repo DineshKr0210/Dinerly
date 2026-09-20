@@ -1,5 +1,7 @@
 package com.restaurant.waitlist.backend.entity;
 
+import com.restaurant.waitlist.backend.converter.AudienceTypeConverter;
+import com.restaurant.waitlist.backend.enums.AudienceType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,9 +25,12 @@ public class Campaign {
 
     private String name;
 
-    private String channel; // SMS, EMAIL
+    @Column(columnDefinition = "TEXT")
+    private String channels; // JSON array: ["SMS", "EMAIL", "PUSH"] or single value for backward compat
 
-    private String audience; // segment name or JSON
+    @Column(name = "audience")
+    @Convert(converter = AudienceTypeConverter.class)
+    private AudienceType audience; // ALL, RECENT_30D, LAPSED_30D, GOLD_PLATINUM, etc.
 
     @Column(name = "template_id")
     private Long templateId;
@@ -39,7 +44,10 @@ public class Campaign {
     @Column(name = "scheduled_at")
     private LocalDateTime scheduledAt;
 
-    private String status; // DRAFT, SCHEDULED, ACTIVE, PAUSED, COMPLETED
+    @Column(name = "end_date")
+    private LocalDateTime endDate;
+
+    private String status; // DRAFT, SCHEDULED, ACTIVE, PAUSED, ENDED
 
     @Column(name = "sent_count")
     private Integer sentCount;
@@ -50,6 +58,9 @@ public class Campaign {
 
     @Column(name = "revenue_influenced")
     private BigDecimal revenueInfluenced;
+
+    @Column(name = "has_redemption_code")
+    private Boolean hasRedemptionCode = false; // true = generate codes, false = no codes
 
     @CreationTimestamp
     @Column(updatable = false)

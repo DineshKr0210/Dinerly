@@ -10,6 +10,7 @@ import com.restaurant.waitlist.backend.entity.AuditLog;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.entity.Staff;
 import com.restaurant.waitlist.backend.entity.StaffInvitationToken;
+import com.restaurant.waitlist.backend.entity.StaffRole;
 import com.restaurant.waitlist.backend.entity.User;
 import com.restaurant.waitlist.backend.mapper.AdminLocationMapper;
 import com.restaurant.waitlist.backend.repository.AuditLogRepository;
@@ -51,7 +52,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         return page.map(s -> AdminStaffResponse.builder()
                 .id(s.getId())
                 .name(s.getName())
-                .role(s.getRole())
+                .role(s.getRole().name())
                 .email(s.getEmail())
                 .status(s.getStatus() != null ? s.getStatus().name() : null)
                 .locationId(s.getRestaurant() != null ? s.getRestaurant().getId() : null)
@@ -69,10 +70,13 @@ public class AdminStaffServiceImpl implements AdminStaffService {
                 .anyMatch(s -> request.getEmail().equalsIgnoreCase(s.getEmail()));
         if (exists) throw new RuntimeException("Email already invited");
 
+        // Convert and validate role
+        StaffRole staffRole = StaffRole.fromString(request.getRole());
+
         Staff staff = Staff.builder()
                 .restaurant(restaurant)
                 .name(request.getName())
-                .role(request.getRole())
+                .role(staffRole)
                 .email(request.getEmail())
                 .status(Staff.StaffStatus.INVITED)
                 .build();
@@ -105,14 +109,14 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         AuditLog log = AuditLog.builder()
                 .restaurantId(restaurant.getId())
                 .action("STAFF_INVITED")
-                .details("Invited " + saved.getName() + " (" + saved.getEmail() + ") as " + saved.getRole())
+                .details("Invited " + saved.getName() + " (" + saved.getEmail() + ") as " + saved.getRole().name())
                 .build();
         auditLogRepository.save(log);
 
         return AdminStaffResponse.builder()
                 .id(saved.getId())
                 .name(saved.getName())
-                .role(saved.getRole())
+                .role(saved.getRole().name())
                 .email(saved.getEmail())
                 .status(saved.getStatus().name())
                 .locationId(restaurant.getId())
@@ -126,7 +130,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         return AdminStaffResponse.builder()
                 .id(s.getId())
                 .name(s.getName())
-                .role(s.getRole())
+                .role(s.getRole().name())
                 .email(s.getEmail())
                 .status(s.getStatus().name())
                 .locationId(s.getRestaurant() != null ? s.getRestaurant().getId() : null)
@@ -140,7 +144,9 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
         
         if (request.getName() != null) s.setName(request.getName());
-        if (request.getRole() != null) s.setRole(request.getRole());
+        if (request.getRole() != null) {
+            s.setRole(StaffRole.fromString(request.getRole()));
+        }
         if (request.getEmail() != null) s.setEmail(request.getEmail());
         if (request.getLocationId() != null) {
             Restaurant r = restaurantRepository.findById(request.getLocationId()).orElseThrow(() -> new RuntimeException("Restaurant not found"));
@@ -162,7 +168,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         return AdminStaffResponse.builder()
                 .id(saved.getId())
                 .name(saved.getName())
-                .role(saved.getRole())
+                .role(saved.getRole().name())
                 .email(saved.getEmail())
                 .status(saved.getStatus().name())
                 .locationId(saved.getRestaurant() != null ? saved.getRestaurant().getId() : null)
@@ -206,22 +212,23 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         
         Map<String, Object> permissions = new HashMap<>();
         permissions.put("staffId", s.getId());
-        permissions.put("role", s.getRole());
+        permissions.put("role", s.getRole().name());
         
         // Role-based permissions
-        if ("Owner".equalsIgnoreCase(s.getRole())) {
+        if (StaffRole.ADMIN == s.getRole()) {
             permissions.put("canManageOffers", true);
             permissions.put("canManageStaff", true);
             permissions.put("canViewReports", true);
             permissions.put("canManageSettings", true);
             permissions.put("canManageRewards", true);
-        } else if ("Manager".equalsIgnoreCase(s.getRole())) {
+        } else if (StaffRole.MANAGER == s.getRole()) {
             permissions.put("canManageOffers", true);
             permissions.put("canManageStaff", false);
             permissions.put("canViewReports", true);
             permissions.put("canManageSettings", false);
             permissions.put("canManageRewards", true);
         } else {
+            // HOST role - limited permissions
             permissions.put("canManageOffers", false);
             permissions.put("canManageStaff", false);
             permissions.put("canViewReports", false);
@@ -374,7 +381,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
                 .password(encryptedPassword)
                 .name(staff.getName())
                 .phone(null)
-                .role(User.UserRole.valueOf(staff.getRole().toUpperCase()))
+                .role(mapStaffRoleToUserRole(staff.getRole()))
                 .restaurantId(staff.getRestaurant().getId())
                 .staffId(staff.getId())
                 .emailVerified(true)
@@ -395,14 +402,14 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         AuditLog log = AuditLog.builder()
                 .restaurantId(staff.getRestaurant().getId())
                 .action("STAFF_ACTIVATED_VIA_INVITATION")
-                .details("Staff " + staff.getName() + " (" + staff.getEmail() + ") activated with role: " + staff.getRole())
+                .details("Staff " + staff.getName() + " (" + staff.getEmail() + ") activated with role: " + staff.getRole().name())
                 .build();
         auditLogRepository.save(log);
 
         return AdminStaffResponse.builder()
                 .id(savedStaff.getId())
                 .name(savedStaff.getName())
-                .role(savedStaff.getRole())
+                .role(savedStaff.getRole().name())
                 .email(savedStaff.getEmail())
                 .status(savedStaff.getStatus().name())
                 .locationId(savedStaff.getRestaurant().getId())
@@ -442,5 +449,16 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         response.put("message", "Invitation token is valid");
         response.put("expiresAt", invitationToken.getExpiryDate());
         return response;
+    }
+
+    /**
+     * Maps StaffRole to the corresponding User.UserRole for authentication purposes.
+     */
+    private User.UserRole mapStaffRoleToUserRole(StaffRole staffRole) {
+        return switch (staffRole) {
+            case ADMIN -> User.UserRole.ADMIN;
+            case MANAGER -> User.UserRole.MANAGER;
+            case HOST -> User.UserRole.HOST;
+        };
     }
 }

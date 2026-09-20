@@ -15,7 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.Map;
+import org.springframework.format.annotation.DateTimeFormat;
 
 @RestController
 @RequestMapping("/api/admin/reports")
@@ -28,8 +30,10 @@ public class AdminReportController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ReportResponse> generate(@RequestParam(required = false) String type,
                                                    @RequestParam(required = false) Long locationId,
-                                                   @RequestParam(required = false, defaultValue = "last30days") String period) throws Exception {
-        ReportResponse resp = adminReportService.generateReport(type, locationId, period);
+                                                   @RequestParam(required = false, defaultValue = "last30days") String period,
+                                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+                                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws Exception {
+        ReportResponse resp = adminReportService.generateReport(type, locationId, period, startDate, endDate);
         return ResponseEntity.ok(resp);
     }
 

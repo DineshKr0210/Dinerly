@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.dto.request.admin.StaffUpdateRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.AdminStaffResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.StaffTokenVerificationResponse;
+import com.restaurant.waitlist.backend.entity.StaffRole;
 import com.restaurant.waitlist.backend.service.admin.AdminStaffService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/staff")
@@ -31,6 +34,20 @@ public class AdminStaffController {
         Pageable pageable = PageRequest.of(page, size);
         Object resp = adminStaffService.listStaff(pageable);
         return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", resp));
+    }
+
+    @GetMapping("/roles")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAvailableRoles() {
+        Map<String, Object> roles = Map.of(
+                "roles", Arrays.stream(StaffRole.values())
+                        .map(role -> Map.of(
+                                "name", role.name(),
+                                "displayName", role.getDisplayName()
+                        ))
+                        .collect(Collectors.toList())
+        );
+        return ResponseEntity.ok(ApiResponse.success("Available staff roles retrieved", roles));
     }
 
     @PostMapping

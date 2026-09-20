@@ -17,4 +17,5 @@ public interface AdminRedemptionService {
     Map<String, Object> getStatistics(Long locationId, LocalDateTime from, LocalDateTime to);
     Page<RedemptionResponse> getByOffer(Long offerId, Pageable pageable);
     Page<RedemptionResponse> getByUser(Long userId, Pageable pageable);
+    Map<String, Object> validateAndCompleteCampaignCode(String code, Long campaignId);
 }

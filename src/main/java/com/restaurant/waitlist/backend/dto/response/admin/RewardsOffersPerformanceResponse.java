@@ -22,8 +22,14 @@ public class RewardsOffersPerformanceResponse {
     @AllArgsConstructor
     public static class Summary {
         private long redemptions;
-        private long pointsRedeemed;
+        private long prevRedemptions;
+        private double redemptionsChangePercent;
+        private long pointsIssued;
+        private long prevPointsIssued;
+        private double pointsIssuedChangePercent;
         private long activeOffers;
+        private long prevActiveOffers;
+        private double activeOffersChangePercent;
     }
 
     @Data
@@ -41,9 +47,10 @@ public class RewardsOffersPerformanceResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class LeaderboardEntry {
+        private int rank;
         private String location;
         private long redemptions;
-        private long pointsRedeemed;
+        private long pointsIssued;
         private long activeOffers;
     }
 }

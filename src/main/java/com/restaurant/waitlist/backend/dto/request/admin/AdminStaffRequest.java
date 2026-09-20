@@ -1,5 +1,6 @@
 package com.restaurant.waitlist.backend.dto.request.admin;
 
+import com.restaurant.waitlist.backend.validation.ValidStaffRole;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -9,6 +10,7 @@ public class AdminStaffRequest {
     private String name;
 
     @NotBlank
+    @ValidStaffRole
     private String role;
 
     @NotNull

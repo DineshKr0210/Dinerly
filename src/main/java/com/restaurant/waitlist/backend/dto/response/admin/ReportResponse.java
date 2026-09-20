@@ -14,8 +14,11 @@ import java.time.LocalDateTime;
 public class ReportResponse {
     private Long id;
     private String fileName;
-    private String type;
+    private String type;              // "overall" or "location"
+    private String scope;              // "All locations" or location name
     private Long locationId;
+    private String locationName;       // Display name for location (if applicable)
     private String period;
+    private String dateRange;          // Display format: "Aug 1 - Aug 31"
     private LocalDateTime generatedAt;
 }

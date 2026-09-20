@@ -30,5 +30,24 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
             "AND (CAST(:toDate AS DATE) IS NULL OR DATE(f.created_at) <= CAST(:toDate AS DATE)) " +
             "GROUP BY DATE(f.created_at) ORDER BY DATE(f.created_at)", nativeQuery = true)
     java.util.List<Object[]> countReviewsByDay(Long restaurantId, java.sql.Date fromDate, java.sql.Date toDate);
+
+    // Date range queries for summary metrics
+    @Query("SELECT COUNT(f) FROM Feedback f WHERE CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
+    long countByDateRange(java.sql.Date fromDate, java.sql.Date toDate);
+
+    @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
+    long countByWaitlistRestaurantIdAndDateRange(Long restaurantId, java.sql.Date fromDate, java.sql.Date toDate);
+
+    @Query("SELECT AVG(f.rating) FROM Feedback f WHERE CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
+    Double averageRatingByDateRange(java.sql.Date fromDate, java.sql.Date toDate);
+
+    @Query("SELECT AVG(f.rating) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
+    Double averageRatingByRestaurantIdAndDateRange(Long restaurantId, java.sql.Date fromDate, java.sql.Date toDate);
+
+    @Query("SELECT COUNT(f) FROM Feedback f WHERE f.reply IS NOT NULL AND TRIM(f.reply) <> '' AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
+    long countRepliedByDateRange(java.sql.Date fromDate, java.sql.Date toDate);
+
+    @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId AND f.reply IS NOT NULL AND TRIM(f.reply) <> '' AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
+    long countRepliedByRestaurantIdAndDateRange(Long restaurantId, java.sql.Date fromDate, java.sql.Date toDate);
 }
 

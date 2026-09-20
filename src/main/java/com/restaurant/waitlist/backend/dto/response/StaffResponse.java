@@ -17,7 +17,7 @@ public class StaffResponse {
         return StaffResponse.builder()
                 .id(staff.getId())
                 .name(staff.getName())
-                .role(staff.getRole())
+                .role(staff.getRole().name())
                 .email(staff.getEmail())
                 .status(staff.getStatus() != null ? staff.getStatus().name() : null)
                 .build();

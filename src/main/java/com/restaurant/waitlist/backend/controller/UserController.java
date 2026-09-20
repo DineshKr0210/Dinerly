@@ -18,7 +18,7 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'HOST')")
     @GetMapping("/users")
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
         try {
@@ -28,7 +28,7 @@ public class UserController {
         }
     }
 
-    @PreAuthorize("hasAnyRole('MANAGER', 'OWNER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long userId) {
         try {

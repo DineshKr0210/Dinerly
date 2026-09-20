@@ -14,7 +14,9 @@ import java.time.LocalDate;
 public class CustomerResponse {
     private String guest;
     private String contact;
+    private String locations; // comma-separated
     private Long visits;
+    private LocalDate firstVisit;
     private LocalDate lastVisit;
-    private String loyalty;
+    private String status; // "Regular" or "New"
 }

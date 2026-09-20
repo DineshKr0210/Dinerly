@@ -29,8 +29,9 @@ public class Staff {
     @Column(nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String role;
+    private StaffRole role;
 
     @Column(nullable = true)
     private String email;

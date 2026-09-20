@@ -42,4 +42,11 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
 
     @Query("SELECT COUNT(r) FROM Redemption r WHERE r.offer.id = :offerId AND r.userId = :userId")
     long countTotalRedemptionsByUserAndOffer(Long offerId, Long userId);
+
+    @Query("SELECT COUNT(o) FROM Offer o WHERE o.restaurant.id = :restaurantId " +
+            "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE")
+    long countActiveOffersByRestaurant(Long restaurantId);
+
+    @Query("SELECT COUNT(DISTINCT o.restaurant.id) FROM Offer o WHERE o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE")
+    long countRestaurantsWithActiveOffers();
 }

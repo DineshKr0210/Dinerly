@@ -11,8 +11,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class MarketingSummaryResponse {
     private long activeCampaigns;
+    private Double activeCampaignsTrendPercent;
     private long guestsReached;
+    private Double guestsReachedPercent;
     private long redemptions;
+    private long redemptionsLastMonth;
+    private Double redemptionsTrendPercent;
     private long spendThisMonth;
+    private Double spendTrendPercent;
     private Long locationId;
 }

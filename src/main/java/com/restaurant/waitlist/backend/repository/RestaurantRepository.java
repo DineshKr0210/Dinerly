@@ -2,6 +2,8 @@ package com.restaurant.waitlist.backend.repository;
 
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,5 +14,11 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
     List<Restaurant> findByName(String name);
     Optional<Restaurant> findByEmail(String email);
     Optional<Restaurant> findByPhone(String phone);
+
+    @Query("SELECT r FROM Restaurant r WHERE r.locationOpen = false")
+    List<Restaurant> findClosedLocations();
+
+    @Query("SELECT r FROM Restaurant r WHERE r.locationOpen = false AND r.id = :restaurantId")
+    Optional<Restaurant> findClosedLocationById(@Param("restaurantId") Long restaurantId);
 }
 

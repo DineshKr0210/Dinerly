@@ -2,9 +2,10 @@ package com.restaurant.waitlist.backend.controller.admin;
 
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.AdminDashboardResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.InsightCardResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.RealTimeMetricsResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,8 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/dashboard")
@@ -42,19 +43,18 @@ public class AdminDashboardController {
     }
 
     @GetMapping("/realtime-metrics")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getRealTimeMetrics(
+    public ResponseEntity<ApiResponse<RealTimeMetricsResponse>> getRealTimeMetrics(
             @RequestParam(required = false) Long locationId) {
-        Map<String, Object> metrics = adminDashboardService.getRealTimeMetrics(locationId);
+        RealTimeMetricsResponse metrics = adminDashboardService.getRealTimeMetrics(locationId);
         return ResponseEntity.ok(ApiResponse.success("Real-time metrics retrieved", metrics));
     }
 
     @GetMapping("/insights-feed")
-    public ResponseEntity<ApiResponse<?>> getInsightsFeed(
+    public ResponseEntity<ApiResponse<List<InsightCardResponse>>> getInsightsFeed(
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) Long locationId,
-            Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success("Insights feed retrieved", 
-            adminDashboardService.getInsightsFeed(category, locationId, pageable)));
+            @RequestParam(required = false) Long locationId) {
+        List<InsightCardResponse> insights = adminDashboardService.getInsightsFeed(category, locationId);
+        return ResponseEntity.ok(ApiResponse.success("Insights feed retrieved", insights));
     }
 
     @GetMapping("/quick-actions")
