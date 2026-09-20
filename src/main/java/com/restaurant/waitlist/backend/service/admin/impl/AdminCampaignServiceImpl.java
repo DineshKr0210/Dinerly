@@ -15,6 +15,7 @@ import com.restaurant.waitlist.backend.service.audience.AudienceFilterResolver;
 import com.restaurant.waitlist.backend.util.RedemptionCodeGenerator;
 import com.restaurant.waitlist.backend.entity.Redemption;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminCampaignServiceImpl implements AdminCampaignService {
 
     private final CampaignRepository campaignRepository;
@@ -234,26 +236,21 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
                     } while (redemptionRepository.existsByRedemptionCode(code));
                     
                     // Create redemption record with campaign_id FK
-                    Redemption redemption = Redemption.builder()
-                            .campaign(c)
-                            .redemptionCode(code)
-                            .guestPhone(phone)
-                            .status(Redemption.RedemptionStatus.GENERATED)
-                            .codeExpiresAt(codeExpiresAt)
-                            .restaurantId(c.getRestaurantId())
-                            .build();
-                    
-                    redemptionRepository.save(redemption);
-                    phoneToCode.put(phone, code);
+                    // Use separate transaction to isolate redemption failures
+                    createCampaignRedemption(c, code, phone, codeExpiresAt, phoneToCode);
                     codesGenerated++;
                 } catch (Exception ex) {
                     // Log but continue with next recipient
+                    log.warn("Failed to create redemption for campaign {} phone {}: {}", c.getId(), phone, ex.getMessage());
                 }
             }
         }
 
+        // ✅ DEDUPLICATE RECIPIENTS to prevent duplicate SMS to same phone number
+        java.util.Set<String> uniqueRecipients = new java.util.LinkedHashSet<>(recipients);
+        
         int sent = 0;
-        for (String to : recipients) {
+        for (String to : uniqueRecipients) {
             try {
                 String message = c.getMessage();
                 if ((message == null || message.isBlank()) && c.getTemplateId() != null) {
@@ -278,22 +275,39 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
                     smsService.sendSms(to, message);
                     sent++;
                 }
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.warn("Failed to send SMS to {}: {}", to, ex.getMessage());
             }
         }
 
         c.setSentCount((c.getSentCount() == null ? 0 : c.getSentCount()) + sent);
-        c.setReach(recipients.size());
+        c.setReach(uniqueRecipients.size());  // Use unique recipients count for accurate reach
         c.setStatus("ACTIVE");
         campaignRepository.save(c);
 
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
                 .restaurantId(c.getRestaurantId() != null ? c.getRestaurantId() : 0L)
                 .action("PUBLISH_CAMPAIGN")
-                .details("Published campaign id=" + c.getId() + " sent=" + sent + " reach=" + recipients.size())
+                .details("Published campaign id=" + c.getId() + " sent=" + sent + " reach=" + uniqueRecipients.size())
                 .build());
 
         return toDto(c);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    private void createCampaignRedemption(Campaign c, String code, String phone, 
+                                         LocalDateTime codeExpiresAt, java.util.Map<String, String> phoneToCode) {
+        Redemption redemption = Redemption.builder()
+                .campaign(c)
+                .redemptionCode(code)
+                .guestPhone(phone)
+                .status(Redemption.RedemptionStatus.GENERATED)
+                .codeExpiresAt(codeExpiresAt)
+                .restaurantId(c.getRestaurantId())
+                .build();
+        
+        redemptionRepository.save(redemption);
+        phoneToCode.put(phone, code);
     }
 
     private CampaignResponse toDto(Campaign c) {

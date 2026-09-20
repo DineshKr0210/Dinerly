@@ -13,17 +13,8 @@ public class CampaignRequest {
     private AudienceType audience; // ALL, RECENT_30D, LAPSED_30D, GOLD_PLATINUM, etc.
     private Long templateId;
     private String message;
-    @JsonAlias({"locationId"})
     private Long restaurantId;
     private LocalDateTime scheduledAt; // optional
     private LocalDateTime endDate; // optional
     private Boolean hasRedemptionCode; // true = generate codes at publish, false = no codes
-
-    public Long getLocationId() {
-        return restaurantId;
-    }
-
-    public void setLocationId(Long locationId) {
-        this.restaurantId = locationId;
-    }
 }

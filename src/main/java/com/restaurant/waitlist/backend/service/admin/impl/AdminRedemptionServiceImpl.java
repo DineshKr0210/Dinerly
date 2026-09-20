@@ -139,5 +139,41 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
         
         return response;
     }
+
+    @Override
+    public java.util.Map<String, Object> validateAndCompleteCampaignCodeByCode(String code) {
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        
+        try {
+            // Find the redemption record for this campaign code (campaign ID auto-looked-up)
+            Redemption redemption = redemptionRepository.findValidCampaignCodeByCodeOnly(code)
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired campaign code"));
+            
+            // Mark as completed
+            redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
+            redemption.setRedeemedAt(LocalDateTime.now());
+            redemptionRepository.save(redemption);
+            
+            // Return success response
+            Long campaignId = redemption.getCampaign() != null ? redemption.getCampaign().getId() : null;
+            response.put("success", true);
+            response.put("message", "Campaign code validated and completed");
+            response.put("code", code);
+            response.put("campaignId", campaignId);
+            response.put("redemptionId", redemption.getId());
+            response.put("guestPhone", redemption.getGuestPhone());
+            response.put("offer", redemption.getCampaign().getName());
+            response.put("offerMessage", redemption.getCampaign().getMessage());
+            response.put("status", "COMPLETED");
+            
+        } catch (IllegalArgumentException ex) {
+            response.put("success", false);
+            response.put("message", "Invalid or expired campaign code");
+            response.put("code", code);
+            response.put("error", ex.getMessage());
+        }
+        
+        return response;
+    }
 }
 

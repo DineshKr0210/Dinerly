@@ -47,30 +47,38 @@ public class RedemptionController {
     }
 
     /**
-     * Validate and complete a campaign redemption code at POS
+     * Validate and complete a campaign redemption code at POS (with campaign ID)
      * Used when guest enters code at restaurant to redeem campaign offer
      * Accessible by Host, Manager, or Staff roles
      *
      * @param restaurantId The restaurant ID where POS is validating the code
-     * @param request Map containing:
-     *                - code: The 6-digit redemption code entered by guest
-     *                - campaignId: The campaign ID associated with the code
+     * @param code The 6-digit redemption code entered by guest
+     * @param campaignId The campaign ID associated with the code
      * @return Success response with redemption details or error if code invalid/expired
      */
-    @PostMapping("/validate-campaign-code")
+
+    /**
+     * Validate and complete a campaign redemption code at POS (code only)
+     * Backend automatically looks up which campaign the code belongs to
+     * Simpler endpoint when you only have the redemption code
+     * Accessible by Host, Manager, or Staff roles
+     *
+     * @param restaurantId The restaurant ID where POS is validating the code
+     * @param code The 6-digit redemption code entered by guest
+     * @return Success response with redemption details or error if code invalid/expired
+     */
+    @PostMapping("/validate-campaign-code/{code}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'HOST')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> validateCampaignCode(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> validateCampaignCodeByCodeOnly(
             @PathVariable Long restaurantId,
-            @RequestBody Map<String, Object> request) {
-        String code = (String) request.get("code");
-        Long campaignId = ((Number) request.get("campaignId")).longValue();
+            @PathVariable String code) {
         
-        if (code == null || code.isBlank() || campaignId == null) {
+        if (code == null || code.isBlank()) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Code and campaignId are required"));
+                    .body(ApiResponse.error("Code is required"));
         }
         
-        Map<String, Object> resp = adminRedemptionService.validateAndCompleteCampaignCode(code, campaignId);
+        Map<String, Object> resp = adminRedemptionService.validateAndCompleteCampaignCodeByCode(code);
         return ResponseEntity.ok(ApiResponse.success("Campaign code validated successfully", resp));
     }
 

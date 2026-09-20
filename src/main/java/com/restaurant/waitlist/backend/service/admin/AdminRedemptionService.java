@@ -18,4 +18,5 @@ public interface AdminRedemptionService {
     Page<RedemptionResponse> getByOffer(Long offerId, Pageable pageable);
     Page<RedemptionResponse> getByUser(Long userId, Pageable pageable);
     Map<String, Object> validateAndCompleteCampaignCode(String code, Long campaignId);
+    Map<String, Object> validateAndCompleteCampaignCodeByCode(String code);
 }
