@@ -58,7 +58,7 @@ public class GuestRewardController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RedeemRewardResponse>> redeemReward(
         @PathVariable Long rewardId,
-        @RequestBody RedeemRewardRequest req
+        @RequestParam Long restaurantId
     ) {
         try {
             Long userId = getCurrentUserId();
@@ -66,7 +66,7 @@ public class GuestRewardController {
                 return ResponseEntity.status(401).body(ApiResponse.error("User not authenticated"));
             }
 
-            RedeemRewardResponse response = guestRewardsService.redeemReward(userId, rewardId, req.getRestaurantId());
+            RedeemRewardResponse response = guestRewardsService.redeemReward(userId, rewardId, restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Reward redeemed successfully", response));
         } catch (Exception e) {
             log.error("Error redeeming reward", e);
