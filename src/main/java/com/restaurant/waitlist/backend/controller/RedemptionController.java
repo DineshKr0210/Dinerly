@@ -2,6 +2,7 @@ package com.restaurant.waitlist.backend.controller;
 
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.service.GuestOfferService;
+import com.restaurant.waitlist.backend.service.GuestRewardsService;
 import com.restaurant.waitlist.backend.service.admin.AdminRedemptionService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class RedemptionController {
 
     private final AdminRedemptionService adminRedemptionService;
     private final GuestOfferService guestOfferService;
+    private final GuestRewardsService guestRewardsService;
 
     /**
      * Validate and complete an offer redemption code at POS
@@ -70,6 +72,23 @@ public class RedemptionController {
         
         Map<String, Object> resp = adminRedemptionService.validateAndCompleteCampaignCode(code, campaignId);
         return ResponseEntity.ok(ApiResponse.success("Campaign code validated successfully", resp));
+    }
+
+    /**
+     * Validate and complete a reward redemption code at POS.
+     */
+    @PostMapping("/validate-reward-code/{code}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'HOST')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> validateRewardCode(
+            @PathVariable Long restaurantId,
+            @PathVariable String code) {
+        if (code == null || code.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Code is required"));
+        }
+
+        Map<String, Object> resp = guestRewardsService.validateRewardCode(code);
+        return ResponseEntity.ok(ApiResponse.success("Reward code validated successfully", resp));
     }
 }
 

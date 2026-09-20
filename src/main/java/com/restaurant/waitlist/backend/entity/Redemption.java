@@ -25,8 +25,11 @@ public class Redemption {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "offer_id", nullable = false)
+    @JoinColumn(name = "offer_id")
     private Offer offer;
+
+    @Column(name = "reward_item_id")
+    private Long rewardItemId;
 
     @Column(name = "restaurant_id", nullable = false)
     private Long restaurantId;

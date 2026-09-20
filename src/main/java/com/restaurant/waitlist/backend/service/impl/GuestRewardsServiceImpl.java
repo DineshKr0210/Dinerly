@@ -93,12 +93,21 @@ public class GuestRewardsServiceImpl implements GuestRewardsService {
         // Deduct points using PointsService
         pointsService.debit(userId, reward.getPointsCost(), "Reward redemption: " + reward.getTitle(), "reward_redemption", rewardItemId);
 
-        // Create redemption record (reuse Redemption entity or create new table for rewards)
-        // For now, we'll create a pseudo-offer redemption with reward info
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(CODE_VALIDITY_MINUTES);
 
-        // Log redemption
-        log.info("User {} redeemed reward {} for {} points", userId, rewardItemId, reward.getPointsCost());
+        Redemption redemption = Redemption.builder()
+            .restaurantId(restaurantId)
+            .guestName(null)
+            .guestPhone(null)
+            .redemptionCode(code)
+            .codeExpiresAt(expiresAt)
+            .status(Redemption.RedemptionStatus.GENERATED)
+            .userId(userId)
+            .rewardItemId(rewardItemId)
+            .build();
+        redemptionRepository.save(redemption);
+
+        log.info("User {} redeemed reward {} for {} points, code {}", userId, rewardItemId, reward.getPointsCost(), code);
 
         return RedeemRewardResponse.builder()
             .redemptionCode(code)
@@ -107,6 +116,35 @@ public class GuestRewardsServiceImpl implements GuestRewardsService {
             .newPointsBalance(userPoints - reward.getPointsCost())
             .rewardTitle(reward.getTitle())
             .build();
+    }
+
+    @Override
+    public Map<String, Object> validateRewardCode(String code) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Redemption redemption = redemptionRepository.findValidRedemptionCode(code)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reward code"));
+
+            redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
+            redemption.setRedeemedAt(LocalDateTime.now());
+            redemptionRepository.save(redemption);
+
+            response.put("success", true);
+            response.put("message", "Reward code validated and completed");
+            response.put("code", code);
+            response.put("redemptionId", redemption.getId());
+            response.put("rewardItemId", redemption.getRewardItemId());
+            response.put("userId", redemption.getUserId());
+            response.put("status", "COMPLETED");
+            return response;
+        } catch (IllegalArgumentException ex) {
+            response.put("success", false);
+            response.put("message", "Invalid or expired reward code");
+            response.put("code", code);
+            response.put("error", ex.getMessage());
+            return response;
+        }
     }
 
     @Override

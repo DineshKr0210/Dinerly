@@ -15,6 +15,11 @@ public interface GuestRewardsService {
     RedeemRewardResponse redeemReward(Long userId, Long rewardItemId, Long restaurantId);
 
     /**
+     * Validate a generated reward redemption code and mark it complete.
+     */
+    java.util.Map<String, Object> validateRewardCode(String code);
+
+    /**
      * Calculate current tier based on points
      */
     com.restaurant.waitlist.backend.entity.RewardTier calculateCurrentTier(Long userId, Long restaurantId);
