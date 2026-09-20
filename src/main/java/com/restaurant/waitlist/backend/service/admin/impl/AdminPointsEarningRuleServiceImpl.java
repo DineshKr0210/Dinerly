@@ -1,9 +1,12 @@
 package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.dto.request.admin.PointsEarningRuleRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.UpdatePointsEarningRuleRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.PointsEarningRuleResponse;
 import com.restaurant.waitlist.backend.entity.PointsEarningRule;
+import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.repository.PointsEarningRuleRepository;
+import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.service.admin.AdminPointsEarningRuleService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -26,6 +29,7 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
     private static final Logger log = LoggerFactory.getLogger(AdminPointsEarningRuleServiceImpl.class);
     
     private final PointsEarningRuleRepository pointsEarningRuleRepository;
+    private final RestaurantRepository restaurantRepository;
 
     @Override
     public Page<PointsEarningRuleResponse> listEarningRules(Long restaurantId, String action, Pageable pageable) {
@@ -44,8 +48,14 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
 
     @Override
     public PointsEarningRuleResponse createEarningRule(PointsEarningRuleRequest request) {
-        log.info("Creating earning rule - action: {}", request.getAction());
+        log.info("Creating earning rule - action: {}, restaurantId: {}", request.getAction(), request.getRestaurantId());
+        
+        // Fetch restaurant by ID
+        Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+                .orElseThrow(() -> new RuntimeException("Restaurant not found with ID: " + request.getRestaurantId()));
+        
         PointsEarningRule rule = PointsEarningRule.builder()
+                .restaurant(restaurant)
                 .action(request.getAction())
                 .pointsValue(request.getPointsValue())
                 .description(request.getDescription())
@@ -58,17 +68,38 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
     }
 
     @Override
-    public PointsEarningRuleResponse updateEarningRule(Long ruleId, PointsEarningRuleRequest request) {
-        log.info("Updating earning rule - ruleId: {}", ruleId);
+    public PointsEarningRuleResponse updateEarningRule(Long ruleId, UpdatePointsEarningRuleRequest request) {
+        log.info("Updating earning rule - ruleId: {}, restaurantId: {}", ruleId, request.getRestaurantId());
         PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuntimeException("Earning rule not found"));
         
-        rule.setAction(request.getAction());
-        rule.setPointsValue(request.getPointsValue());
-        rule.setDescription(request.getDescription());
-        rule.setIcon(request.getIcon());
-        rule.setClickable(request.getClickable() != null && request.getClickable());
-        rule.setActionUrl(request.getActionUrl());
+        // Update restaurant if restaurantId is provided
+        if (request.getRestaurantId() != null) {
+            Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
+                    .orElseThrow(() -> new RuntimeException("Restaurant not found with ID: " + request.getRestaurantId()));
+            rule.setRestaurant(restaurant);
+        }
+        
+        // Update fields only if provided (null-safe updates)
+        if (request.getAction() != null) {
+            rule.setAction(request.getAction());
+        }
+        if (request.getPointsValue() != null) {
+            rule.setPointsValue(request.getPointsValue());
+        }
+        if (request.getDescription() != null) {
+            rule.setDescription(request.getDescription());
+        }
+        if (request.getIcon() != null) {
+            rule.setIcon(request.getIcon());
+        }
+        if (request.getClickable() != null) {
+            rule.setClickable(request.getClickable());
+        }
+        if (request.getActionUrl() != null) {
+            rule.setActionUrl(request.getActionUrl());
+        }
+        
         rule = pointsEarningRuleRepository.save(rule);
         return map(rule);
     }

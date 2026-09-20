@@ -47,32 +47,7 @@ public class AdminRedemptionController {
         return ResponseEntity.ok(ApiResponse.success("Redemption retrieved successfully", resp));
     }
 
-    @GetMapping("/by-code/{code}")
-    public ResponseEntity<ApiResponse<RedemptionResponse>> getByCode(@PathVariable String code) {
-        RedemptionResponse resp = adminRedemptionService.getRedemptionByCode(code);
-        return ResponseEntity.ok(ApiResponse.success("Redemption retrieved by code successfully", resp));
-    }
 
-    @GetMapping("/by-status/{status}")
-    public ResponseEntity<ApiResponse<Page<RedemptionResponse>>> getByStatus(
-            @PathVariable String status,
-            @RequestParam(required = false) Long locationId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<RedemptionResponse> resp = adminRedemptionService.getByStatus(status, locationId, pageable);
-        return ResponseEntity.ok(ApiResponse.success("Redemptions retrieved by status successfully", resp));
-    }
-
-    @GetMapping("/expired-codes")
-    public ResponseEntity<ApiResponse<Page<RedemptionResponse>>> getExpiredCodes(
-            @RequestParam(required = false) Long locationId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<RedemptionResponse> resp = adminRedemptionService.getExpiredCodes(locationId, pageable);
-        return ResponseEntity.ok(ApiResponse.success("Expired codes retrieved successfully", resp));
-    }
 
     @PutMapping("/{redemptionId}/cancel")
     public ResponseEntity<ApiResponse<RedemptionResponse>> cancelRedemption(
@@ -82,11 +57,6 @@ public class AdminRedemptionController {
         return ResponseEntity.ok(ApiResponse.success("Redemption cancelled successfully", resp));
     }
 
-    @PutMapping("/{redemptionId}/expire")
-    public ResponseEntity<ApiResponse<RedemptionResponse>> expireCode(@PathVariable Long redemptionId) {
-        RedemptionResponse resp = adminRedemptionService.expireRedemption(redemptionId);
-        return ResponseEntity.ok(ApiResponse.success("Redemption code expired successfully", resp));
-    }
 
     @PostMapping("/expire-bulk")
     public ResponseEntity<ApiResponse<Map<String, Object>>> expireBulk(@RequestBody Map<String, Object> request) {

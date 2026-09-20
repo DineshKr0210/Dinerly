@@ -1,0 +1,16 @@
+# Ignore local application properties that may contain secrets
+/src/main/resources/application.properties
+/target/classes/application.properties
+**/application.properties
+
+# Common build / IDE files
+/target/
+.idea/
+*.iml
+
+# Environment files
+.env
+
+# Logs
+*.log
+

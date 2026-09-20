@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.service.admin;
 
 import com.restaurant.waitlist.backend.dto.request.admin.PointsEarningRuleRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.UpdatePointsEarningRuleRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.PointsEarningRuleResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +16,7 @@ public interface AdminPointsEarningRuleService {
     
     PointsEarningRuleResponse createEarningRule(PointsEarningRuleRequest request);
     
-    PointsEarningRuleResponse updateEarningRule(Long ruleId, PointsEarningRuleRequest request);
+    PointsEarningRuleResponse updateEarningRule(Long ruleId, UpdatePointsEarningRuleRequest request);
     
     void deleteEarningRule(Long ruleId);
     

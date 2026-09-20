@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.controller.admin;
 
 import com.restaurant.waitlist.backend.dto.request.admin.PointsEarningRuleRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.UpdatePointsEarningRuleRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.PointsEarningRuleResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminPointsEarningRuleService;
@@ -50,7 +51,7 @@ public class AdminPointsEarningRuleController {
     @PutMapping("/{ruleId}")
     public ResponseEntity<ApiResponse<PointsEarningRuleResponse>> update(
             @PathVariable Long ruleId,
-            @Valid @RequestBody PointsEarningRuleRequest request) {
+            @Valid @RequestBody UpdatePointsEarningRuleRequest request) {
         PointsEarningRuleResponse resp = adminPointsEarningRuleService.updateEarningRule(ruleId, request);
         return ResponseEntity.ok(ApiResponse.success("Earning rule updated successfully", resp));
     }

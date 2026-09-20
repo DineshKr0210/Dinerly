@@ -74,36 +74,10 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
     }
 
     @Override
-    public RedemptionResponse getRedemptionByCode(String code) {
-        // Stub implementation
-        return new RedemptionResponse();
-    }
-
-    @Override
-    public Page<RedemptionResponse> getByStatus(String status, Long locationId, Pageable pageable) {
-        Page<Redemption> page = redemptionRepository.findFiltered(locationId, null, null, pageable);
-        return page.map(this::map);
-    }
-
-    @Override
-    public Page<RedemptionResponse> getExpiredCodes(Long locationId, Pageable pageable) {
-        Page<Redemption> page = redemptionRepository.findFiltered(locationId, null, null, pageable);
-        return page.map(this::map);
-    }
-
-    @Override
     public RedemptionResponse cancelRedemption(Long redemptionId, String reason) {
         Redemption r = redemptionRepository.findById(redemptionId)
             .orElseThrow(() -> new IllegalArgumentException("Redemption not found"));
         // Mark as cancelled
-        redemptionRepository.save(r);
-        return map(r);
-    }
-
-    @Override
-    public RedemptionResponse expireRedemption(Long redemptionId) {
-        Redemption r = redemptionRepository.findById(redemptionId)
-            .orElseThrow(() -> new IllegalArgumentException("Redemption not found"));
         redemptionRepository.save(r);
         return map(r);
     }

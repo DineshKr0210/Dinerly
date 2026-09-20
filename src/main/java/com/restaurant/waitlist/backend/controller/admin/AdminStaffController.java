@@ -105,11 +105,11 @@ public class AdminStaffController {
     /**
      * Verify staff invitation token - Public endpoint (no auth required)
      * Called when staff clicks the invitation link
+     * Usage: GET /api/admin/staff/verify-invitation?token=<invitation-token>
      */
-    @PostMapping("/verify-invitation")
+    @GetMapping("/verify-invitation")
     public ResponseEntity<ApiResponse<StaffTokenVerificationResponse>> verifyInvitationToken(
-            @Valid @RequestBody Map<String, String> request) {
-        String token = request.get("token");
+            @RequestParam String token) {
         if (token == null || token.trim().isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Invitation token is required"));
@@ -121,21 +121,6 @@ public class AdminStaffController {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
-    }
-
-    /**
-     * Check invitation token status - Public endpoint
-     */
-    @PostMapping("/check-invitation-token")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> checkInvitationTokenStatus(
-            @Valid @RequestBody Map<String, String> request) {
-        String token = request.get("token");
-        if (token == null || token.trim().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Invitation token is required"));
-        }
-        Map<String, Object> response = adminStaffService.checkInvitationTokenStatus(token);
-        return ResponseEntity.ok(ApiResponse.success("Token status checked", response));
     }
 
     /**
