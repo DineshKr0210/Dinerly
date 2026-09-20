@@ -113,14 +113,10 @@ public class GuestRewardsServiceImpl implements GuestRewardsService {
     public RewardTier calculateCurrentTier(Long userId, Long restaurantId) {
         long userPoints = pointsService.getBalance(userId);
 
-        // Find tier with highest threshold that user qualifies for
-        Optional<RewardTier> tierOpt = rewardTierRepository.findTierForPoints(restaurantId, userPoints);
-
-        // Default to first tier (Silver)
-        return tierOpt.orElseGet(() -> {
-            List<RewardTier> tiers = rewardTierRepository.findByRestaurantIdOrderByTierOrderAsc(restaurantId);
-            return tiers.isEmpty() ? null : tiers.get(0);
-        });
+        // Find the highest tier the user actually qualifies for.
+        // If the user is below the first tier threshold, there is no current tier yet.
+        return rewardTierRepository.findTierForPoints(restaurantId, userPoints)
+            .orElse(null);
     }
 
     @Override
@@ -156,11 +152,32 @@ public class GuestRewardsServiceImpl implements GuestRewardsService {
         }
 
         long pointsToNextTier = nextTier.getPointsThreshold() - userPoints;
-        double progressPercentage = (double) (userPoints - currentTier.getPointsThreshold()) /
-            (nextTier.getPointsThreshold() - currentTier.getPointsThreshold()) * 100;
+
+        if (currentTier == null) {
+            return GuestRewardsProfileResponse.TierProgress.builder()
+                .pointsToNextTier(Math.max(pointsToNextTier, 0L))
+                .nextTierName(nextTier.getName())
+                .progressPercentage(0.0)
+                .nextTierOrder(nextTier.getTierOrder())
+                .build();
+        }
+
+        long currentTierThreshold = currentTier.getPointsThreshold();
+        long nextTierThreshold = nextTier.getPointsThreshold();
+        if (nextTierThreshold <= currentTierThreshold) {
+            return GuestRewardsProfileResponse.TierProgress.builder()
+                .pointsToNextTier(Math.max(pointsToNextTier, 0L))
+                .nextTierName(nextTier.getName())
+                .progressPercentage(0.0)
+                .nextTierOrder(nextTier.getTierOrder())
+                .build();
+        }
+
+        double progressPercentage = (double) (userPoints - currentTierThreshold) /
+            (nextTierThreshold - currentTierThreshold) * 100;
 
         return GuestRewardsProfileResponse.TierProgress.builder()
-            .pointsToNextTier(pointsToNextTier)
+            .pointsToNextTier(Math.max(pointsToNextTier, 0L))
             .nextTierName(nextTier.getName())
             .progressPercentage(Math.min(progressPercentage, 100.0))
             .nextTierOrder(nextTier.getTierOrder())

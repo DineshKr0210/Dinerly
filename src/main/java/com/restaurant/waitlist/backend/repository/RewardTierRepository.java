@@ -1,6 +1,8 @@
 package com.restaurant.waitlist.backend.repository;
 
 import com.restaurant.waitlist.backend.entity.RewardTier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -11,6 +13,8 @@ import java.util.Optional;
 @Repository
 public interface RewardTierRepository extends JpaRepository<RewardTier, Long> {
     List<RewardTier> findByRestaurantIdOrderByTierOrderAsc(Long restaurantId);
+    
+    Page<RewardTier> findByRestaurantIdOrderByTierOrderAsc(Long restaurantId, Pageable pageable);
 
     Optional<RewardTier> findByRestaurantIdAndTierOrder(Long restaurantId, Integer tierOrder);
 

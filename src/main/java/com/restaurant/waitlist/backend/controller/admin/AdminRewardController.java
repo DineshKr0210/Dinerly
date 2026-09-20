@@ -26,10 +26,12 @@ public class AdminRewardController {
     private final AdminRewardService adminRewardService;
 
     @GetMapping("/tiers")
-    public ResponseEntity<ApiResponse<Page<RewardTierResponse>>> listTiers(@RequestParam(defaultValue = "0") int page,
-                                                                          @RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<ApiResponse<Page<RewardTierResponse>>> listTiers(
+            @RequestParam(required = false) Long restaurantId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<RewardTierResponse> resp = adminRewardService.listTiers(pageable);
+        Page<RewardTierResponse> resp = adminRewardService.listTiers(restaurantId, pageable);
         return ResponseEntity.ok(ApiResponse.success("Data retrieved successfully", resp));
     }
 
@@ -49,12 +51,6 @@ public class AdminRewardController {
     public ResponseEntity<ApiResponse<Object>> deleteTier(@PathVariable Long tierId) {
         adminRewardService.deleteTier(tierId);
         return ResponseEntity.ok(ApiResponse.success("Tier deleted successfully"));
-    }
-
-    @GetMapping("/tiers/{tierId}")
-    public ResponseEntity<ApiResponse<RewardTierResponse>> getTierById(@PathVariable Long tierId) {
-        RewardTierResponse resp = adminRewardService.getTierById(tierId);
-        return ResponseEntity.ok(ApiResponse.success("Tier retrieved successfully", resp));
     }
 
     @PutMapping("/tiers/{tierId}/duplicate")

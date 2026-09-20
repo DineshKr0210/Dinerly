@@ -11,11 +11,10 @@ import java.util.List;
 import java.util.Map;
 
 public interface AdminRewardService {
-    Page<RewardTierResponse> listTiers(Pageable pageable);
+    Page<RewardTierResponse> listTiers(Long restaurantId, Pageable pageable);
     RewardTierResponse createTier(RewardTierRequest request);
     RewardTierResponse updateTier(Long tierId, RewardTierRequest request);
     void deleteTier(Long tierId);
-    RewardTierResponse getTierById(Long tierId);
     RewardTierResponse duplicateTier(Long tierId, String newName);
 
     List<RewardTierResponse> getAllTiers();

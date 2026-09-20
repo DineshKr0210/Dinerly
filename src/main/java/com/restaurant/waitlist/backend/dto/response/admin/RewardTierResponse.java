@@ -18,7 +18,4 @@ public class RewardTierResponse {
     private Long restaurantId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
-    // Legacy fields
-    private Integer points;
 }

@@ -43,9 +43,6 @@ public class RewardTier {
     @Column(name = "color")
     private String color; // For UI (silver, gold, platinum)
 
-    @Column(name = "points") // Keep for backward compatibility
-    private Integer points;
-
     @Column(columnDefinition = "TEXT") // Keep for backward compatibility
     private String perksJson;
 

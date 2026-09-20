@@ -23,7 +23,4 @@ public class RewardTierRequest {
     private List<String> perks; // ["Free dessert", "Priority seating"]
 
     private String color; // silver, gold, platinum
-
-    // Legacy fields
-    private Integer points;
 }
