@@ -4,10 +4,13 @@ import com.restaurant.waitlist.backend.dto.request.admin.ReportScheduleRequest;
 import com.restaurant.waitlist.backend.dto.response.ReportsResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.ReportResponse;
 import com.restaurant.waitlist.backend.entity.ReportRecord;
+import com.restaurant.waitlist.backend.enums.ReportType;
 import com.restaurant.waitlist.backend.repository.ReportRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import com.restaurant.waitlist.backend.repository.FeedbackRepository;
 import com.restaurant.waitlist.backend.repository.CampaignRepository;
+import com.restaurant.waitlist.backend.repository.RedemptionRepository;
+import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.service.admin.AdminReportService;
 import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,29 +35,28 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final WaitlistRepository waitlistRepository;
     private final FeedbackRepository feedbackRepository;
     private final CampaignRepository campaignRepository;
+    private final RedemptionRepository redemptionRepository;
+    private final RestaurantRepository restaurantRepository;
     private final ReportRepository reportRepository;
     private final AuditLogRepository auditLogRepository;
 
     @Override
     @Transactional
     public ReportResponse generateReport(String type, Long locationId, String period, LocalDate startDate, LocalDate endDate) throws Exception {
-        // Determine date range - custom dates take precedence
+        ReportType reportType = ReportType.fromValue(type);
+        String normalizedType = reportType.getValue();
         LocalDate to = endDate != null ? endDate : LocalDate.now();
         LocalDate from = startDate != null ? startDate : fromPeriod(period, to);
         Date fromDate = Date.valueOf(from);
         Date toDate = Date.valueOf(to);
 
-        // Validate scope
-        if ("location".equals(type) && locationId == null) {
+        if ("location".equals(normalizedType) && locationId == null) {
             throw new IllegalArgumentException("locationId is required for location-scoped reports");
         }
 
-        // Build report data
-        StringBuilder csvContent = new StringBuilder();
-        String scope = "overall".equals(type) ? "All locations" : "Single location";
+        String scope = "overall".equals(normalizedType) ? "All locations" : "Single location";
         String locationName = null;
 
-        // Query metrics based on scope
         long waitlistJoins;
         long seatedCount;
         Double avgWaitTime;
@@ -62,121 +64,152 @@ public class AdminReportServiceImpl implements AdminReportService {
         long activeOfferCount;
         Double avgRating;
         long reviewCount;
+        long totalUniqueGuests;
 
-        if ("location".equals(type)) {
-            // Location-scoped report
+        if ("location".equals(normalizedType)) {
+            if (locationId == null) {
+                throw new IllegalArgumentException("locationId is required for location-scoped reports");
+            }
             waitlistJoins = waitlistRepository.countByRestaurantInDateRange(locationId, fromDate, toDate);
             seatedCount = waitlistRepository.countByRestaurantAndStatusInDateRange(locationId, "SEATED", fromDate, toDate);
             avgWaitTime = waitlistRepository.averageSeatedDurationMinutes(locationId, fromDate, toDate);
-            
-            // Set location name (can be enhanced to query actual name from Restaurant entity)
-            locationName = "Location " + locationId;
+            locationName = restaurantRepository.findById(locationId)
+                    .map(com.restaurant.waitlist.backend.entity.Restaurant::getName)
+                    .orElse("Location " + locationId);
             scope = locationName;
+            redemptionCount = redemptionRepository.countRedemptionsByRestaurantAndDateRange(
+                    locationId,
+                    from.atStartOfDay(),
+                    to.plusDays(1).atStartOfDay().minusNanos(1)
+            );
+            activeOfferCount = campaignRepository.countActiveCampaignsByRestaurant(locationId);
+            avgRating = feedbackRepository.averageRatingByRestaurantIdAndDateRange(locationId, fromDate, toDate);
+            reviewCount = feedbackRepository.countByWaitlistRestaurantIdAndDateRange(locationId, fromDate, toDate);
+            totalUniqueGuests = waitlistRepository.aggregateCustomers(locationId).stream().mapToLong(c -> 1L).sum();
         } else {
-            // Overall report - all locations
             waitlistJoins = waitlistRepository.countAllInDateRange(fromDate, toDate);
             seatedCount = waitlistRepository.countByRestaurantAndStatusInDateRange(0L, "SEATED", fromDate, toDate);
             avgWaitTime = waitlistRepository.averageSeatedDurationMinutes(null, fromDate, toDate);
+            redemptionCount = redemptionRepository.countRedemptionsByDateRange(
+                    from.atStartOfDay(),
+                    to.plusDays(1).atStartOfDay().minusNanos(1)
+            );
+            activeOfferCount = campaignRepository.countActiveCampaigns();
+            avgRating = feedbackRepository.averageRatingByDateRange(fromDate, toDate);
+            reviewCount = feedbackRepository.countByDateRange(fromDate, toDate);
+            totalUniqueGuests = waitlistRepository.aggregateCustomers(null).stream().mapToLong(c -> 1L).sum();
         }
 
-        // Query redemptions (all locations or scoped)
-        try {
-            // This would need a custom query in repository to filter by location and date range
-            redemptionCount = 0L; // Placeholder - needs proper redemption repo query
-        } catch (Exception e) {
-            redemptionCount = 0L;
-        }
+        if (avgRating == null) avgRating = 0.0;
 
-        // Query offers
-        try {
-            activeOfferCount = 0L; // Placeholder - needs campaign repo query
-        } catch (Exception e) {
-            activeOfferCount = 0L;
-        }
-
-        // Query reviews and ratings
-        try {
-            if ("location".equals(type)) {
-                avgRating = feedbackRepository.averageRatingByRestaurantIdAndDateRange(locationId, fromDate, toDate);
-                reviewCount = feedbackRepository.countByWaitlistRestaurantIdAndDateRange(locationId, fromDate, toDate);
-            } else {
-                avgRating = feedbackRepository.averageRatingByDateRange(fromDate, toDate);
-                reviewCount = feedbackRepository.countByDateRange(fromDate, toDate);
-            }
-        } catch (Exception e) {
-            avgRating = 0.0;
-            reviewCount = 0L;
-        }
-
-        // Build CSV header
-        csvContent.append("REPORT DATA\n");
+        StringBuilder csvContent = new StringBuilder();
+        csvContent.append("REPORT OVERVIEW\n");
+        csvContent.append("Type,").append(normalizedType).append("\n");
+        csvContent.append("Report Label,").append(reportType.getDisplayName()).append("\n");
         csvContent.append("Scope,").append(scope).append("\n");
         csvContent.append("Period,").append(from).append(" to ").append(to).append("\n");
-        csvContent.append("Generated,").append(LocalDateTime.now()).append("\n\n");
+        csvContent.append("Generated At,").append(LocalDateTime.now()).append("\n\n");
 
-        // Add metrics section
-        csvContent.append("WAITLIST METRICS\n");
+        csvContent.append("SUMMARY\n");
         csvContent.append("Metric,Value\n");
         csvContent.append("Waitlist Joins,").append(waitlistJoins).append("\n");
         csvContent.append("Guests Seated,").append(seatedCount).append("\n");
-        csvContent.append("Average Wait Time (minutes),").append(avgWaitTime != null ? String.format("%.2f", avgWaitTime) : "0").append("\n\n");
-
-        // Redemptions section
-        csvContent.append("REDEMPTIONS\n");
-        csvContent.append("Metric,Value\n");
-        csvContent.append("Total Redemptions,").append(redemptionCount).append("\n\n");
-
-        // Offers section
-        csvContent.append("OFFERS\n");
-        csvContent.append("Metric,Value\n");
-        csvContent.append("Active Offers,").append(activeOfferCount).append("\n\n");
-
-        // Reviews section
-        csvContent.append("REVIEWS\n");
-        csvContent.append("Metric,Value\n");
+        csvContent.append("Average Wait Time (min),").append(avgWaitTime != null ? String.format("%.2f", avgWaitTime) : "0.00").append("\n");
+        csvContent.append("Total Redemptions,").append(redemptionCount).append("\n");
+        csvContent.append("Active Offers,").append(activeOfferCount).append("\n");
         csvContent.append("Total Reviews,").append(reviewCount).append("\n");
-        csvContent.append("Average Rating,").append(avgRating != null ? String.format("%.2f", avgRating) : "0").append("\n");
+        csvContent.append("Average Rating,").append(String.format("%.2f", avgRating)).append("\n");
+        csvContent.append("Unique Guests,").append(totalUniqueGuests).append("\n\n");
 
-        // Write CSV file
-        String fileName = String.format("report_%s_%s_%s.csv", 
-            "overall".equals(type) ? "overall" : "location", 
-            from, 
-            System.currentTimeMillis());
-        
+        csvContent.append("WAITLIST PERFORMANCE\n");
+        csvContent.append("Metric,Value\n");
+        csvContent.append("Join Count,").append(waitlistJoins).append("\n");
+        csvContent.append("Seated Count,").append(seatedCount).append("\n");
+        csvContent.append("Conversion Rate (%),").append(waitlistJoins > 0 ? String.format("%.2f", (seatedCount * 100.0) / waitlistJoins) : "0.00").append("\n");
+        csvContent.append("Average Wait Time (min),").append(avgWaitTime != null ? String.format("%.2f", avgWaitTime) : "0.00").append("\n\n");
+
+        csvContent.append("REDEMPTION & OFFER PERFORMANCE\n");
+        csvContent.append("Metric,Value\n");
+        csvContent.append("Redemption Count,").append(redemptionCount).append("\n");
+        csvContent.append("Active Campaigns/Offers,").append(activeOfferCount).append("\n");
+        csvContent.append("Campaign Reach,0\n\n");
+
+        csvContent.append("REVIEWS & FEEDBACK\n");
+        csvContent.append("Metric,Value\n");
+        csvContent.append("Review Count,").append(reviewCount).append("\n");
+        csvContent.append("Average Rating,").append(String.format("%.2f", avgRating)).append("\n");
+        csvContent.append("Response Rate,0\n\n");
+
+        csvContent.append("GUEST SEGMENT DATA\n");
+        csvContent.append("Guest,Visits,Contact,Locations\n");
+        java.util.List<com.restaurant.waitlist.backend.repository.CustomerAggregation> customers = waitlistRepository.aggregateCustomers(locationId);
+        if (customers != null && !customers.isEmpty()) {
+            customers.stream().limit(10).forEach(customer -> {
+                csvContent.append(customer.getGuest()).append(",");
+                csvContent.append(customer.getVisits() != null ? customer.getVisits() : 0).append(",");
+                csvContent.append(customer.getContact() != null ? customer.getContact() : "").append(",");
+                csvContent.append(customer.getLocations() != null ? customer.getLocations() : "").append("\n");
+            });
+        } else {
+            csvContent.append("No guest segment data available\n");
+        }
+        csvContent.append("\n");
+
+        csvContent.append("LOCATION COMPARISON\n");
+        csvContent.append("Location,Waitlist Joins\n");
+        java.util.List<Object[]> topLocations = new java.util.ArrayList<>();
+        if ("location".equals(normalizedType)) {
+            topLocations.add(new Object[] { locationId, locationName, waitlistJoins });
+        } else {
+            topLocations.addAll(waitlistRepository.topRestaurantsByJoins(fromDate, toDate, 10));
+        }
+        if (!topLocations.isEmpty()) {
+            for (Object[] row : topLocations) {
+                Long restaurantId = row[0] != null ? ((Number) row[0]).longValue() : null;
+                String name = row[1] != null ? row[1].toString() : (restaurantId != null ? "Location " + restaurantId : "Unknown");
+                Long joins = row[2] != null ? ((Number) row[2]).longValue() : 0L;
+                csvContent.append(name).append(",").append(joins).append("\n");
+            }
+        } else {
+            csvContent.append("No comparison data available\n");
+        }
+
+        String fileName = String.format("report_%s_%s_%s.csv",
+                normalizedType,
+                from,
+                System.currentTimeMillis());
+
         File dir = new File("target/reports");
         if (!dir.exists()) {
             dir.mkdirs();
         }
-        
+
         File file = new File(dir, fileName);
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(csvContent.toString().getBytes());
         }
 
-        // Persist report record
         ReportRecord rec = ReportRecord.builder()
                 .fileName(fileName)
                 .filePath(file.getAbsolutePath())
-                .type(type)
-                .locationId("location".equals(type) ? locationId : null)
+                .type(normalizedType)
+                .locationId("location".equals(normalizedType) ? locationId : null)
                 .period(period)
                 .build();
         ReportRecord saved = reportRepository.save(rec);
 
-        // Audit log
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(locationId != null ? locationId : 0L)
-            .action("GENERATE_REPORT")
-            .details("Generated " + type + " report from " + from + " to " + to)
-            .build());
+                .restaurantId(locationId != null ? locationId : 0L)
+                .action("GENERATE_REPORT")
+                .details("Generated " + normalizedType + " report from " + from + " to " + to)
+                .build());
 
-        // Build response
         return ReportResponse.builder()
                 .id(saved.getId())
                 .fileName(saved.getFileName())
                 .type(saved.getType())
                 .scope(scope)
-                .locationId("location".equals(type) ? locationId : null)
+                .locationId("location".equals(normalizedType) ? locationId : null)
                 .locationName(locationName)
                 .period(period)
                 .dateRange(from + " to " + to)

@@ -3,7 +3,11 @@ package com.restaurant.waitlist.backend.controller.admin;
 import com.restaurant.waitlist.backend.dto.request.admin.ReportScheduleRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.ReportResponse;
+import com.restaurant.waitlist.backend.enums.ReportType;
 import com.restaurant.waitlist.backend.service.admin.AdminReportService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,11 +32,21 @@ public class AdminReportController {
 
     @PostMapping("/generate")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ReportResponse> generate(@RequestParam(required = false) String type,
-                                                   @RequestParam(required = false) Long locationId,
-                                                   @RequestParam(required = false, defaultValue = "last30days") String period,
-                                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-                                                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws Exception {
+    @Operation(
+        summary = "Generate an admin report",
+        description = "Supported report types: overall, location, performance, redemption, customer."
+    )
+    public ResponseEntity<ReportResponse> generate(
+            @RequestParam(required = false)
+            @Parameter(
+                description = "Report type",
+                schema = @Schema(allowableValues = {"overall", "location", "performance", "redemption", "customer"})
+            )
+            String type,
+            @RequestParam(required = false) Long locationId,
+            @RequestParam(required = false, defaultValue = "last30days") String period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws Exception {
         ReportResponse resp = adminReportService.generateReport(type, locationId, period, startDate, endDate);
         return ResponseEntity.ok(resp);
     }
@@ -53,33 +67,6 @@ public class AdminReportController {
         String filename = meta != null && meta.getFileName() != null ? meta.getFileName() : "report.csv";
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
             .contentType(MediaType.APPLICATION_OCTET_STREAM)
-            .body(data);
-    }
-
-    @PostMapping("/{id}/export/excel")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<byte[]> exportAsExcel(@PathVariable Long id) throws Exception {
-        byte[] data = adminReportService.exportReportAsExcel(id);
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=report.xlsx")
-            .contentType(MediaType.APPLICATION_OCTET_STREAM)
-            .body(data);
-    }
-
-    @PostMapping("/{id}/export/pdf")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<byte[]> exportAsPdf(@PathVariable Long id) throws Exception {
-        byte[] data = adminReportService.exportReportAsPdf(id);
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=report.pdf")
-            .contentType(MediaType.APPLICATION_PDF)
-            .body(data);
-    }
-
-    @PostMapping("/{id}/export/csv")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<byte[]> exportAsCsv(@PathVariable Long id) throws Exception {
-        byte[] data = adminReportService.exportReportCsv(id);
-        return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=report.csv")
-            .contentType(MediaType.TEXT_PLAIN)
             .body(data);
     }
 
