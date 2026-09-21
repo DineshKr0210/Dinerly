@@ -122,9 +122,17 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
             "FROM waitlist w " +
             "JOIN restaurants r ON w.restaurant_id = r.id " +
             "WHERE (:restaurantId IS NULL OR w.restaurant_id = :restaurantId) " +
+            "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+            "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE)) " +
             "GROUP BY w.guest_name, w.guest_phone " +
             "ORDER BY visits DESC", nativeQuery = true)
-    java.util.List<CustomerAggregation> aggregateCustomers(@Param("restaurantId") Long restaurantId);
+    java.util.List<CustomerAggregation> aggregateCustomers(@Param("restaurantId") Long restaurantId,
+                                                         @Param("fromDate") java.sql.Date fromDate,
+                                                         @Param("toDate") java.sql.Date toDate);
+
+    default java.util.List<CustomerAggregation> aggregateCustomers(Long restaurantId) {
+        return aggregateCustomers(restaurantId, null, null);
+    }
 
        @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId " +
                "AND (:status IS NULL OR w.status = :status) " +

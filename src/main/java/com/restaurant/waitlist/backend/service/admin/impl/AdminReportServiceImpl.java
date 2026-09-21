@@ -46,7 +46,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         ReportType reportType = ReportType.fromValue(type);
         String normalizedType = reportType.getValue();
         LocalDate to = endDate != null ? endDate : LocalDate.now();
-        LocalDate from = startDate != null ? startDate : fromPeriod(period, to);
+        LocalDate from = startDate != null ? startDate : (period != null && !period.isBlank() ? fromPeriod(period, to) : LocalDate.of(1970, 1, 1));
         Date fromDate = Date.valueOf(from);
         Date toDate = Date.valueOf(to);
 
@@ -85,7 +85,7 @@ public class AdminReportServiceImpl implements AdminReportService {
             activeOfferCount = campaignRepository.countActiveCampaignsByRestaurant(locationId);
             avgRating = feedbackRepository.averageRatingByRestaurantIdAndDateRange(locationId, fromDate, toDate);
             reviewCount = feedbackRepository.countByWaitlistRestaurantIdAndDateRange(locationId, fromDate, toDate);
-            totalUniqueGuests = waitlistRepository.aggregateCustomers(locationId).stream().mapToLong(c -> 1L).sum();
+            totalUniqueGuests = waitlistRepository.aggregateCustomers(locationId, fromDate, toDate).stream().mapToLong(c -> 1L).sum();
         } else {
             waitlistJoins = waitlistRepository.countAllInDateRange(fromDate, toDate);
             seatedCount = waitlistRepository.countByRestaurantAndStatusInDateRange(0L, "SEATED", fromDate, toDate);
@@ -97,17 +97,19 @@ public class AdminReportServiceImpl implements AdminReportService {
             activeOfferCount = campaignRepository.countActiveCampaigns();
             avgRating = feedbackRepository.averageRatingByDateRange(fromDate, toDate);
             reviewCount = feedbackRepository.countByDateRange(fromDate, toDate);
-            totalUniqueGuests = waitlistRepository.aggregateCustomers(null).stream().mapToLong(c -> 1L).sum();
+            totalUniqueGuests = waitlistRepository.aggregateCustomers(null, fromDate, toDate).stream().mapToLong(c -> 1L).sum();
         }
 
         if (avgRating == null) avgRating = 0.0;
 
         StringBuilder csvContent = new StringBuilder();
+        String periodLabel = (startDate == null && endDate == null && (period == null || period.isBlank())) ? "All time" : from + " to " + to;
+
         csvContent.append("REPORT OVERVIEW\n");
         csvContent.append("Type,").append(normalizedType).append("\n");
         csvContent.append("Report Label,").append(reportType.getDisplayName()).append("\n");
         csvContent.append("Scope,").append(scope).append("\n");
-        csvContent.append("Period,").append(from).append(" to ").append(to).append("\n");
+        csvContent.append("Period,").append(periodLabel).append("\n");
         csvContent.append("Generated At,").append(LocalDateTime.now()).append("\n\n");
 
         csvContent.append("SUMMARY\n");
@@ -142,7 +144,7 @@ public class AdminReportServiceImpl implements AdminReportService {
 
         csvContent.append("GUEST SEGMENT DATA\n");
         csvContent.append("Guest,Visits,Contact,Locations\n");
-        java.util.List<com.restaurant.waitlist.backend.repository.CustomerAggregation> customers = waitlistRepository.aggregateCustomers(locationId);
+        java.util.List<com.restaurant.waitlist.backend.repository.CustomerAggregation> customers = waitlistRepository.aggregateCustomers(locationId, fromDate, toDate);
         if (customers != null && !customers.isEmpty()) {
             customers.stream().limit(10).forEach(customer -> {
                 csvContent.append(customer.getGuest()).append(",");
@@ -410,7 +412,9 @@ public class AdminReportServiceImpl implements AdminReportService {
      * Convert period string to start date for date range.
      */
     private LocalDate fromPeriod(String period, LocalDate to) {
-        if (period == null) return to.minusDays(30);
+        if (period == null || period.isBlank()) {
+            return LocalDate.of(1970, 1, 1);
+        }
         switch (period.trim().toLowerCase()) {
             case "pastweek":
             case "last7days":
@@ -422,7 +426,7 @@ public class AdminReportServiceImpl implements AdminReportService {
             case "last3months":
                 return to.minusMonths(3);
             default:
-                return to.minusDays(30);
+                return LocalDate.of(1970, 1, 1);
         }
     }
 }
