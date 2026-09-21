@@ -217,6 +217,11 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         Map<String, Object> permissions = new HashMap<>();
         permissions.put("staffId", s.getId());
         permissions.put("role", s.getRole().name());
+        permissions.put("canManageOffers", effective.get("canManageOffers"));
+        permissions.put("canManageStaff", effective.get("canManageStaff"));
+        permissions.put("canViewReports", effective.get("canViewReports"));
+        permissions.put("canManageSettings", effective.get("canManageSettings"));
+        permissions.put("canManageRewards", effective.get("canManageRewards"));
         permissions.put("effectivePermissions", effective);
         permissions.put("isCustom", staffPermissionRepository.findByStaffId(staffId).map(StaffPermission::isCustom).orElse(false));
         permissions.put("updatedAt", staffPermissionRepository.findByStaffId(staffId)
@@ -250,7 +255,14 @@ public class AdminStaffServiceImpl implements AdminStaffService {
                 .build();
         auditLogRepository.save(log);
 
-        return getStaffPermissions(staffId);
+        Map<String, Object> result = getStaffPermissions(staffId);
+        Map<String, Boolean> effective = getEffectivePermissions(staffId);
+        result.put("canManageOffers", effective.get("canManageOffers"));
+        result.put("canManageStaff", effective.get("canManageStaff"));
+        result.put("canViewReports", effective.get("canViewReports"));
+        result.put("canManageSettings", effective.get("canManageSettings"));
+        result.put("canManageRewards", effective.get("canManageRewards"));
+        return result;
     }
 
     @Override

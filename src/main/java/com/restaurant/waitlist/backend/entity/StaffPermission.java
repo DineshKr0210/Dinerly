@@ -11,7 +11,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "staff_permissions")
+@jakarta.persistence.Table(name = "staff_permissions")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
