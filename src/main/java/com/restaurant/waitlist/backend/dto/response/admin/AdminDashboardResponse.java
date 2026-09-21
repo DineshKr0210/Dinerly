@@ -12,5 +12,6 @@ public class AdminDashboardResponse {
     private Long totalWaitlistJoins;
     private Long totalActiveWaitlists;
     private Double averageRating;
+    private String userName;
     private List<LocationLeaderboardItem> topLocations;
 }

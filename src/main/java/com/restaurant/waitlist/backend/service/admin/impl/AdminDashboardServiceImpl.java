@@ -4,13 +4,18 @@ import com.restaurant.waitlist.backend.dto.response.admin.AdminDashboardResponse
 import com.restaurant.waitlist.backend.dto.response.admin.InsightCardResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.LocationLeaderboardItem;
 import com.restaurant.waitlist.backend.dto.response.admin.RealTimeMetricsResponse;
+import com.restaurant.waitlist.backend.entity.User;
 import com.restaurant.waitlist.backend.entity.Waitlist;
 import com.restaurant.waitlist.backend.repository.FeedbackRepository;
 import com.restaurant.waitlist.backend.repository.OfferRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import com.restaurant.waitlist.backend.service.admin.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.sql.Date;
@@ -30,6 +35,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final WaitlistRepository waitlistRepository;
     private final FeedbackRepository feedbackRepository;
     private final OfferRepository offerRepository;
+    private final UserRepository userRepository;
 
     @Override
     public AdminDashboardResponse getDashboard(LocalDate fromDate, LocalDate toDate, int topN, Long locationId) {
@@ -75,8 +81,30 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .totalWaitlistJoins(totalWaitlistJoins)
                 .totalActiveWaitlists(totalActive)
                 .averageRating(avgRating)
+                .userName(getCurrentUserName())
                 .topLocations(leaderboard)
                 .build();
+    }
+
+    @Override
+    public String getCurrentUserName() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+
+        Object principal = authentication.getPrincipal();
+        String email = principal instanceof UserDetails
+                ? ((UserDetails) principal).getUsername()
+                : principal != null ? principal.toString() : null;
+
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+
+        return userRepository.findByEmail(email)
+                .map(User::getName)
+                .orElse(email);
     }
 
     @Override

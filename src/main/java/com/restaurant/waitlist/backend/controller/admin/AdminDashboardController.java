@@ -36,6 +36,7 @@ public class AdminDashboardController {
             LocalDate fromDate = from != null ? LocalDate.parse(from) : null;
             LocalDate toDate = to != null ? LocalDate.parse(to) : null;
             AdminDashboardResponse resp = adminDashboardService.getDashboard(fromDate, toDate, topN, locationId);
+            resp.setUserName(adminDashboardService.getCurrentUserName());
             return ResponseEntity.ok(ApiResponse.success("Dashboard retrieved", resp));
         } catch (DateTimeParseException ex) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Invalid date format"));

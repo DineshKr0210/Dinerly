@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface AdminDashboardService {
     AdminDashboardResponse getDashboard(LocalDate fromDate, LocalDate toDate, int topN, Long locationId);
+
+    String getCurrentUserName();
     
     // Real-time metrics
     RealTimeMetricsResponse getRealTimeMetrics(Long locationId);
