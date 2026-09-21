@@ -44,7 +44,7 @@ public class AdminReportController {
             )
             String type,
             @RequestParam(required = false) Long locationId,
-            @RequestParam(required = false, defaultValue = "last30days") String period,
+            @RequestParam(required = false) String period,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) throws Exception {
         ReportResponse resp = adminReportService.generateReport(type, locationId, period, startDate, endDate);
