@@ -62,18 +62,18 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                        @Param("fromDate") java.sql.Date fromDate,
                                        @Param("toDate") java.sql.Date toDate);
 
-     @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE w.restaurant_id = :restaurantId AND w.status = :status" +
-             " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
-             " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+     @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE (:restaurantId IS NULL OR w.restaurant_id = :restaurantId) AND w.status = :status" +
+             " AND (CAST(:fromDate AS DATE) IS NULL OR COALESCE(DATE(w.seated_at), DATE(w.joined_at)) >= CAST(:fromDate AS DATE))" +
+             " AND (CAST(:toDate AS DATE) IS NULL OR COALESCE(DATE(w.seated_at), DATE(w.joined_at)) <= CAST(:toDate AS DATE))", nativeQuery = true)
      long countByRestaurantAndStatusInDateRange(@Param("restaurantId") Long restaurantId,
                                                 @Param("status") String status,
                                                 @Param("fromDate") java.sql.Date fromDate,
                                                 @Param("toDate") java.sql.Date toDate);
 
       @Query(value = "SELECT AVG(EXTRACT(EPOCH FROM (w.seated_at - w.joined_at))/60) FROM waitlist w " +
-              "WHERE w.restaurant_id = :restaurantId AND w.seated_at IS NOT NULL" +
-              " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
-              " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+              "WHERE w.seated_at IS NOT NULL AND (:restaurantId IS NULL OR w.restaurant_id = :restaurantId)" +
+              " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.seated_at) >= CAST(:fromDate AS DATE))" +
+              " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.seated_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
       Double averageSeatedDurationMinutes(@Param("restaurantId") Long restaurantId,
                                           @Param("fromDate") java.sql.Date fromDate,
                                           @Param("toDate") java.sql.Date toDate);

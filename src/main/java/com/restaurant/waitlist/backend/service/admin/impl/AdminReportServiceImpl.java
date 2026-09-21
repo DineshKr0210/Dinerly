@@ -88,7 +88,7 @@ public class AdminReportServiceImpl implements AdminReportService {
             totalUniqueGuests = waitlistRepository.aggregateCustomers(locationId, fromDate, toDate).stream().mapToLong(c -> 1L).sum();
         } else {
             waitlistJoins = waitlistRepository.countAllInDateRange(fromDate, toDate);
-            seatedCount = waitlistRepository.countByRestaurantAndStatusInDateRange(0L, "SEATED", fromDate, toDate);
+            seatedCount = waitlistRepository.countByRestaurantAndStatusInDateRange(null, "SEATED", fromDate, toDate);
             avgWaitTime = waitlistRepository.averageSeatedDurationMinutes(null, fromDate, toDate);
             redemptionCount = redemptionRepository.countRedemptionsByDateRange(
                     from.atStartOfDay(),

@@ -50,7 +50,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
                 : waitlistRepository.countByRestaurantInDateRange(locationId, fromDate, toDate);
 
         long seated = (locationId == null)
-                ? waitlistRepository.countByRestaurantAndStatusInDateRange(0L, "SEATED", fromDate, toDate)
+                ? waitlistRepository.countByRestaurantAndStatusInDateRange(null, "SEATED", fromDate, toDate)
                 : waitlistRepository.countByRestaurantAndStatusInDateRange(locationId, "SEATED", fromDate, toDate);
 
         Double avgWait = (locationId == null)
@@ -68,7 +68,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
                 : waitlistRepository.countByRestaurantInDateRange(locationId, prevFromDate, prevToDate);
 
         long prevSeated = (locationId == null)
-                ? waitlistRepository.countByRestaurantAndStatusInDateRange(0L, "SEATED", prevFromDate, prevToDate)
+                ? waitlistRepository.countByRestaurantAndStatusInDateRange(null, "SEATED", prevFromDate, prevToDate)
                 : waitlistRepository.countByRestaurantAndStatusInDateRange(locationId, "SEATED", prevFromDate, prevToDate);
 
         Double prevAvgWait = (locationId == null)
