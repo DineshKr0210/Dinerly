@@ -1,10 +1,12 @@
 package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.dto.request.admin.AdminStaffRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.StaffPermissionRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.StaffSetPasswordRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.StaffUpdateRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.StaffVerifyInvitationRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.AdminStaffResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.StaffPermissionResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.StaffTokenVerificationResponse;
 import com.restaurant.waitlist.backend.entity.AuditLog;
 import com.restaurant.waitlist.backend.entity.Restaurant;
@@ -210,43 +212,44 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     }
 
     @Override
-    public Map<String, Object> getStaffPermissions(Long staffId) {
+    public StaffPermissionResponse getStaffPermissions(Long staffId) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
         Map<String, Boolean> effective = getEffectivePermissions(staffId);
+        StaffPermission existing = staffPermissionRepository.findByStaffId(staffId).orElse(null);
 
-        Map<String, Object> permissions = new HashMap<>();
-        permissions.put("staffId", s.getId());
-        permissions.put("role", s.getRole().name());
-        permissions.put("canManageOffers", effective.get("canManageOffers"));
-        permissions.put("canManageStaff", effective.get("canManageStaff"));
-        permissions.put("canViewReports", effective.get("canViewReports"));
-        permissions.put("canManageSettings", effective.get("canManageSettings"));
-        permissions.put("canManageRewards", effective.get("canManageRewards"));
-        permissions.put("effectivePermissions", effective);
-        permissions.put("isCustom", staffPermissionRepository.findByStaffId(staffId).map(StaffPermission::isCustom).orElse(false));
-        permissions.put("updatedAt", staffPermissionRepository.findByStaffId(staffId)
-                .map(StaffPermission::getUpdatedAt)
-                .orElse(null));
-        return permissions;
+        return StaffPermissionResponse.builder()
+                .staffId(s.getId())
+                .role(s.getRole().name())
+                .canManageOffers(effective.get("canManageOffers"))
+                .canManageStaff(effective.get("canManageStaff"))
+                .canViewReports(effective.get("canViewReports"))
+                .canManageSettings(effective.get("canManageSettings"))
+                .canManageRewards(effective.get("canManageRewards"))
+                .effectivePermissions(effective)
+                .isCustom(existing != null && existing.isCustom())
+                .updatedAt(existing != null ? existing.getUpdatedAt() : null)
+                .build();
     }
 
     @Override
     @Transactional
-    public Map<String, Object> updateStaffPermissions(Long staffId, Map<String, Boolean> permissions) {
+    public StaffPermissionResponse updateStaffPermissions(Long staffId, StaffPermissionRequest request) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        if (request == null) {
+            throw new RuntimeException("Permission payload is required");
+        }
 
         StaffPermission staffPermission = staffPermissionRepository.findByStaffId(staffId)
                 .orElseGet(() -> StaffPermission.builder().staff(s).build());
 
-        if (permissions != null) {
-            staffPermission.setCanManageOffers(Boolean.TRUE.equals(permissions.get("canManageOffers")));
-            staffPermission.setCanManageStaff(Boolean.TRUE.equals(permissions.get("canManageStaff")));
-            staffPermission.setCanViewReports(Boolean.TRUE.equals(permissions.get("canViewReports")));
-            staffPermission.setCanManageSettings(Boolean.TRUE.equals(permissions.get("canManageSettings")));
-            staffPermission.setCanManageRewards(Boolean.TRUE.equals(permissions.get("canManageRewards")));
-            staffPermission.setCustom(true);
-            staffPermissionRepository.save(staffPermission);
-        }
+        staffPermission.setCanManageOffers(Boolean.TRUE.equals(request.getCanManageOffers()));
+        staffPermission.setCanManageStaff(Boolean.TRUE.equals(request.getCanManageStaff()));
+        staffPermission.setCanViewReports(Boolean.TRUE.equals(request.getCanViewReports()));
+        staffPermission.setCanManageSettings(Boolean.TRUE.equals(request.getCanManageSettings()));
+        staffPermission.setCanManageRewards(Boolean.TRUE.equals(request.getCanManageRewards()));
+        staffPermission.setCustom(true);
+        staffPermissionRepository.save(staffPermission);
 
         AuditLog log = AuditLog.builder()
                 .restaurantId(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L)
@@ -255,14 +258,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
                 .build();
         auditLogRepository.save(log);
 
-        Map<String, Object> result = getStaffPermissions(staffId);
-        Map<String, Boolean> effective = getEffectivePermissions(staffId);
-        result.put("canManageOffers", effective.get("canManageOffers"));
-        result.put("canManageStaff", effective.get("canManageStaff"));
-        result.put("canViewReports", effective.get("canViewReports"));
-        result.put("canManageSettings", effective.get("canManageSettings"));
-        result.put("canManageRewards", effective.get("canManageRewards"));
-        return result;
+        return getStaffPermissions(staffId);
     }
 
     @Override

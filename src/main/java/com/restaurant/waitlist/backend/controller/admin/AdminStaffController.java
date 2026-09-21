@@ -1,10 +1,12 @@
 package com.restaurant.waitlist.backend.controller.admin;
 
 import com.restaurant.waitlist.backend.dto.request.admin.AdminStaffRequest;
+import com.restaurant.waitlist.backend.dto.request.admin.StaffPermissionRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.StaffSetPasswordRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.StaffUpdateRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.AdminStaffResponse;
+import com.restaurant.waitlist.backend.dto.response.admin.StaffPermissionResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.StaffTokenVerificationResponse;
 import com.restaurant.waitlist.backend.entity.StaffRole;
 import com.restaurant.waitlist.backend.service.admin.AdminStaffService;
@@ -87,16 +89,23 @@ public class AdminStaffController {
 
     @GetMapping("/{staffId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getStaffPermissions(@PathVariable Long staffId) {
-        Map<String, Object> permissions = adminStaffService.getStaffPermissions(staffId);
+    public ResponseEntity<ApiResponse<StaffPermissionResponse>> getStaffPermissions(@PathVariable Long staffId) {
+        StaffPermissionResponse permissions = adminStaffService.getStaffPermissions(staffId);
         return ResponseEntity.ok(ApiResponse.success("Permissions retrieved", permissions));
     }
 
     @PutMapping("/{staffId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateStaffPermissions(@PathVariable Long staffId, @RequestBody Map<String, Boolean> permissions) {
-        Map<String, Object> updated = adminStaffService.updateStaffPermissions(staffId, permissions);
-        return ResponseEntity.ok(ApiResponse.success("Permissions updated", updated));
+    public ResponseEntity<ApiResponse<StaffPermissionResponse>> updateStaffPermissions(
+            @PathVariable Long staffId,
+            @Valid @RequestBody StaffPermissionRequest request) {
+        if (request == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Permission payload is required"));
+        }
+
+        StaffPermissionResponse updated = adminStaffService.updateStaffPermissions(staffId, request);
+        return ResponseEntity.ok(ApiResponse.success("Permissions updated successfully", updated));
     }
 
     @GetMapping("/{staffId}/activity-log")
