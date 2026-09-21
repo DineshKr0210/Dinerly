@@ -28,18 +28,4 @@ public class StaffController {
     public ResponseEntity<ApiResponse<List<StaffResponse>>> getStaff(@PathVariable Long restaurantId) {
         return ResponseEntity.ok(ApiResponse.success("Staff retrieved", staffService.getStaff(restaurantId)));
     }
-
-    @PostMapping
-    public ResponseEntity<ApiResponse<StaffResponse>> createStaff(@PathVariable Long restaurantId,
-                                                                  @Valid @RequestBody CreateStaffRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Staff created", staffService.createStaff(restaurantId, request)));
-    }
-
-    @DeleteMapping("/{staffId}")
-    public ResponseEntity<ApiResponse<Void>> deleteStaff(@PathVariable Long restaurantId,
-                                                         @PathVariable Long staffId) {
-        staffService.deleteStaff(restaurantId, staffId);
-        return ResponseEntity.ok(ApiResponse.success("Staff removed"));
-    }
 }
