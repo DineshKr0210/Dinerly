@@ -23,6 +23,8 @@ public interface AdminStaffService {
     // Permissions management
     Map<String, Object> getStaffPermissions(Long staffId);
     Map<String, Object> updateStaffPermissions(Long staffId, Map<String, Boolean> permissions);
+    Map<String, Boolean> getEffectivePermissions(Long staffId);
+    boolean hasPermission(Long staffId, String permissionKey);
     
     // Activity and audit
     Page<Map<String, Object>> getStaffActivityLog(Long staffId, Pageable pageable);

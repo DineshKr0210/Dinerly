@@ -10,12 +10,14 @@ import com.restaurant.waitlist.backend.entity.AuditLog;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.entity.Staff;
 import com.restaurant.waitlist.backend.entity.StaffInvitationToken;
+import com.restaurant.waitlist.backend.entity.StaffPermission;
 import com.restaurant.waitlist.backend.entity.StaffRole;
 import com.restaurant.waitlist.backend.entity.User;
 import com.restaurant.waitlist.backend.mapper.AdminLocationMapper;
 import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.StaffInvitationTokenRepository;
+import com.restaurant.waitlist.backend.repository.StaffPermissionRepository;
 import com.restaurant.waitlist.backend.repository.StaffRepository;
 import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.service.EmailService;
@@ -43,7 +45,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     private final EmailService emailService;
     private final AuditLogRepository auditLogRepository;
     private final StaffInvitationTokenRepository staffInvitationTokenRepository;
-    private final UserRepository userRepository;  // ✅ NEW: For creating User records
+    private final UserRepository userRepository;
+    private final StaffPermissionRepository staffPermissionRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
@@ -209,33 +212,16 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Override
     public Map<String, Object> getStaffPermissions(Long staffId) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
-        
+        Map<String, Boolean> effective = getEffectivePermissions(staffId);
+
         Map<String, Object> permissions = new HashMap<>();
         permissions.put("staffId", s.getId());
         permissions.put("role", s.getRole().name());
-        
-        // Role-based permissions
-        if (StaffRole.ADMIN == s.getRole()) {
-            permissions.put("canManageOffers", true);
-            permissions.put("canManageStaff", true);
-            permissions.put("canViewReports", true);
-            permissions.put("canManageSettings", true);
-            permissions.put("canManageRewards", true);
-        } else if (StaffRole.MANAGER == s.getRole()) {
-            permissions.put("canManageOffers", true);
-            permissions.put("canManageStaff", false);
-            permissions.put("canViewReports", true);
-            permissions.put("canManageSettings", false);
-            permissions.put("canManageRewards", true);
-        } else {
-            // HOST role - limited permissions
-            permissions.put("canManageOffers", false);
-            permissions.put("canManageStaff", false);
-            permissions.put("canViewReports", false);
-            permissions.put("canManageSettings", false);
-            permissions.put("canManageRewards", false);
-        }
-        
+        permissions.put("effectivePermissions", effective);
+        permissions.put("isCustom", staffPermissionRepository.findByStaffId(staffId).map(StaffPermission::isCustom).orElse(false));
+        permissions.put("updatedAt", staffPermissionRepository.findByStaffId(staffId)
+                .map(StaffPermission::getUpdatedAt)
+                .orElse(null));
         return permissions;
     }
 
@@ -243,15 +229,78 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Transactional
     public Map<String, Object> updateStaffPermissions(Long staffId, Map<String, Boolean> permissions) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
-        
+
+        StaffPermission staffPermission = staffPermissionRepository.findByStaffId(staffId)
+                .orElseGet(() -> StaffPermission.builder().staff(s).build());
+
+        if (permissions != null) {
+            staffPermission.setCanManageOffers(Boolean.TRUE.equals(permissions.get("canManageOffers")));
+            staffPermission.setCanManageStaff(Boolean.TRUE.equals(permissions.get("canManageStaff")));
+            staffPermission.setCanViewReports(Boolean.TRUE.equals(permissions.get("canViewReports")));
+            staffPermission.setCanManageSettings(Boolean.TRUE.equals(permissions.get("canManageSettings")));
+            staffPermission.setCanManageRewards(Boolean.TRUE.equals(permissions.get("canManageRewards")));
+            staffPermission.setCustom(true);
+            staffPermissionRepository.save(staffPermission);
+        }
+
         AuditLog log = AuditLog.builder()
                 .restaurantId(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L)
                 .action("STAFF_PERMISSIONS_UPDATED")
                 .details("Updated permissions for staff: " + s.getName())
                 .build();
         auditLogRepository.save(log);
-        
+
         return getStaffPermissions(staffId);
+    }
+
+    @Override
+    public Map<String, Boolean> getEffectivePermissions(Long staffId) {
+        Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
+        Map<String, Boolean> defaultValues = getDefaultPermissionsByRole(s.getRole());
+
+        return staffPermissionRepository.findByStaffId(staffId)
+                .map(permission -> {
+                    Map<String, Boolean> result = new HashMap<>();
+                    result.put("canManageOffers", permission.isCanManageOffers());
+                    result.put("canManageStaff", permission.isCanManageStaff());
+                    result.put("canViewReports", permission.isCanViewReports());
+                    result.put("canManageSettings", permission.isCanManageSettings());
+                    result.put("canManageRewards", permission.isCanManageRewards());
+                    return result;
+                })
+                .orElse(defaultValues);
+    }
+
+    @Override
+    public boolean hasPermission(Long staffId, String permissionKey) {
+        Map<String, Boolean> permissions = getEffectivePermissions(staffId);
+        return Boolean.TRUE.equals(permissions.get(permissionKey));
+    }
+
+    private Map<String, Boolean> getDefaultPermissionsByRole(StaffRole role) {
+        Map<String, Boolean> permissions = new HashMap<>();
+
+        if (role == StaffRole.ADMIN) {
+            permissions.put("canManageOffers", true);
+            permissions.put("canManageStaff", true);
+            permissions.put("canViewReports", true);
+            permissions.put("canManageSettings", true);
+            permissions.put("canManageRewards", true);
+        } else if (role == StaffRole.MANAGER) {
+            permissions.put("canManageOffers", true);
+            permissions.put("canManageStaff", false);
+            permissions.put("canViewReports", true);
+            permissions.put("canManageSettings", false);
+            permissions.put("canManageRewards", true);
+        } else {
+            permissions.put("canManageOffers", false);
+            permissions.put("canManageStaff", false);
+            permissions.put("canViewReports", false);
+            permissions.put("canManageSettings", false);
+            permissions.put("canManageRewards", false);
+        }
+
+        return permissions;
     }
 
     @Override
