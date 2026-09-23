@@ -13,13 +13,6 @@ import java.util.Optional;
 
 @Repository
 public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
-    List<Restaurant> findByName(String name);
-    Optional<Restaurant> findByEmail(String email);
-    Optional<Restaurant> findByPhone(String phone);
-
-    @Query("SELECT r FROM Restaurant r WHERE r.locationOpen = false")
-    List<Restaurant> findClosedLocations();
-
     @Query("SELECT r FROM Restaurant r WHERE r.locationOpen = false AND r.id = :restaurantId")
     Optional<Restaurant> findClosedLocationById(@Param("restaurantId") Long restaurantId);
 
@@ -31,7 +24,5 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
     @Query("SELECT r FROM Restaurant r WHERE r.id = :restaurantId OR r.mainRestaurantId = :restaurantId")
     Page<Restaurant> findByIdOrMainRestaurantId(@Param("restaurantId") Long restaurantId, Pageable pageable);
-
-    List<Restaurant> findByMainRestaurantId(Long mainRestaurantId);
 }
 

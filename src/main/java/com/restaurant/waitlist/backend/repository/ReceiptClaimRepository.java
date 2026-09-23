@@ -8,7 +8,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface ReceiptClaimRepository extends JpaRepository<ReceiptClaim, Long> {
@@ -17,8 +16,6 @@ public interface ReceiptClaimRepository extends JpaRepository<ReceiptClaim, Long
     Page<ReceiptClaim> findByRestaurantIdAndStatus(Long restaurantId, ReceiptClaim.ClaimStatus status, Pageable pageable);
 
     List<ReceiptClaim> findByUserIdAndRestaurantIdAndCreatedAtAfter(Long userId, Long restaurantId, LocalDateTime createdAfter);
-
-    Optional<ReceiptClaim> findByUserIdAndRestaurantIdAndReceiptAmountAndReceiptDate(Long userId, Long restaurantId, String amount, String date);
 
     // Franchise-group scoped variants: an admin's "all my locations" view
     // resolves to a restaurant id list rather than a truly global query.

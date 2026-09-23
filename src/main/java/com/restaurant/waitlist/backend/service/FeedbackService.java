@@ -9,8 +9,6 @@ import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 public class FeedbackService {
 
@@ -40,10 +38,6 @@ public class FeedbackService {
         } catch (Exception e) {
             throw new RuntimeException("Error saving feedback");
         }
-    }
-
-    public List<Feedback> getAllFeedback() {
-        return feedbackRepository.findAll();
     }
 }
 

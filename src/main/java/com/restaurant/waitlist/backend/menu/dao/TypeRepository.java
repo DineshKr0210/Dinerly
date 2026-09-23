@@ -18,8 +18,6 @@ public interface TypeRepository extends JpaRepository<Type, Long> {
     @Query("SELECT t FROM Type t WHERE t.status = 'ACTIVE' AND (:restaurantId IS NULL OR t.restaurant.id = :restaurantId)")
     List<Type> findAllByRestaurant(@Param("restaurantId") Long restaurantId);
 
-    List<Type> findByNameInAndStatus(List<DishType> names, Status status);
-
     @Query("SELECT t FROM Type t WHERE t.name IN :names AND t.status = :status AND (:restaurantId IS NULL OR t.restaurant.id = :restaurantId)")
     List<Type> findByNameInAndStatusAndRestaurantId(@Param("names") List<DishType> names, @Param("status") Status status, @Param("restaurantId") Long restaurantId);
 

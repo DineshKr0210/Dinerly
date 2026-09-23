@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -105,12 +104,6 @@ public class AdminRewardServiceImpl implements AdminRewardService {
                 .details("Tier deleted: " + tier.getName() + " (ID: " + tierId + ")")
                 .build());
     }
-
-    @Override
-    public List<RewardTierResponse> getAllTiers() {
-        return rewardTierRepository.findAll().stream().map(this::map).collect(Collectors.toList());
-    }
-
 
     @Override
     public RewardSettingsRequest getSettings() {

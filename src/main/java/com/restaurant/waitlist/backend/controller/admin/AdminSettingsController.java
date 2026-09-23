@@ -1,6 +1,5 @@
 package com.restaurant.waitlist.backend.controller.admin;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.restaurant.waitlist.backend.dto.request.AdvancedSettingsRequest;
 import com.restaurant.waitlist.backend.dto.request.HolidayHourRequest;
 import com.restaurant.waitlist.backend.dto.request.UpdateHolidayHourRequest;
@@ -20,8 +19,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/settings")
@@ -169,21 +166,4 @@ public class AdminSettingsController {
         }
     }
 
-    UpdateRestaurantSettingsRequest parseNotificationSettingsRequest(Object body) {
-        if (body == null) {
-            return new UpdateRestaurantSettingsRequest();
-        }
-
-        if (body instanceof Map<?, ?> map) {
-            Object payloadNode = map.containsKey("data") && map.get("data") instanceof Map<?, ?>
-                    ? map.get("data")
-                    : body;
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            return objectMapper.convertValue(payloadNode, UpdateRestaurantSettingsRequest.class);
-        }
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        return objectMapper.convertValue(body, UpdateRestaurantSettingsRequest.class);
-    }
 }

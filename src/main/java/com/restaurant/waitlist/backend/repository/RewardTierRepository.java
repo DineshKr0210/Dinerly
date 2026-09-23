@@ -13,16 +13,10 @@ import java.util.Optional;
 @Repository
 public interface RewardTierRepository extends JpaRepository<RewardTier, Long> {
     List<RewardTier> findByRestaurantIdOrderByTierOrderAsc(Long restaurantId);
-    
-    Page<RewardTier> findByRestaurantIdOrderByTierOrderAsc(Long restaurantId, Pageable pageable);
-
-    Optional<RewardTier> findByRestaurantIdAndTierOrder(Long restaurantId, Integer tierOrder);
 
     @Query("SELECT t FROM RewardTier t WHERE t.restaurant.id = :restaurantId " +
             "AND t.pointsThreshold <= :points ORDER BY t.tierOrder DESC LIMIT 1")
     Optional<RewardTier> findTierForPoints(Long restaurantId, Long points);
-
-    List<RewardTier> findByRestaurantId(Long restaurantId);
 
     // Franchise-group scoped variants: an admin's "all my locations" view
     // resolves to a restaurant id list rather than a truly global query.

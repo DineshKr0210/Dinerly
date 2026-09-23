@@ -7,7 +7,6 @@ import com.restaurant.waitlist.backend.dto.response.admin.RewardTierResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.Map;
 
 public interface AdminRewardService {
@@ -16,9 +15,6 @@ public interface AdminRewardService {
     RewardTierResponse updateTier(Long tierId, RewardTierRequest request);
     void deleteTier(Long tierId);
     RewardTierResponse duplicateTier(Long tierId, String newName);
-
-    List<RewardTierResponse> getAllTiers();
-
 
     RewardSettingsRequest getSettings();
     RewardSettingsRequest updateSettings(RewardSettingsRequest request);

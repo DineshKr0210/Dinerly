@@ -118,39 +118,6 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
     }
 
     @Override
-    public java.util.Map<String, Object> validateAndCompleteCampaignCode(String code, Long campaignId) {
-        java.util.Map<String, Object> response = new java.util.HashMap<>();
-        
-        try {
-            // Find the redemption record for this campaign code
-            Redemption redemption = redemptionRepository.findValidCampaignCode(code, campaignId)
-                    .orElseThrow(() -> new IllegalArgumentException("Invalid or expired campaign code"));
-            
-            // Mark as completed
-            redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
-            redemption.setRedeemedAt(LocalDateTime.now());
-            redemptionRepository.save(redemption);
-            
-            // Return success response
-            response.put("success", true);
-            response.put("message", "Campaign code validated and completed");
-            response.put("code", code);
-            response.put("campaignId", campaignId);
-            response.put("redemptionId", redemption.getId());
-            response.put("guestPhone", redemption.getGuestPhone());
-            response.put("status", "COMPLETED");
-            
-        } catch (IllegalArgumentException ex) {
-            response.put("success", false);
-            response.put("message", "Invalid or expired campaign code");
-            response.put("code", code);
-            response.put("error", ex.getMessage());
-        }
-        
-        return response;
-    }
-
-    @Override
     public java.util.Map<String, Object> validateAndCompleteCampaignCodeByCode(String code) {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
         

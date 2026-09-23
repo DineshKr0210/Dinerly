@@ -24,51 +24,6 @@ public class RedemptionRepositoryImpl implements RedemptionRepositoryCustom {
     private EntityManager em;
 
     @Override
-    public Page<Redemption> findFiltered(Long restaurantId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        CriteriaBuilder cb = em.getCriteriaBuilder();
-        CriteriaQuery<Redemption> cq = cb.createQuery(Redemption.class);
-        Root<Redemption> root = cq.from(Redemption.class);
-
-        List<Predicate> preds = new ArrayList<>();
-        if (restaurantId != null) {
-            preds.add(cb.equal(root.get("restaurantId"), restaurantId));
-        }
-        if (from != null) {
-            preds.add(cb.greaterThanOrEqualTo(root.get("redeemedAt"), from));
-        }
-        if (to != null) {
-            preds.add(cb.lessThanOrEqualTo(root.get("redeemedAt"), to));
-        }
-
-        cq.where(preds.toArray(new Predicate[0]));
-        cq.orderBy(cb.desc(root.get("redeemedAt")));
-
-        TypedQuery<Redemption> q = em.createQuery(cq);
-        q.setFirstResult((int) pageable.getOffset());
-        q.setMaxResults(pageable.getPageSize());
-        List<Redemption> results = q.getResultList();
-
-        // count
-        CriteriaQuery<Long> countQ = cb.createQuery(Long.class);
-        Root<Redemption> countRoot = countQ.from(Redemption.class);
-        countQ.select(cb.count(countRoot));
-        List<Predicate> countPreds = new ArrayList<>();
-        if (restaurantId != null) {
-            countPreds.add(cb.equal(countRoot.get("restaurantId"), restaurantId));
-        }
-        if (from != null) {
-            countPreds.add(cb.greaterThanOrEqualTo(countRoot.get("redeemedAt"), from));
-        }
-        if (to != null) {
-            countPreds.add(cb.lessThanOrEqualTo(countRoot.get("redeemedAt"), to));
-        }
-        countQ.where(countPreds.toArray(new Predicate[0]));
-        Long total = em.createQuery(countQ).getSingleResult();
-
-        return new PageImpl<>(results, pageable, total);
-    }
-
-    @Override
     public Page<Redemption> findFiltered(List<Long> restaurantIds, LocalDateTime from, LocalDateTime to,
                                           Long offerId, Long userId, Pageable pageable) {
         CriteriaBuilder cb = em.getCriteriaBuilder();

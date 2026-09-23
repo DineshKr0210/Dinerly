@@ -9,20 +9,11 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface OfferRepository extends JpaRepository<Offer, Long> {
-    Page<Offer> findByRestaurantId(Long restaurantId, Pageable pageable);
-
     @Query("SELECT COUNT(r) FROM Redemption r WHERE r.offer.id = ?1")
     long countRedemptionsByOfferId(Long offerId);
-
-    @Query("SELECT o FROM Offer o WHERE (:restaurantId IS NULL OR o.restaurant.id = :restaurantId) " +
-            "AND (:status IS NULL OR o.status = :status) " +
-            "AND (:fromDate IS NULL OR o.startDate >= :fromDate) " +
-            "AND (:toDate IS NULL OR o.endDate <= :toDate)")
-    Page<Offer> findFiltered(Long restaurantId, String status, LocalDate fromDate, LocalDate toDate, Pageable pageable);
 
     // Franchise-group scoped variant: an admin's "all my locations" view
     // resolves to a restaurant id list rather than a truly global query.
@@ -37,25 +28,10 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
             "ORDER BY o.startDate DESC")
     Page<Offer> findActiveOffersByRestaurant(Long restaurantId, Pageable pageable);
 
-    @Query("SELECT o FROM Offer o WHERE o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE " +
-            "ORDER BY o.startDate DESC")
-    Page<Offer> findAllActive(Pageable pageable);
-
-    @Query("SELECT r FROM Redemption r WHERE r.redemptionCode = :code " +
-            "AND r.status = 'GENERATED' AND r.codeExpiresAt > CURRENT_TIMESTAMP")
-    Optional<Object> findByRedemptionCode(String code);
-
-    @Query("SELECT COUNT(r) FROM Redemption r WHERE r.offer.id = :offerId " +
-            "AND r.userId = :userId AND FUNCTION('DATE', r.redeemedAt) = CURRENT_DATE")
-    long countTodayRedemptionsByUserAndOffer(Long offerId, Long userId);
-
     @Query("SELECT COUNT(r) FROM Redemption r WHERE r.offer.id = :offerId AND r.userId = :userId")
     long countTotalRedemptionsByUserAndOffer(Long offerId, Long userId);
 
     @Query("SELECT COUNT(o) FROM Offer o WHERE o.restaurant.id = :restaurantId " +
             "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE")
     long countActiveOffersByRestaurant(Long restaurantId);
-
-    @Query("SELECT COUNT(DISTINCT o.restaurant.id) FROM Offer o WHERE o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE")
-    long countRestaurantsWithActiveOffers();
 }

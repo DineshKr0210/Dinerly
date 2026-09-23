@@ -9,6 +9,5 @@ import java.util.Optional;
 @Repository
 public interface RestaurantSettingsRepository extends JpaRepository<RestaurantSettings, Long> {
     Optional<RestaurantSettings> findByRestaurantId(Long restaurantId);
-    boolean existsByRestaurantId(Long restaurantId);
 }
 

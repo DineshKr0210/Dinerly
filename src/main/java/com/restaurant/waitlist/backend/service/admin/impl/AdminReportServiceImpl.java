@@ -295,63 +295,6 @@ public class AdminReportServiceImpl implements AdminReportService {
     }
 
     @Override
-    public byte[] exportReportAsExcel(Long reportId) throws Exception {
-        ReportRecord r = reportRepository.findById(reportId).orElseThrow(() -> new RuntimeException("Report not found"));
-        adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
-
-        // Placeholder - Excel export not in requirements
-        // In production, use POI (Apache POI) to generate real XLSX files
-        String excelContent = "Report ID,Type,Location,Period,Generated\n";
-        excelContent += r.getId() + "," + r.getType() + "," + r.getLocationId() + "," + r.getPeriod() + "," + r.getGeneratedAt() + "\n";
-        
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(r.getLocationId() != null ? r.getLocationId() : 0L)
-            .action("EXPORT_EXCEL")
-            .details("Exported report as Excel: " + r.getFileName())
-            .build());
-        
-        return excelContent.getBytes();
-    }
-
-    @Override
-    public byte[] exportReportAsPdf(Long reportId) throws Exception {
-        ReportRecord r = reportRepository.findById(reportId).orElseThrow(() -> new RuntimeException("Report not found"));
-        adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
-
-        // Placeholder - PDF export not in requirements
-        // In production, use iText or similar to generate real PDF files
-        String pdfContent = "PDF Report\nReport ID: " + r.getId() + "\nType: " + r.getType() + "\nPeriod: " + r.getPeriod();
-        
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(r.getLocationId() != null ? r.getLocationId() : 0L)
-            .action("EXPORT_PDF")
-            .details("Exported report as PDF: " + r.getFileName())
-            .build());
-        
-        return pdfContent.getBytes();
-    }
-
-    @Override
-    public byte[] exportReportCsv(Long reportId) throws Exception {
-        ReportRecord r = reportRepository.findById(reportId).orElseThrow(() -> new RuntimeException("Report not found"));
-        adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
-
-        String csvContent = "metric,value\n";
-        csvContent += "Report ID," + r.getId() + "\n";
-        csvContent += "Type," + r.getType() + "\n";
-        csvContent += "Period," + r.getPeriod() + "\n";
-        csvContent += "Generated At," + r.getGeneratedAt() + "\n";
-        
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(r.getLocationId() != null ? r.getLocationId() : 0L)
-            .action("EXPORT_CSV")
-            .details("Exported report as CSV: " + r.getFileName())
-            .build());
-        
-        return csvContent.getBytes();
-    }
-
-    @Override
     @Transactional
     public java.util.Map<String, Object> scheduleReport(com.restaurant.waitlist.backend.dto.request.admin.ReportScheduleRequest request) {
         adminLocationAccessService.assertAccess(request.getLocationId());
@@ -400,38 +343,6 @@ public class AdminReportServiceImpl implements AdminReportService {
             .action("CANCEL_SCHEDULED_REPORT")
             .details("Cancelled scheduled report: " + scheduleId)
             .build());
-    }
-
-    @Override
-    public Page<java.util.Map<String, Object>> listCustomReportTemplates(Pageable pageable) {
-        // Simplified - would normally query a ReportTemplate entity
-        List<java.util.Map<String, Object>> templates = new java.util.ArrayList<>();
-        templates.add(java.util.Map.of(
-            "id", 1L,
-            "name", "Daily Summary",
-            "type", "summary",
-            "fields", java.util.List.of("guests", "seated", "waitTime"),
-            "createdAt", System.currentTimeMillis()
-        ));
-        
-        return new PageImpl<>(templates, pageable, templates.size());
-    }
-
-    @Override
-    @Transactional
-    public java.util.Map<String, Object> createCustomReportTemplate(java.util.Map<String, Object> templateConfig) {
-        // Create custom report template
-        java.util.Map<String, Object> template = new java.util.HashMap<>(templateConfig);
-        template.put("id", System.currentTimeMillis());
-        template.put("createdAt", System.currentTimeMillis());
-        
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(0L)
-            .action("CREATE_CUSTOM_TEMPLATE")
-            .details("Created custom report template")
-            .build());
-        
-        return template;
     }
 
     private Double weightedAverageSeatedDuration(List<Long> restaurantIds, Date fromDate, Date toDate) {

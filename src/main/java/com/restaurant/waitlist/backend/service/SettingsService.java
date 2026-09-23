@@ -343,59 +343,6 @@ public class SettingsService {
         return generateQrCodeImage(qrUrl);
     }
 
-    public Map<String, Object> createQrCode(Long restaurantId) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        String existingQrUrl = getStoredQrUrl(restaurantId);
-        if (existingQrUrl != null) {
-            throw new RuntimeException("QR code already exists for this restaurant");
-        }
-
-        String qrUrl = createQrUrl(restaurant);
-        saveQrUrl(restaurantId, qrUrl);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("restaurantId", restaurantId);
-        response.put("qrUrl", qrUrl);
-        return response;
-    }
-
-    public Map<String, Object> deleteQrCode(Long restaurantId) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        Path propertiesPath = resolveApplicationPropertiesPath();
-        if (propertiesPath == null || !Files.exists(propertiesPath)) {
-            throw new RuntimeException("QR code not found for this restaurant");
-        }
-
-        Properties properties = new Properties();
-        try (InputStream inputStream = Files.newInputStream(propertiesPath)) {
-            properties.load(inputStream);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read application properties", e);
-        }
-
-        String key = "restaurant.qr." + restaurantId + ".url";
-        if (!properties.containsKey(key)) {
-            throw new RuntimeException("QR code not found for this restaurant");
-        }
-
-        properties.remove(key);
-        try (OutputStream outputStream = Files.newOutputStream(propertiesPath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
-            properties.store(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), "Generated QR URLs");
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to delete QR URL from application properties", e);
-        }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("restaurantId", restaurantId);
-        response.put("restaurantName", restaurant.getName());
-        response.put("deleted", true);
-        return response;
-    }
-
     private String createQrUrl(Restaurant restaurant) {
         String slug = restaurant.getName() == null ? "restaurant" : restaurant.getName()
                 .toLowerCase()

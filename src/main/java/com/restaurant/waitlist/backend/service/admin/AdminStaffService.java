@@ -26,8 +26,7 @@ public interface AdminStaffService {
     StaffPermissionResponse getStaffPermissions(Long staffId);
     StaffPermissionResponse updateStaffPermissions(Long staffId, StaffPermissionRequest request);
     Map<String, Boolean> getEffectivePermissions(Long staffId);
-    boolean hasPermission(Long staffId, String permissionKey);
-    
+
     // Activity and audit
     Page<Map<String, Object>> getStaffActivityLog(Long staffId, Pageable pageable);
     Page<Map<String, Object>> getAllStaffActivityLog(Pageable pageable);
@@ -35,6 +34,5 @@ public interface AdminStaffService {
     // Invitation token management
     StaffTokenVerificationResponse verifyInvitationToken(String token);
     AdminStaffResponse setStaffPassword(StaffSetPasswordRequest request);
-    Map<String, Object> checkInvitationTokenStatus(String token);
 }
 

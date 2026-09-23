@@ -11,8 +11,7 @@ public interface AdminReviewService {
     
     // Review analytics
     ReviewAnalyticsResponse getReviewAnalytics(Long locationId, int days);
-    ReviewAnalyticsResponse getReviewAnalyticsAllLocations(int days);
-    
+
     // Rating breakdown
     java.util.Map<String, Long> getRatingDistribution(Long locationId, int days);
 }

@@ -289,12 +289,6 @@ public class AdminStaffServiceImpl implements AdminStaffService {
                 .orElse(defaultValues);
     }
 
-    @Override
-    public boolean hasPermission(Long staffId, String permissionKey) {
-        Map<String, Boolean> permissions = getEffectivePermissions(staffId);
-        return Boolean.TRUE.equals(permissions.get(permissionKey));
-    }
-
     private Map<String, Boolean> getDefaultPermissionsByRole(StaffRole role) {
         Map<String, Boolean> permissions = new HashMap<>();
 
@@ -484,40 +478,6 @@ public class AdminStaffServiceImpl implements AdminStaffService {
                 .locationId(savedStaff.getRestaurant().getId())
                 .location(savedStaff.getRestaurant().getName())
                 .build();
-    }
-
-    /**
-     * Check if invitation token is still valid
-     */
-    @Override
-    public Map<String, Object> checkInvitationTokenStatus(String token) {
-        StaffInvitationToken invitationToken = staffInvitationTokenRepository.findByToken(token)
-                .orElse(null);
-
-        Map<String, Object> response = new HashMap<>();
-
-        if (invitationToken == null) {
-            response.put("valid", false);
-            response.put("message", "Invalid invitation token");
-            return response;
-        }
-
-        if (invitationToken.getIsUsed()) {
-            response.put("valid", false);
-            response.put("message", "This invitation has already been used");
-            return response;
-        }
-
-        if (!invitationToken.isValid()) {
-            response.put("valid", false);
-            response.put("message", "This invitation token has expired");
-            return response;
-        }
-
-        response.put("valid", true);
-        response.put("message", "Invitation token is valid");
-        response.put("expiresAt", invitationToken.getExpiryDate());
-        return response;
     }
 
     /**

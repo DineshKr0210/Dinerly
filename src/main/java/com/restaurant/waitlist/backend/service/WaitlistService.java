@@ -160,18 +160,6 @@ public class WaitlistService {
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
-    public List<WaitlistResponse> getWaitlistStatusList(Long restaurantId, String phone) {
-        List<Waitlist> waitlists = waitlistRepository.findAllByRestaurantIdAndGuestPhone(restaurantId, phone);
-        
-        if (waitlists.isEmpty()) {
-            throw new RuntimeException("No waitlist entries found for this phone number");
-        }
-        
-        return waitlists.stream()
-                .map(WaitlistResponse::fromWaitlist)
-                .collect(Collectors.toList());
-    }
-
     public WaitlistResponse removeFromWaitlist(Long restaurantId, Long waitlistId) {
         Waitlist waitlist = waitlistRepository.findById(waitlistId)
                 .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
@@ -220,20 +208,6 @@ public class WaitlistService {
                 .build();
     }
 
-    public List<WaitlistResponse> getRestaurantWaitlist(Long restaurantId) {
-        List<Waitlist> waitlist = waitlistRepository.findByRestaurantId(restaurantId);
-        return waitlist.stream()
-                .map(WaitlistResponse::fromWaitlist)
-                .collect(Collectors.toList());
-    }
-
-    public List<WaitlistResponse> getAllWaitlist() {
-        List<Waitlist> waitlist = waitlistRepository.findAll();
-        return waitlist.stream()
-                .map(WaitlistResponse::fromWaitlist)
-                .collect(Collectors.toList());
-    }
-
     public Waitlist getWaitlistById(Long id) {
         return waitlistRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
@@ -245,29 +219,6 @@ public class WaitlistService {
             throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
         }
         return w;
-    }
-
-    public void markAsSeated(Long restaurantId, Long waitlistId) {
-        Waitlist waitlist = getWaitlistById(restaurantId, waitlistId);
-
-        if (waitlist.getStatus() == Waitlist.WaitlistStatus.CANCELLED) {
-            throw new RuntimeException("Waitlist entry was already cancelled");
-        }
-
-        // If already seated, no-op or inform
-        if (waitlist.getStatus() == Waitlist.WaitlistStatus.SEATED) {
-            throw new RuntimeException("Waitlist entry is already seated");
-        }
-
-        waitlist.setStatus(Waitlist.WaitlistStatus.SEATED);
-        waitlist.setSeatedAt(java.time.LocalDateTime.now());
-        waitlistRepository.save(waitlist);
-    }
-
-    public void markAsNotified(Long restaurantId, Long waitlistId) {
-        Waitlist waitlist = getWaitlistById(restaurantId, waitlistId);
-        waitlist.setStatus(Waitlist.WaitlistStatus.NOTIFIED);
-        waitlistRepository.save(waitlist);
     }
 
     public List<RestaurantResponse> getAllRestaurants() {

@@ -10,11 +10,7 @@ import java.util.List;
 
 @Repository
 public interface RewardItemRepository extends JpaRepository<RewardItem, Long> {
-    Page<RewardItem> findByRestaurantId(Long restaurantId, Pageable pageable);
-
     List<RewardItem> findByRestaurantIdAndAvailableTrue(Long restaurantId);
-
-    List<RewardItem> findByRestaurantIdAndCategoryAndAvailableTrue(Long restaurantId, String category);
 
     // Franchise-group scoped variants: an admin's "all my locations" view
     // resolves to a restaurant id list rather than a truly global query.

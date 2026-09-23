@@ -107,16 +107,5 @@ public class TableService {
 
         return table;
     }
-
-    public Table getTable(Long restaurantId, Long tableId) {
-        Table table = tableRepository.findById(tableId)
-                .orElseThrow(() -> new RuntimeException("Table not found"));
-
-        if (table.getRestaurant() == null || !table.getRestaurant().getId().equals(restaurantId)) {
-            throw new RuntimeException("Table does not belong to the specified restaurant");
-        }
-
-        return table;
-    }
 }
 

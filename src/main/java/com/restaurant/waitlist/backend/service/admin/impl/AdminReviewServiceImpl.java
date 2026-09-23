@@ -127,8 +127,4 @@ public class AdminReviewServiceImpl implements AdminReviewService {
         return distribution;
     }
 
-    @Override
-    public com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse getReviewAnalyticsAllLocations(int days) {
-        return getReviewAnalytics(null, days);
-    }
 }
