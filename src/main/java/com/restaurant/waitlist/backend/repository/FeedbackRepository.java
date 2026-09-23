@@ -22,8 +22,18 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     @Query("SELECT AVG(f.rating) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId")
     Double averageRatingByRestaurantId(Long restaurantId);
 
+    // Batched IN-list variant, grouped by restaurant, to avoid one query per restaurant
+    // when computing a weighted average across a franchise group.
+    @Query("SELECT f.waitlist.restaurant.id, AVG(f.rating) FROM Feedback f WHERE f.waitlist.restaurant.id IN :restaurantIds GROUP BY f.waitlist.restaurant.id")
+    List<Object[]> averageRatingGroupedByRestaurantIds(List<Long> restaurantIds);
+
     @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId")
     long countByWaitlistRestaurantId(Long restaurantId);
+
+    // Batched IN-list variant, grouped by restaurant, to avoid one query per restaurant
+    // when computing a weighted average across a franchise group.
+    @Query("SELECT f.waitlist.restaurant.id, COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id IN :restaurantIds GROUP BY f.waitlist.restaurant.id")
+    List<Object[]> countGroupedByRestaurantIds(List<Long> restaurantIds);
 
     @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId AND f.reply IS NOT NULL AND TRIM(f.reply) <> ''")
     long countRepliedByWaitlistRestaurantId(Long restaurantId);
@@ -42,10 +52,26 @@ public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
     long countByWaitlistRestaurantIdAndDateRange(Long restaurantId, java.sql.Date fromDate, java.sql.Date toDate);
 
+    // Batched IN-list variant to avoid one query per restaurant when summing across a franchise group.
+    @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id IN :restaurantIds AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
+    long countByWaitlistRestaurantIdInAndDateRange(List<Long> restaurantIds, java.sql.Date fromDate, java.sql.Date toDate);
+
     @Query("SELECT AVG(f.rating) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
     Double averageRatingByRestaurantIdAndDateRange(Long restaurantId, java.sql.Date fromDate, java.sql.Date toDate);
 
+    // Batched IN-list variant, grouped by restaurant, to avoid one query per restaurant
+    // when computing a weighted average across a franchise group.
+    @Query("SELECT f.waitlist.restaurant.id, AVG(f.rating) FROM Feedback f WHERE f.waitlist.restaurant.id IN :restaurantIds AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date) GROUP BY f.waitlist.restaurant.id")
+    List<Object[]> averageRatingByRestaurantIdsAndDateRangeGrouped(List<Long> restaurantIds, java.sql.Date fromDate, java.sql.Date toDate);
+
+    @Query("SELECT f.waitlist.restaurant.id, COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id IN :restaurantIds AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date) GROUP BY f.waitlist.restaurant.id")
+    List<Object[]> countByRestaurantIdsAndDateRangeGrouped(List<Long> restaurantIds, java.sql.Date fromDate, java.sql.Date toDate);
+
     @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id = :restaurantId AND f.reply IS NOT NULL AND TRIM(f.reply) <> '' AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
     long countRepliedByRestaurantIdAndDateRange(Long restaurantId, java.sql.Date fromDate, java.sql.Date toDate);
+
+    // Batched IN-list variant to avoid one query per restaurant when summing across a franchise group.
+    @Query("SELECT COUNT(f) FROM Feedback f WHERE f.waitlist.restaurant.id IN :restaurantIds AND f.reply IS NOT NULL AND TRIM(f.reply) <> '' AND CAST(f.createdAt AS date) >= CAST(:fromDate AS date) AND CAST(f.createdAt AS date) <= CAST(:toDate AS date)")
+    long countRepliedByRestaurantIdInAndDateRange(List<Long> restaurantIds, java.sql.Date fromDate, java.sql.Date toDate);
 }
 

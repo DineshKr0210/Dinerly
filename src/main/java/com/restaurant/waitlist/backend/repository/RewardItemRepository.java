@@ -16,5 +16,5 @@ public interface RewardItemRepository extends JpaRepository<RewardItem, Long> {
     // resolves to a restaurant id list rather than a truly global query.
     Page<RewardItem> findByRestaurantIdIn(List<Long> restaurantIds, Pageable pageable);
 
-    List<RewardItem> findByRestaurantIdInAndCategoryAndAvailableTrue(List<Long> restaurantIds, String category);
+    Page<RewardItem> findByRestaurantIdInAndCategoryAndAvailableTrue(List<Long> restaurantIds, String category, Pageable pageable);
 }

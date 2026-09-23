@@ -247,19 +247,26 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
     }
 
     private long sumJoins(List<Long> restaurantIds, Date fromDate, Date toDate) {
-        return restaurantIds.stream().mapToLong(id -> waitlistRepository.countByRestaurantInDateRange(id, fromDate, toDate)).sum();
+        return waitlistRepository.countByRestaurantIdsInDateRange(restaurantIds, fromDate, toDate);
     }
 
     private long sumSeated(List<Long> restaurantIds, Date fromDate, Date toDate) {
-        return restaurantIds.stream().mapToLong(id -> waitlistRepository.countByRestaurantAndStatusInDateRange(id, "SEATED", fromDate, toDate)).sum();
+        return waitlistRepository.countByRestaurantIdsAndStatusInDateRangeGrouped(restaurantIds, "SEATED", fromDate, toDate).stream()
+                .mapToLong(row -> ((Number) row[1]).longValue())
+                .sum();
     }
 
     private Double weightedAvgWait(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        Map<Long, Long> weights = groupedLongsByRestaurant(
+                waitlistRepository.countByRestaurantIdsAndStatusInDateRangeGrouped(restaurantIds, "SEATED", fromDate, toDate));
+        Map<Long, Double> avgs = groupedDoublesByRestaurant(
+                waitlistRepository.averageSeatedDurationMinutesGrouped(restaurantIds, fromDate, toDate));
+
         long totalWeight = 0;
         double totalSum = 0;
         for (Long id : restaurantIds) {
-            long weight = waitlistRepository.countByRestaurantAndStatusInDateRange(id, "SEATED", fromDate, toDate);
-            Double avg = waitlistRepository.averageSeatedDurationMinutes(id, fromDate, toDate);
+            long weight = weights.getOrDefault(id, 0L);
+            Double avg = avgs.get(id);
             if (weight > 0 && avg != null) {
                 totalSum += avg * weight;
                 totalWeight += weight;
@@ -269,25 +276,50 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
     }
 
     private long sumReviews(List<Long> restaurantIds, Date fromDate, Date toDate) {
-        return restaurantIds.stream().mapToLong(id -> feedbackRepository.countByWaitlistRestaurantIdAndDateRange(id, fromDate, toDate)).sum();
+        return feedbackRepository.countByWaitlistRestaurantIdInAndDateRange(restaurantIds, fromDate, toDate);
     }
 
     private long sumReplied(List<Long> restaurantIds, Date fromDate, Date toDate) {
-        return restaurantIds.stream().mapToLong(id -> feedbackRepository.countRepliedByRestaurantIdAndDateRange(id, fromDate, toDate)).sum();
+        return feedbackRepository.countRepliedByRestaurantIdInAndDateRange(restaurantIds, fromDate, toDate);
     }
 
     private Double weightedAvgRating(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        Map<Long, Long> weights = groupedLongsByRestaurant(
+                feedbackRepository.countByRestaurantIdsAndDateRangeGrouped(restaurantIds, fromDate, toDate));
+        Map<Long, Double> avgs = groupedDoublesByRestaurant(
+                feedbackRepository.averageRatingByRestaurantIdsAndDateRangeGrouped(restaurantIds, fromDate, toDate));
+
         long totalWeight = 0;
         double totalSum = 0;
         for (Long id : restaurantIds) {
-            long weight = feedbackRepository.countByWaitlistRestaurantIdAndDateRange(id, fromDate, toDate);
-            Double avg = feedbackRepository.averageRatingByRestaurantIdAndDateRange(id, fromDate, toDate);
+            long weight = weights.getOrDefault(id, 0L);
+            Double avg = avgs.get(id);
             if (weight > 0 && avg != null) {
                 totalSum += avg * weight;
                 totalWeight += weight;
             }
         }
         return totalWeight > 0 ? totalSum / totalWeight : 0.0;
+    }
+
+    private Map<Long, Long> groupedLongsByRestaurant(List<Object[]> rows) {
+        Map<Long, Long> result = new HashMap<>();
+        for (Object[] row : rows) {
+            Long restaurantId = ((Number) row[0]).longValue();
+            long value = row[1] != null ? ((Number) row[1]).longValue() : 0L;
+            result.put(restaurantId, value);
+        }
+        return result;
+    }
+
+    private Map<Long, Double> groupedDoublesByRestaurant(List<Object[]> rows) {
+        Map<Long, Double> result = new HashMap<>();
+        for (Object[] row : rows) {
+            Long restaurantId = ((Number) row[0]).longValue();
+            Double value = row[1] != null ? ((Number) row[1]).doubleValue() : null;
+            result.put(restaurantId, value);
+        }
+        return result;
     }
 
     private List<WaitlistPerformanceResponse.TrendPoint> buildWaitlistTrend(List<Long> restaurantIds, LocalDate from, LocalDate to) {
@@ -347,10 +379,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
 
     private List<WaitlistPerformanceResponse.LeaderboardEntry> buildWaitlistLeaderboard(List<Long> restaurantIds, Date fromDate, Date toDate) {
         List<WaitlistPerformanceResponse.LeaderboardEntry> entries = new ArrayList<>();
-        List<Object[]> rows = new ArrayList<>();
-        for (Long id : restaurantIds) {
-            rows.addAll(waitlistRepository.topRestaurantByJoinsForLocation(id, fromDate, toDate, 1));
-        }
+        List<Object[]> rows = waitlistRepository.topRestaurantByJoinsForLocations(restaurantIds, fromDate, toDate);
         rows.sort((a, b) -> Long.compare(
                 b[2] != null ? ((Number) b[2]).longValue() : 0L,
                 a[2] != null ? ((Number) a[2]).longValue() : 0L));

@@ -34,4 +34,10 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
     @Query("SELECT COUNT(o) FROM Offer o WHERE o.restaurant.id = :restaurantId " +
             "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE")
     long countActiveOffersByRestaurant(Long restaurantId);
+
+    // Batched IN-list variant, grouped by restaurant, to avoid one query per restaurant
+    // when checking which locations in a franchise group have active offers.
+    @Query("SELECT o.restaurant.id, COUNT(o) FROM Offer o WHERE o.restaurant.id IN :restaurantIds " +
+            "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE GROUP BY o.restaurant.id")
+    List<Object[]> countActiveOffersGroupedByRestaurantIds(List<Long> restaurantIds);
 }

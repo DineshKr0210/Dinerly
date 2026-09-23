@@ -9,14 +9,12 @@ import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminCustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -100,9 +98,9 @@ public class AdminCustomerServiceImpl implements AdminCustomerService {
     @Override
     public Page<CustomerResponse> listCustomers(Long restaurantId, Pageable pageable) {
         List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
-        List<CustomerAggregation> agg = waitlistRepository.aggregateCustomersByRestaurantIds(restaurantIds);
-        
-        List<CustomerResponse> items = agg.stream().map(a -> CustomerResponse.builder()
+        Page<CustomerAggregation> agg = waitlistRepository.aggregateCustomersByRestaurantIds(restaurantIds, pageable);
+
+        Page<CustomerResponse> page = agg.map(a -> CustomerResponse.builder()
                 .guest(a.getGuest())
                 .contact(a.getContact())
                 .locations(a.getLocations())
@@ -110,15 +108,11 @@ public class AdminCustomerServiceImpl implements AdminCustomerService {
                 .firstVisit(a.getFirstVisit())
                 .lastVisit(a.getLastVisit())
                 .status(a.getVisits() >= 3 ? "Regular" : "New")
-                .build()).collect(Collectors.toList());
-        
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), items.size());
-        List<CustomerResponse> pageItems = items.subList(Math.min(start, end), end);
+                .build());
 
-        auditLogService.log(restaurantId != null ? restaurantId : 0L, "LIST_CUSTOMERS", "Listed customers count=" + items.size());
+        auditLogService.log(restaurantId != null ? restaurantId : 0L, "LIST_CUSTOMERS", "Listed customers count=" + page.getTotalElements());
 
-        return new PageImpl<>(pageItems, pageable, items.size());
+        return page;
     }
     
     private double calculatePercentChange(double previous, double current) {

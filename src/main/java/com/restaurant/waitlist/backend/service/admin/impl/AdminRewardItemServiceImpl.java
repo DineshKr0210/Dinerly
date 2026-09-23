@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -133,18 +134,22 @@ public class AdminRewardItemServiceImpl implements AdminRewardItemService {
     @Override
     public Map<String, Object> bulkToggleAvailability(List<Long> itemIds, Boolean available) {
         log.info("Bulk toggling availability for {} items", itemIds.size());
+        Map<Long, RewardItem> itemsById = rewardItemRepository.findAllById(itemIds).stream()
+                .collect(Collectors.toMap(RewardItem::getId, item -> item));
+
         int updated = 0;
-        
+        List<RewardItem> toSave = new ArrayList<>();
         for (Long itemId : itemIds) {
-            RewardItem item = rewardItemRepository.findById(itemId).orElse(null);
+            RewardItem item = itemsById.get(itemId);
             if (item != null && adminLocationAccessService.canAccessRestaurant(
                     item.getRestaurant() != null ? item.getRestaurant().getId() : null)) {
                 item.setAvailable(available != null ? available : !item.getAvailable());
-                rewardItemRepository.save(item);
+                toSave.add(item);
                 updated++;
             }
         }
-        
+        rewardItemRepository.saveAll(toSave);
+
         return Map.of(
             "totalRequested", itemIds.size(),
             "updated", updated
@@ -155,12 +160,8 @@ public class AdminRewardItemServiceImpl implements AdminRewardItemService {
     public Page<RewardItemResponse> getByCategory(Long restaurantId, String category, Pageable pageable) {
         log.info("Getting items by category - category: {}", category);
         List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
-        List<RewardItem> items = rewardItemRepository.findByRestaurantIdInAndCategoryAndAvailableTrue(restaurantIds, category);
-        return new org.springframework.data.domain.PageImpl<>(
-            items.stream().map(this::mapToResponse).toList(),
-            pageable,
-            items.size()
-        );
+        Page<RewardItem> items = rewardItemRepository.findByRestaurantIdInAndCategoryAndAvailableTrue(restaurantIds, category, pageable);
+        return items.map(this::mapToResponse);
     }
 
     @Override

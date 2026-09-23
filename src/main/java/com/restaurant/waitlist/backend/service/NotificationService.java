@@ -46,9 +46,8 @@ public class NotificationService {
         LocalDateTime startOfDay = LocalDateTime.of(today, LocalTime.MIN);
         LocalDateTime endOfDay = LocalDateTime.of(today, LocalTime.MAX);
 
-        List<Waitlist> todayWaitlists = waitlistRepository.findByRestaurantId(restaurantId).stream()
-                .filter(w -> w.getJoinedAt().isAfter(startOfDay) && w.getJoinedAt().isBefore(endOfDay))
-                .toList();
+        List<Waitlist> todayWaitlists = waitlistRepository.findByRestaurantIdAndJoinedAtGreaterThanAndJoinedAtLessThan(
+                restaurantId, startOfDay, endOfDay);
 
         long totalGuests = todayWaitlists.size();
         long waiting = todayWaitlists.stream()

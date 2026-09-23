@@ -50,9 +50,8 @@ public class RestaurantSummaryService {
         LocalDateTime startOfDay = LocalDateTime.of(today, LocalTime.MIN);
         LocalDateTime endOfDay = LocalDateTime.of(today, LocalTime.MAX);
 
-        List<Waitlist> todaysWaitlists = waitlistRepository.findByRestaurantId(restaurantId).stream()
-                .filter(w -> w.getJoinedAt() != null && w.getJoinedAt().isAfter(startOfDay) && w.getJoinedAt().isBefore(endOfDay))
-                .collect(Collectors.toList());
+        List<Waitlist> todaysWaitlists = waitlistRepository.findByRestaurantIdAndJoinedAtGreaterThanAndJoinedAtLessThan(
+                restaurantId, startOfDay, endOfDay);
 
         long totalGuests = todaysWaitlists.size();
         long waiting = todaysWaitlists.stream().filter(w -> w.getStatus() == Waitlist.WaitlistStatus.WAITING).count();

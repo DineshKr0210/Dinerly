@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,18 +119,22 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
 
     private Map<String, Object> processBulkClaims(List<Long> claimIds, ReceiptClaim.ClaimStatus targetStatus,
             String resultCountKey, java.util.function.Consumer<ReceiptClaim> mutator) {
-        int processed = 0;
+        Map<Long, ReceiptClaim> claimsById = receiptClaimRepository.findAllById(claimIds).stream()
+                .collect(Collectors.toMap(ReceiptClaim::getId, c -> c));
 
+        int processed = 0;
+        List<ReceiptClaim> toSave = new ArrayList<>();
         for (Long claimId : claimIds) {
-            ReceiptClaim claim = receiptClaimRepository.findById(claimId).orElse(null);
+            ReceiptClaim claim = claimsById.get(claimId);
             if (claim != null && ReceiptClaim.ClaimStatus.UPLOADED.equals(claim.getStatus())
                     && adminLocationAccessService.canAccessRestaurant(claim.getRestaurant().getId())) {
                 claim.setStatus(targetStatus);
                 mutator.accept(claim);
-                receiptClaimRepository.save(claim);
+                toSave.add(claim);
                 processed++;
             }
         }
+        receiptClaimRepository.saveAll(toSave);
 
         return Map.of(
             "totalRequested", claimIds.size(),

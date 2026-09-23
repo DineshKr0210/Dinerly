@@ -28,7 +28,6 @@ import com.restaurant.waitlist.backend.service.EmailService;
 import com.restaurant.waitlist.backend.service.admin.AdminStaffService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -38,7 +37,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -80,8 +78,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         Restaurant restaurant = restaurantRepository.findById(request.getLocationId())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        boolean exists = staffRepository.findAll().stream()
-                .anyMatch(s -> request.getEmail().equalsIgnoreCase(s.getEmail()));
+        boolean exists = staffRepository.existsByEmailIgnoreCase(request.getEmail());
         if (exists) throw new RuntimeException("Email already invited");
 
         // Convert and validate role
@@ -278,51 +275,28 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
         adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
 
-        return buildActivityLogPage(
-                l -> "STAFF_INVITED".equals(l.getAction()) || "STAFF_UPDATED".equals(l.getAction())
-                        || "STAFF_DEACTIVATED".equals(l.getAction()) || "STAFF_ACTIVATED".equals(l.getAction()),
-                false,
-                pageable);
+        Page<AuditLog> logs = auditLogRepository.findByActionInOrderByIdDesc(
+                List.of("STAFF_INVITED", "STAFF_UPDATED", "STAFF_DEACTIVATED", "STAFF_ACTIVATED"), pageable);
+        return logs.map(entry -> toActivityMap(entry, false));
     }
 
     @Override
     public Page<Map<String, Object>> getAllStaffActivityLog(Pageable pageable) {
         List<Long> restaurantIds = adminLocationAccessService.getAccessibleRestaurantIds();
-        return buildActivityLogPage(
-                l -> l.getAction().contains("STAFF") && restaurantIds.contains(l.getRestaurantId()),
-                true,
-                pageable);
+        Page<AuditLog> logs = auditLogRepository.findByActionContainingAndRestaurantIdInOrderByIdDesc("STAFF", restaurantIds, pageable);
+        return logs.map(entry -> toActivityMap(entry, true));
     }
 
-    private Page<Map<String, Object>> buildActivityLogPage(java.util.function.Predicate<AuditLog> filter,
-                                                             boolean includeRestaurantId, Pageable pageable) {
-        List<AuditLog> logs = auditLogRepository.findAll().stream()
-                .filter(filter)
-                .sorted((a, b) -> b.getId().compareTo(a.getId()))
-                .collect(Collectors.toList());
-
-        List<Map<String, Object>> activities = logs.stream()
-                .map(log -> {
-                    Map<String, Object> activity = new HashMap<>();
-                    activity.put("id", log.getId());
-                    activity.put("action", log.getAction());
-                    activity.put("details", log.getDetails());
-                    if (includeRestaurantId) {
-                        activity.put("restaurantId", log.getRestaurantId());
-                    }
-                    activity.put("timestamp", log.getId()); // Use ID as timestamp placeholder
-                    return activity;
-                })
-                .collect(Collectors.toList());
-
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), activities.size());
-
-        return new PageImpl<>(
-            activities.subList(start, end),
-            pageable,
-            activities.size()
-        );
+    private Map<String, Object> toActivityMap(AuditLog entry, boolean includeRestaurantId) {
+        Map<String, Object> activity = new HashMap<>();
+        activity.put("id", entry.getId());
+        activity.put("action", entry.getAction());
+        activity.put("details", entry.getDetails());
+        if (includeRestaurantId) {
+            activity.put("restaurantId", entry.getRestaurantId());
+        }
+        activity.put("timestamp", entry.getId()); // Use ID as timestamp placeholder
+        return activity;
     }
 
     @Override

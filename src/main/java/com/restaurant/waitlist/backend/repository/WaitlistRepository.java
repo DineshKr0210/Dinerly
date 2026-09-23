@@ -16,7 +16,12 @@ import org.springframework.data.repository.query.Param;
 public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSpecificationExecutor<Waitlist> {
     List<Waitlist> findByRestaurantId(Long restaurantId);
 
-    List<Waitlist> findByRestaurantIdAndStatus(Long restaurantId, Waitlist.WaitlistStatus status);
+    // Pushes the "joined today" filter down to the DB instead of loading a restaurant's
+    // entire waitlist history and filtering it in memory.
+    List<Waitlist> findByRestaurantIdAndJoinedAtGreaterThanAndJoinedAtLessThan(
+            Long restaurantId, java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    List<Waitlist> findByRestaurantIdInAndStatus(List<Long> restaurantIds, Waitlist.WaitlistStatus status);
 
         Optional<Waitlist> findFirstByGuestPhoneOrderByIdDesc(String guestPhone);
 
@@ -25,6 +30,9 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
     Optional<Waitlist> findLatestByRestaurantIdAndGuestPhone(@Param("restaurantId") Long restaurantId, @Param("guestPhone") String guestPhone);
 
     long countByRestaurantIdAndStatusIn(Long restaurantId, java.util.Collection<Waitlist.WaitlistStatus> statuses);
+
+    // Batched IN-list variant to avoid one query per restaurant when summing across a franchise group.
+    long countByRestaurantIdInAndStatusIn(List<Long> restaurantIds, java.util.Collection<Waitlist.WaitlistStatus> statuses);
 
     java.util.List<Waitlist> findByRestaurantIdAndStatusInOrderByIdAsc(Long restaurantId, java.util.Collection<Waitlist.WaitlistStatus> statuses);
 
@@ -44,6 +52,14 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                       @Param("fromDate") java.sql.Date fromDate,
                                       @Param("toDate") java.sql.Date toDate);
 
+     // Batched IN-list variant to avoid one query per restaurant when summing across a franchise group.
+     @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE w.restaurant_id IN (:restaurantIds)" +
+             " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
+             " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
+     long countByRestaurantIdsInDateRange(@Param("restaurantIds") List<Long> restaurantIds,
+                                      @Param("fromDate") java.sql.Date fromDate,
+                                      @Param("toDate") java.sql.Date toDate);
+
     @Query(value = "SELECT COUNT(*) FROM waitlist w WHERE w.restaurant_id = :restaurantId" +
             " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE))" +
             " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE))", nativeQuery = true)
@@ -59,6 +75,18 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                                 @Param("fromDate") java.sql.Date fromDate,
                                                 @Param("toDate") java.sql.Date toDate);
 
+     // Batched IN-list variant, grouped by restaurant, to avoid one query per restaurant
+     // when computing a weighted average across a franchise group.
+     @Query(value = "SELECT w.restaurant_id as restaurantId, COUNT(*) as cnt FROM waitlist w " +
+             "WHERE w.restaurant_id IN (:restaurantIds) AND w.status = :status" +
+             " AND (CAST(:fromDate AS DATE) IS NULL OR COALESCE(DATE(w.seated_at), DATE(w.joined_at)) >= CAST(:fromDate AS DATE))" +
+             " AND (CAST(:toDate AS DATE) IS NULL OR COALESCE(DATE(w.seated_at), DATE(w.joined_at)) <= CAST(:toDate AS DATE))" +
+             " GROUP BY w.restaurant_id", nativeQuery = true)
+     List<Object[]> countByRestaurantIdsAndStatusInDateRangeGrouped(@Param("restaurantIds") List<Long> restaurantIds,
+                                                @Param("status") String status,
+                                                @Param("fromDate") java.sql.Date fromDate,
+                                                @Param("toDate") java.sql.Date toDate);
+
       @Query(value = "SELECT AVG(EXTRACT(EPOCH FROM (w.seated_at - w.joined_at))/60) FROM waitlist w " +
               "WHERE w.seated_at IS NOT NULL AND (:restaurantId IS NULL OR w.restaurant_id = :restaurantId)" +
               " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.seated_at) >= CAST(:fromDate AS DATE))" +
@@ -67,17 +95,29 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                           @Param("fromDate") java.sql.Date fromDate,
                                           @Param("toDate") java.sql.Date toDate);
 
+      // Batched IN-list variant, grouped by restaurant, to avoid one query per restaurant
+      // when computing a weighted average across a franchise group.
+      @Query(value = "SELECT w.restaurant_id as restaurantId, AVG(EXTRACT(EPOCH FROM (w.seated_at - w.joined_at))/60) as avgMinutes FROM waitlist w " +
+              "WHERE w.seated_at IS NOT NULL AND w.restaurant_id IN (:restaurantIds)" +
+              " AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.seated_at) >= CAST(:fromDate AS DATE))" +
+              " AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.seated_at) <= CAST(:toDate AS DATE))" +
+              " GROUP BY w.restaurant_id", nativeQuery = true)
+      List<Object[]> averageSeatedDurationMinutesGrouped(@Param("restaurantIds") List<Long> restaurantIds,
+                                          @Param("fromDate") java.sql.Date fromDate,
+                                          @Param("toDate") java.sql.Date toDate);
+
+    // Batched IN-list variant: returns one row per restaurant (avoids one query per restaurant
+    // when building a leaderboard across a franchise group).
     @Query(value = "SELECT w.restaurant_id as restaurantId, r.name as name, COUNT(*) as joins " +
             "FROM waitlist w JOIN restaurants r ON w.restaurant_id = r.id " +
-            "WHERE w.restaurant_id = :restaurantId " +
+            "WHERE w.restaurant_id IN (:restaurantIds) " +
             "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
             "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE)) " +
             "GROUP BY w.restaurant_id, r.name " +
-            "ORDER BY joins DESC LIMIT :limit", nativeQuery = true)
-    java.util.List<Object[]> topRestaurantByJoinsForLocation(@Param("restaurantId") Long restaurantId,
+            "ORDER BY joins DESC", nativeQuery = true)
+    java.util.List<Object[]> topRestaurantByJoinsForLocations(@Param("restaurantIds") List<Long> restaurantIds,
                                                             @Param("fromDate") java.sql.Date fromDate,
-                                                            @Param("toDate") java.sql.Date toDate,
-                                                            @Param("limit") int limit);
+                                                            @Param("toDate") java.sql.Date toDate);
 
     // Franchise-group scoped variant: an admin's "all my locations" view
     // resolves to a restaurant id list rather than a truly global query.
@@ -120,6 +160,21 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
             "GROUP BY w.guest_name, w.guest_phone " +
             "ORDER BY visits DESC", nativeQuery = true)
     java.util.List<CustomerAggregation> aggregateCustomersByRestaurantIds(@Param("restaurantIds") List<Long> restaurantIds);
+
+    // Paginated variant of the above, for endpoints that page through the customer list
+    // rather than needing the full aggregation (e.g. for summary stats).
+    @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
+            "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
+            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
+            "FROM waitlist w " +
+            "JOIN restaurants r ON w.restaurant_id = r.id " +
+            "WHERE w.restaurant_id IN (:restaurantIds) " +
+            "GROUP BY w.guest_name, w.guest_phone " +
+            "ORDER BY visits DESC",
+            countQuery = "SELECT COUNT(*) FROM (SELECT 1 FROM waitlist w WHERE w.restaurant_id IN (:restaurantIds) " +
+                    "GROUP BY w.guest_name, w.guest_phone) AS customer_count",
+            nativeQuery = true)
+    Page<CustomerAggregation> aggregateCustomersByRestaurantIds(@Param("restaurantIds") List<Long> restaurantIds, Pageable pageable);
 
     @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
             "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +

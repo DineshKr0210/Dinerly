@@ -27,6 +27,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,19 +50,14 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
         long totalRestaurants = restaurantIds.size();
 
-        long totalWaitlistJoins = restaurantIds.stream()
-                .mapToLong(id -> waitlistRepository.countByRestaurantIdInDateRange(id, from, to))
-                .sum();
+        long totalWaitlistJoins = waitlistRepository.countByRestaurantIdsInDateRange(restaurantIds, from, to);
 
-        long totalActive = restaurantIds.stream()
-                .mapToLong(id -> waitlistRepository.findByRestaurantIdAndStatus(id, Waitlist.WaitlistStatus.WAITING).size()
-                        + waitlistRepository.findByRestaurantIdAndStatus(id, Waitlist.WaitlistStatus.NOTIFIED).size())
-                .sum();
+        long totalActive = waitlistRepository.countByRestaurantIdInAndStatusIn(
+                restaurantIds, List.of(Waitlist.WaitlistStatus.WAITING, Waitlist.WaitlistStatus.NOTIFIED));
 
         double avgRating = weightedAverageRating(restaurantIds);
 
-        List<LocationLeaderboardItem> leaderboard = restaurantIds.stream()
-                .flatMap(id -> waitlistRepository.topRestaurantByJoinsForLocation(id, from, to, 1).stream())
+        List<LocationLeaderboardItem> leaderboard = waitlistRepository.topRestaurantByJoinsForLocations(restaurantIds, from, to).stream()
                 .map(row -> LocationLeaderboardItem.builder()
                         .restaurantId(row[0] != null ? ((Number) row[0]).longValue() : null)
                         .name(row[1] != null ? row[1].toString() : null)
@@ -82,11 +78,20 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     }
 
     private double weightedAverageRating(List<Long> restaurantIds) {
+        Map<Long, Long> counts = new HashMap<>();
+        for (Object[] row : feedbackRepository.countGroupedByRestaurantIds(restaurantIds)) {
+            counts.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        Map<Long, Double> avgs = new HashMap<>();
+        for (Object[] row : feedbackRepository.averageRatingGroupedByRestaurantIds(restaurantIds)) {
+            avgs.put(((Number) row[0]).longValue(), row[1] != null ? ((Number) row[1]).doubleValue() : null);
+        }
+
         long totalCount = 0;
         double totalRatingSum = 0;
         for (Long id : restaurantIds) {
-            long count = feedbackRepository.countByWaitlistRestaurantId(id);
-            Double avg = feedbackRepository.averageRatingByRestaurantId(id);
+            long count = counts.getOrDefault(id, 0L);
+            Double avg = avgs.get(id);
             if (count > 0 && avg != null) {
                 totalRatingSum += avg * count;
                 totalCount += count;
@@ -120,12 +125,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     public RealTimeMetricsResponse getRealTimeMetrics(Long locationId) {
         List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
 
-        List<Waitlist> waiting = new ArrayList<>();
-        List<Waitlist> notified = new ArrayList<>();
-        for (Long id : restaurantIds) {
-            waiting.addAll(waitlistRepository.findByRestaurantIdAndStatus(id, Waitlist.WaitlistStatus.WAITING));
-            notified.addAll(waitlistRepository.findByRestaurantIdAndStatus(id, Waitlist.WaitlistStatus.NOTIFIED));
-        }
+        List<Waitlist> waiting = waitlistRepository.findByRestaurantIdInAndStatus(restaurantIds, Waitlist.WaitlistStatus.WAITING);
+        List<Waitlist> notified = waitlistRepository.findByRestaurantIdInAndStatus(restaurantIds, Waitlist.WaitlistStatus.NOTIFIED);
 
         int waitingCount = waiting.size();
         int notifiedCount = notified.size();
@@ -214,13 +215,12 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             }
         } else if (!restaurantIds.isEmpty()) {
             // Multiple locations under this admin - find those without active offers
-            List<Long> locationsWithoutOffers = new ArrayList<>();
-            for (Long rId : restaurantIds) {
-                long activeOffers = offerRepository.countActiveOffersByRestaurant(rId);
-                if (activeOffers == 0) {
-                    locationsWithoutOffers.add(rId);
-                }
-            }
+            Set<Long> locationsWithOffers = offerRepository.countActiveOffersGroupedByRestaurantIds(restaurantIds).stream()
+                    .map(row -> ((Number) row[0]).longValue())
+                    .collect(Collectors.toSet());
+            List<Long> locationsWithoutOffers = restaurantIds.stream()
+                    .filter(rId -> !locationsWithOffers.contains(rId))
+                    .collect(Collectors.toList());
 
             if (!locationsWithoutOffers.isEmpty()) {
                 insights.add(InsightCardResponse.builder()

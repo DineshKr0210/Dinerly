@@ -13,4 +13,6 @@ public interface StaffRepository extends JpaRepository<Staff, Long> {
     // Franchise-group scoped variant: an admin's "all my locations" view
     // resolves to a restaurant id list rather than a truly global query.
     Page<Staff> findByRestaurantIdIn(List<Long> restaurantIds, Pageable pageable);
+
+    boolean existsByEmailIgnoreCase(String email);
 }

@@ -173,9 +173,8 @@ public class AdminReportServiceImpl implements AdminReportService {
         if ("location".equals(normalizedType)) {
             topLocations.add(new Object[] { locationId, locationName, waitlistJoins });
         } else {
-            for (Long id : adminLocationAccessService.getAccessibleRestaurantIds()) {
-                topLocations.addAll(waitlistRepository.topRestaurantByJoinsForLocation(id, fromDate, toDate, 1));
-            }
+            topLocations.addAll(waitlistRepository.topRestaurantByJoinsForLocations(
+                    adminLocationAccessService.getAccessibleRestaurantIds(), fromDate, toDate));
             topLocations.sort((a, b) -> Long.compare(
                     b[2] != null ? ((Number) b[2]).longValue() : 0L,
                     a[2] != null ? ((Number) a[2]).longValue() : 0L));
