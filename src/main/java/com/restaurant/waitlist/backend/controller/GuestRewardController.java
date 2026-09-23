@@ -9,6 +9,7 @@ import com.restaurant.waitlist.backend.dto.response.RedeemRewardResponse;
 import com.restaurant.waitlist.backend.service.CurrentUserResolver;
 import com.restaurant.waitlist.backend.service.GuestRewardsService;
 import com.restaurant.waitlist.backend.service.ReceiptClaimService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import java.io.IOException;
 @RequestMapping("/api/rewards")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Guest Rewards", description = "Guest loyalty points, tiers, reward redemption, and receipt claims")
 public class GuestRewardController {
 
     private final GuestRewardsService guestRewardsService;

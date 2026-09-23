@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.dto.request.admin.RewardItemRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.RewardItemResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminRewardItemService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/reward-items")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Reward Items", description = "Catalog of redeemable reward items")
 public class AdminRewardItemController {
 
     private final AdminRewardItemService adminRewardItemService;

@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.dto.request.FeedbackRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.service.FeedbackService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/feedback")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Guest Feedback", description = "Submit guest feedback and reviews after a visit")
 public class FeedbackController {
 
     @Autowired

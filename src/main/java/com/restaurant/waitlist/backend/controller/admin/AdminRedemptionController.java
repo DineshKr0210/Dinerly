@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.controller.admin;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.RedemptionResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminRedemptionService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +24,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/redemptions")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Redemptions", description = "View, cancel, and export offer/campaign/reward redemptions")
 public class AdminRedemptionController {
 
     private final AdminRedemptionService adminRedemptionService;

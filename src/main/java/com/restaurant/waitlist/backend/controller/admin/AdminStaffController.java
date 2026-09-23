@@ -10,6 +10,7 @@ import com.restaurant.waitlist.backend.dto.response.admin.StaffPermissionRespons
 import com.restaurant.waitlist.backend.dto.response.admin.StaffTokenVerificationResponse;
 import com.restaurant.waitlist.backend.entity.StaffRole;
 import com.restaurant.waitlist.backend.service.admin.AdminStaffService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin/staff")
 @RequiredArgsConstructor
+@Tag(name = "Admin Staff", description = "Manage staff across all of an admin's franchise locations")
 public class AdminStaffController {
 
     private final AdminStaffService adminStaffService;

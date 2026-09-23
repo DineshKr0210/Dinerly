@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.service.GuestOfferService;
 import com.restaurant.waitlist.backend.service.GuestRewardsService;
 import com.restaurant.waitlist.backend.service.admin.AdminRedemptionService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Restaurant Redemptions", description = "POS-side validation of offer, campaign, and reward codes")
 public class RedemptionController {
 
     private final AdminRedemptionService adminRedemptionService;

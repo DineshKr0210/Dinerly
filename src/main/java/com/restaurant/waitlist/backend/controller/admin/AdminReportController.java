@@ -8,6 +8,7 @@ import com.restaurant.waitlist.backend.service.admin.AdminReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 @RestController
 @RequestMapping("/api/admin/reports")
 @RequiredArgsConstructor
+@Tag(name = "Admin Reports", description = "Generate, schedule, and download operational reports")
 public class AdminReportController {
 
     private final AdminReportService adminReportService;

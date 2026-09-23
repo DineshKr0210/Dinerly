@@ -15,6 +15,7 @@ import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistSmsResult;
 import com.restaurant.waitlist.backend.dto.response.ReportsResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import com.restaurant.waitlist.backend.entity.Table;
 import com.restaurant.waitlist.backend.service.RestaurantService;
@@ -33,6 +34,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/restaurants")
 @CrossOrigin(origins = "*")
+@Tag(name = "Restaurant", description = "Staff dashboard: waitlist management, guest seating flow, and daily operations")
 @SecurityRequirement(name = "bearerAuth")
 public class RestaurantController {
 

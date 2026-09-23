@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.request.admin.RewardTierRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.RewardTierResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminRewardService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/rewards")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Rewards", description = "Loyalty program tiers and reward-earning settings")
 public class AdminRewardController {
 
     private final AdminRewardService adminRewardService;

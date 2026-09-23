@@ -9,6 +9,7 @@ import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.SettingsService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,6 +26,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/availability")
 @RequiredArgsConstructor
+@Tag(name = "Admin Availability", description = "Manage store hours, holidays, and closures across locations")
 public class AdminAvailabilityController {
 
     private final SettingsService settingsService;

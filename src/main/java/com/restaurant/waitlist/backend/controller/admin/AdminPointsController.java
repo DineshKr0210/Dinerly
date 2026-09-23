@@ -7,6 +7,7 @@ import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.entity.DinerlyPoints;
 import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.service.PointsService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/points")
 @RequiredArgsConstructor
+@Tag(name = "Admin Points", description = "Credit, debit, reverse, and audit guest loyalty points")
 public class AdminPointsController {
     private static final Logger log = LoggerFactory.getLogger(AdminPointsController.class);
 

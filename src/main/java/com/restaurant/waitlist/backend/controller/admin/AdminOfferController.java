@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.dto.request.admin.OfferRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.OfferResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminOfferService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/offers")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Offers", description = "Create, manage, and analyze restaurant offers")
 public class AdminOfferController {
 
     private final AdminOfferService adminOfferService;

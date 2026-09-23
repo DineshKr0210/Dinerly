@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.request.admin.UpdatePointsEarningRule
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.PointsEarningRuleResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminPointsEarningRuleService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/points/earning-rules")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Points Rules", description = "Configure how guests earn loyalty points")
 public class AdminPointsEarningRuleController {
 
     private final AdminPointsEarningRuleService adminPointsEarningRuleService;

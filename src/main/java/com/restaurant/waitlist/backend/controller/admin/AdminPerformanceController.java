@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.dto.response.admin.RewardsOffersPerforman
 import com.restaurant.waitlist.backend.dto.response.admin.WaitlistPerformanceResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminPerformanceService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/performance")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Admin Performance", description = "Waitlist, reviews, and rewards/offers performance analytics with period comparisons")
 public class AdminPerformanceController {
 
     @Autowired

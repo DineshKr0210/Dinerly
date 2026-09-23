@@ -8,6 +8,7 @@ import com.restaurant.waitlist.backend.menu.service.CategoryService;
 import com.restaurant.waitlist.backend.menu.service.DishService;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -23,6 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Admin Menu", description = "Manage menu categories, dishes, and types")
 public class AdminMenuController {
 
     private final CategoryService categoryService;

@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.dto.response.admin.LocationResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.LocationsPageResponse;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminLocationService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/locations")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Locations", description = "Manage franchise locations: list, create, and configure")
 public class AdminLocationController {
 
     private final AdminLocationService adminLocationService;

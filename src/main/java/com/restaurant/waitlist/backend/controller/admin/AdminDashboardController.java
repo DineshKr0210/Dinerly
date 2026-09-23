@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.response.admin.AdminDashboardResponse
 import com.restaurant.waitlist.backend.dto.response.admin.InsightCardResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.RealTimeMetricsResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminDashboardService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +23,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/dashboard")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Dashboard", description = "At-a-glance metrics, real-time stats, and insights feed for the admin console")
 public class AdminDashboardController {
 
     private final AdminDashboardService adminDashboardService;

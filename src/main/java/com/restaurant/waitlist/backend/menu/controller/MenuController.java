@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.menu.dto.TypeDTO;
 import com.restaurant.waitlist.backend.menu.service.CategoryService;
 import com.restaurant.waitlist.backend.menu.service.DishService;
 import com.restaurant.waitlist.backend.menu.service.TypeService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.CacheControl;
@@ -22,6 +23,7 @@ import java.util.List;
 @RequestMapping("/api/menu")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('GUEST','ADMIN')")
+@Tag(name = "Guest Menu", description = "Browse restaurant menu categories, dishes, and types")
 public class MenuController {
 
     private final CategoryService categoryService;

@@ -15,6 +15,7 @@ import com.restaurant.waitlist.backend.dto.response.SettingsProfileResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistSettingsResponse;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.SettingsService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/admin/settings")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Settings", description = "Restaurant settings management from the admin console")
 public class AdminSettingsController {
 
     private final SettingsService settingsService;

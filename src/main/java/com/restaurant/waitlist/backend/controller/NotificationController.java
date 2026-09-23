@@ -9,6 +9,7 @@ import com.restaurant.waitlist.backend.dto.response.SmsHistoryResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
 import com.restaurant.waitlist.backend.service.NotificationService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Restaurant Notifications", description = "Send SMS/call notifications to waitlist guests and view delivery history")
 public class NotificationController {
 
     @Autowired

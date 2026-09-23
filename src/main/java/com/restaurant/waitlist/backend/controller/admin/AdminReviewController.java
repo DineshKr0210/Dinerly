@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.dto.response.admin.ReviewResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminReviewService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/reviews")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Admin Reviews", description = "View and reply to guest reviews, plus review analytics")
 public class AdminReviewController {
 
     @Autowired

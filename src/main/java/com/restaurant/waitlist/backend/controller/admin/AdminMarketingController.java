@@ -8,6 +8,7 @@ import com.restaurant.waitlist.backend.dto.response.SmsTemplateResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.MarketingSummaryResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminCampaignService;
 import com.restaurant.waitlist.backend.service.admin.AdminMarketingService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +20,7 @@ import java.util.List;
 @RequestMapping("/api/admin/marketing")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Marketing", description = "SMS templates and one-off marketing sends")
 public class AdminMarketingController {
 
     private final AdminMarketingService adminMarketingService;

@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.controller;
 
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/api/twilio")
 @CrossOrigin(origins = "*")
 @RequiredArgsConstructor
+@Tag(name = "Twilio Webhooks", description = "Inbound SMS/voice callbacks from Twilio (called by Twilio, not by API clients)")
 public class TwimlController {
 
     private final WaitlistRepository waitlistRepository;

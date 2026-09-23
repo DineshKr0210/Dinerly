@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.request.admin.RejectReceiptRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.ReceiptClaimResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminReceiptClaimService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import java.util.Map;
 @RequestMapping("/api/admin/receipt-claims")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Receipt Claims", description = "Review and approve/reject guest receipt claims for bonus points")
 public class AdminReceiptClaimController {
 
     private final AdminReceiptClaimService adminReceiptClaimService;

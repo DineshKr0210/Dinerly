@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.dto.request.admin.CampaignRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.CampaignResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminCampaignService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/admin/marketing/campaigns")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Tag(name = "Admin Campaigns", description = "Create and publish marketing campaigns to consenting guests")
 public class AdminCampaignController {
 
     private final AdminCampaignService adminCampaignService;

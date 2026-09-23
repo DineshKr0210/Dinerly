@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.request.WaitlistStatusRequest;
 import com.restaurant.waitlist.backend.dto.response.*;
 import com.restaurant.waitlist.backend.service.RestaurantService;
 import com.restaurant.waitlist.backend.service.WaitlistService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/waitlist")
 @CrossOrigin(origins = "*")
+@Tag(name = "Waitlist", description = "Guest waitlist join, live status, and updates — the front door of the guest journey")
 public class WaitlistController {
 
     @Autowired

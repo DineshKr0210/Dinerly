@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.dto.response.GuestOfferResponse;
 import com.restaurant.waitlist.backend.dto.response.RedeemOfferResponse;
 import com.restaurant.waitlist.backend.service.CurrentUserResolver;
 import com.restaurant.waitlist.backend.service.GuestOfferService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/offers")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Guest Offers", description = "Browse restaurant offers and redeem them as a guest")
 public class GuestOfferController {
 
     private final GuestOfferService guestOfferService;

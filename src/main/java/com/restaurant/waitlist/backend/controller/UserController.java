@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.controller;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.UserResponse;
 import com.restaurant.waitlist.backend.service.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -13,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "*")
+@Tag(name = "Restaurant Users", description = "Manage user accounts (admin/manager/host)")
 public class UserController {
 
     @Autowired

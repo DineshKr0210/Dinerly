@@ -16,6 +16,7 @@ import com.restaurant.waitlist.backend.dto.response.SettingsProfileResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistSettingsResponse;
 import com.restaurant.waitlist.backend.service.SettingsService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,6 +30,7 @@ import java.util.Map;
 @RequestMapping("/api/settings")
 @CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Restaurant Settings", description = "Restaurant profile, hours, holiday schedule, and notification preferences")
 public class SettingsController {
 
     @Autowired

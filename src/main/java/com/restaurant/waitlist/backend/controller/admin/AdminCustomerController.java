@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.controller.admin;
 import com.restaurant.waitlist.backend.dto.response.admin.CustomerResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.CustomerSummaryResponse;
 import com.restaurant.waitlist.backend.service.admin.AdminCustomerService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin/customers")
 @RequiredArgsConstructor
+@Tag(name = "Admin Customers", description = "Customer summary, list, and visit history across an admin's locations")
 public class AdminCustomerController {
 
     private final AdminCustomerService adminCustomerService;

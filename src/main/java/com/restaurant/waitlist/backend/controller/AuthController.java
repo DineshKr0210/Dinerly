@@ -8,6 +8,7 @@ import com.restaurant.waitlist.backend.dto.request.ResetPasswordRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.LoginResponse;
 import com.restaurant.waitlist.backend.service.AuthService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
+@Tag(name = "Auth", description = "Registration, login, email verification, and password reset")
 public class AuthController {
 
     @Autowired

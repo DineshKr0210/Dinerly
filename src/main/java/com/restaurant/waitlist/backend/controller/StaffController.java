@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.StaffResponse;
 import com.restaurant.waitlist.backend.service.StaffService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('ADMIN')")
 @SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Restaurant Staff", description = "Manage a single location's staff accounts")
 public class StaffController {
 
     @Autowired
