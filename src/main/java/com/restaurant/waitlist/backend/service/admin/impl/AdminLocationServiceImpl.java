@@ -4,12 +4,11 @@ import com.restaurant.waitlist.backend.dto.request.admin.LocationRequest;
 import com.restaurant.waitlist.backend.dto.request.admin.LocationConfigurationRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.LocationResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.LocationsPageResponse;
-import com.restaurant.waitlist.backend.entity.AuditLog;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.mapper.AdminLocationMapper;
-import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminLocationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,8 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminLocationServiceImpl implements AdminLocationService {
 
     private final RestaurantRepository restaurantRepository;
-    private final AuditLogRepository auditLogRepository;
     private final AdminLocationAccessService adminLocationAccessService;
+    private final AuditLogService auditLogService;
 
     @Override
     public LocationsPageResponse listLocations(Pageable pageable) {
@@ -63,13 +62,7 @@ public class AdminLocationServiceImpl implements AdminLocationService {
 
         Restaurant saved = restaurantRepository.save(restaurant);
 
-        // audit
-        AuditLog log = AuditLog.builder()
-                .restaurantId(saved.getId())
-                .action("LOCATION_CREATED")
-                .details("Location created: " + saved.getName())
-                .build();
-        auditLogRepository.save(log);
+        auditLogService.log(saved.getId(), "LOCATION_CREATED", "Location created: " + saved.getName());
 
         return AdminLocationMapper.toResponse(saved);
     }
@@ -109,13 +102,8 @@ public class AdminLocationServiceImpl implements AdminLocationService {
         config.put("defaultInventory", request.getInventoryDefault() != null ? request.getInventoryDefault() : 500);
         config.put("defaultDiscount", request.getDiscountDefault() != null ? request.getDiscountDefault() : 20.0);
         
-        AuditLog log = AuditLog.builder()
-                .restaurantId(r.getId())
-                .action("LOCATION_CONFIG_UPDATED")
-                .details("Configuration updated for location: " + r.getName())
-                .build();
-        auditLogRepository.save(log);
-        
+        auditLogService.log(r.getId(), "LOCATION_CONFIG_UPDATED", "Configuration updated for location: " + r.getName());
+
         return config;
     }
 
@@ -154,12 +142,7 @@ public class AdminLocationServiceImpl implements AdminLocationService {
 
         Restaurant saved = restaurantRepository.save(r);
 
-        AuditLog log = AuditLog.builder()
-                .restaurantId(saved.getId())
-                .action("LOCATION_UPDATED")
-                .details("Location updated: " + saved.getName())
-                .build();
-        auditLogRepository.save(log);
+        auditLogService.log(saved.getId(), "LOCATION_UPDATED", "Location updated: " + saved.getName());
 
         return AdminLocationMapper.toResponse(saved);
     }

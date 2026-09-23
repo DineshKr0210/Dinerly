@@ -291,69 +291,58 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
     }
 
     private List<WaitlistPerformanceResponse.TrendPoint> buildWaitlistTrend(List<Long> restaurantIds, LocalDate from, LocalDate to) {
-        List<WaitlistPerformanceResponse.TrendPoint> trend = new ArrayList<>();
-        Map<LocalDate, Long> values = new HashMap<>();
         List<Object[]> rows = waitlistRepository.countJoinsByDayForRestaurantIds(restaurantIds, Date.valueOf(from), Date.valueOf(to));
-        for (Object[] row : rows) {
-            LocalDate date = normalizeDate(row[0]);
-            Long count = row[1] != null ? ((Number) row[1]).longValue() : 0L;
-            values.put(date, count);
-        }
-
-        LocalDate cursor = from;
-        while (!cursor.isAfter(to)) {
-            trend.add(WaitlistPerformanceResponse.TrendPoint.builder()
-                    .date(cursor.toString())
-                    .label(dayLabel(cursor))
-                    .value(values.getOrDefault(cursor, 0L))
-                    .build());
-            cursor = cursor.plusDays(1);
-        }
-        return trend;
+        Map<LocalDate, Long> values = aggregateCountsByDay(rows);
+        return fillDayRange(from, to, values, (date, label, value) -> WaitlistPerformanceResponse.TrendPoint.builder()
+                .date(date)
+                .label(label)
+                .value(value)
+                .build());
     }
 
     private List<ReviewsPerformanceResponse.TrendPoint> buildReviewsTrend(List<Long> restaurantIds, LocalDate from, LocalDate to) {
-        List<ReviewsPerformanceResponse.TrendPoint> trend = new ArrayList<>();
-        Map<LocalDate, Long> values = new HashMap<>();
         List<Object[]> rows = feedbackRepository.countReviewsByDayForRestaurantIds(restaurantIds, Date.valueOf(from), Date.valueOf(to));
+        Map<LocalDate, Long> values = aggregateCountsByDay(rows);
+        return fillDayRange(from, to, values, (date, label, value) -> ReviewsPerformanceResponse.TrendPoint.builder()
+                .date(date)
+                .label(label)
+                .value(value)
+                .build());
+    }
+
+    private List<RewardsOffersPerformanceResponse.TrendPoint> buildRewardsTrend(List<Long> restaurantIds, LocalDate from, LocalDate to) {
+        List<Object[]> rows = campaignRepository.aggregateRedemptionsByDayForRestaurantIds(restaurantIds, Date.valueOf(from), Date.valueOf(to));
+        Map<LocalDate, Long> values = aggregateCountsByDay(rows);
+        return fillDayRange(from, to, values, (date, label, value) -> RewardsOffersPerformanceResponse.TrendPoint.builder()
+                .date(date)
+                .label(label)
+                .value(value)
+                .build());
+    }
+
+    private Map<LocalDate, Long> aggregateCountsByDay(List<Object[]> rows) {
+        Map<LocalDate, Long> values = new HashMap<>();
         for (Object[] row : rows) {
             LocalDate date = normalizeDate(row[0]);
             Long count = row[1] != null ? ((Number) row[1]).longValue() : 0L;
             values.put(date, count);
         }
+        return values;
+    }
 
+    private <T> List<T> fillDayRange(LocalDate from, LocalDate to, Map<LocalDate, Long> values, TrendPointFactory<T> factory) {
+        List<T> trend = new ArrayList<>();
         LocalDate cursor = from;
         while (!cursor.isAfter(to)) {
-            trend.add(ReviewsPerformanceResponse.TrendPoint.builder()
-                    .date(cursor.toString())
-                    .label(dayLabel(cursor))
-                    .value(values.getOrDefault(cursor, 0L))
-                    .build());
+            trend.add(factory.create(cursor.toString(), dayLabel(cursor), values.getOrDefault(cursor, 0L)));
             cursor = cursor.plusDays(1);
         }
         return trend;
     }
 
-    private List<RewardsOffersPerformanceResponse.TrendPoint> buildRewardsTrend(List<Long> restaurantIds, LocalDate from, LocalDate to) {
-        List<RewardsOffersPerformanceResponse.TrendPoint> trend = new ArrayList<>();
-        Map<LocalDate, Long> values = new HashMap<>();
-        List<Object[]> rows = campaignRepository.aggregateRedemptionsByDayForRestaurantIds(restaurantIds, Date.valueOf(from), Date.valueOf(to));
-        for (Object[] row : rows) {
-            LocalDate date = normalizeDate(row[0]);
-            Long count = row[1] != null ? ((Number) row[1]).longValue() : 0L;
-            values.put(date, count);
-        }
-
-        LocalDate cursor = from;
-        while (!cursor.isAfter(to)) {
-            trend.add(RewardsOffersPerformanceResponse.TrendPoint.builder()
-                    .date(cursor.toString())
-                    .label(dayLabel(cursor))
-                    .value(values.getOrDefault(cursor, 0L))
-                    .build());
-            cursor = cursor.plusDays(1);
-        }
-        return trend;
+    @FunctionalInterface
+    private interface TrendPointFactory<T> {
+        T create(String date, String label, Long value);
     }
 
     private List<WaitlistPerformanceResponse.LeaderboardEntry> buildWaitlistLeaderboard(List<Long> restaurantIds, Date fromDate, Date toDate) {

@@ -2,7 +2,7 @@ package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.dto.request.admin.MarketingCampaignRequest;
 import com.restaurant.waitlist.backend.dto.response.SmsTemplateResponse;
-import com.restaurant.waitlist.backend.repository.AuditLogRepository;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminMarketingService;
 import com.restaurant.waitlist.backend.service.SmsService;
 import com.restaurant.waitlist.backend.service.SmsTemplateService;
@@ -19,7 +19,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
 
     private final SmsTemplateService smsTemplateService;
     private final SmsService smsService;
-    private final AuditLogRepository auditLogRepository;
+    private final AuditLogService auditLogService;
 
     @Override
     public List<SmsTemplateResponse> listTemplates() {
@@ -34,33 +34,21 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
     @Override
     public SmsTemplateResponse updateTemplate(Long id, String messageTemplate, String description) {
         com.restaurant.waitlist.backend.entity.SmsTemplate t = smsTemplateService.updateTemplate(id, messageTemplate, description);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(0L)
-                .action("UPDATE_SMS_TEMPLATE")
-                .details("Updated SMS template id=" + id)
-                .build());
+        auditLogService.log(0L, "UPDATE_SMS_TEMPLATE", "Updated SMS template id=" + id);
         return SmsTemplateResponse.fromSmsTemplate(t);
     }
 
     @Override
     public SmsTemplateResponse createTemplate(String templateType, String messageTemplate, String description) {
         com.restaurant.waitlist.backend.entity.SmsTemplate t = smsTemplateService.createTemplate(templateType, messageTemplate, description);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(0L)
-                .action("CREATE_SMS_TEMPLATE")
-                .details("Created SMS template type=" + templateType)
-                .build());
+        auditLogService.log(0L, "CREATE_SMS_TEMPLATE", "Created SMS template type=" + templateType);
         return SmsTemplateResponse.fromSmsTemplate(t);
     }
 
     @Override
     public void deleteTemplate(Long id) {
         smsTemplateService.deleteTemplate(id);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(0L)
-                .action("DELETE_SMS_TEMPLATE")
-                .details("Deleted SMS template id=" + id)
-                .build());
+        auditLogService.log(0L, "DELETE_SMS_TEMPLATE", "Deleted SMS template id=" + id);
     }
 
     @Override
@@ -83,11 +71,8 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
             } catch (Exception ignored) {
             }
         }
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(request.getRestaurantId() != null ? request.getRestaurantId() : 0L)
-                .action("SEND_MARKETING_CAMPAIGN")
-                .details("Sent campaign template=" + request.getTemplateType() + " recipients=" + sent)
-                .build());
+        auditLogService.log(request.getRestaurantId() != null ? request.getRestaurantId() : 0L,
+                "SEND_MARKETING_CAMPAIGN", "Sent campaign template=" + request.getTemplateType() + " recipients=" + sent);
         return sent;
     }
 }

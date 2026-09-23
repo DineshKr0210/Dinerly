@@ -31,6 +31,9 @@ class NotificationServiceCallTest {
     @Mock
     private RestaurantSettingsRepository restaurantSettingsRepository;
 
+    @Mock
+    private WaitlistService waitlistService;
+
     @InjectMocks
     private NotificationService notificationService;
 
@@ -44,7 +47,7 @@ class NotificationServiceCallTest {
                 .restaurant(restaurant)
                 .build();
 
-        when(waitlistRepository.findById(10L)).thenReturn(Optional.of(waitlist));
+        when(waitlistService.getWaitlistById(1L, 10L)).thenReturn(waitlist);
         when(restaurantSettingsRepository.findByRestaurantId(1L)).thenReturn(Optional.empty());
         when(smsService.makePhoneCall(eq(1L), eq("+1234567890"), anyString(), eq("Dinesh")))
                 .thenReturn(SendCallResponse.builder().callInitiated(true).build());

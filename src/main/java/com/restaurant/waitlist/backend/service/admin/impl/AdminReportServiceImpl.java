@@ -12,8 +12,8 @@ import com.restaurant.waitlist.backend.repository.CampaignRepository;
 import com.restaurant.waitlist.backend.repository.RedemptionRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminReportService;
-import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -39,8 +39,8 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final RedemptionRepository redemptionRepository;
     private final RestaurantRepository restaurantRepository;
     private final ReportRepository reportRepository;
-    private final AuditLogRepository auditLogRepository;
     private final AdminLocationAccessService adminLocationAccessService;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -219,11 +219,8 @@ public class AdminReportServiceImpl implements AdminReportService {
                 .build();
         ReportRecord saved = reportRepository.save(rec);
 
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(locationId != null ? locationId : 0L)
-                .action("GENERATE_REPORT")
-                .details("Generated " + normalizedType + " report from " + from + " to " + to)
-                .build());
+        auditLogService.log(locationId != null ? locationId : 0L, "GENERATE_REPORT",
+                "Generated " + normalizedType + " report from " + from + " to " + to);
 
         return ReportResponse.builder()
                 .id(saved.getId())
@@ -254,13 +251,9 @@ public class AdminReportServiceImpl implements AdminReportService {
                     .generatedAt(r.getGeneratedAt())
                     .build();
         }).collect(Collectors.toList());
-        
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(0L)
-            .action("LIST_REPORTS")
-            .details("Listed reports, pageSize=" + pageable.getPageSize())
-            .build());
-        
+
+        auditLogService.log(0L, "LIST_REPORTS", "Listed reports, pageSize=" + pageable.getPageSize());
+
         return new PageImpl<>(items, pageable, page.getTotalElements());
     }
 
@@ -270,11 +263,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
         File f = new File(r.getFilePath());
 
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(r.getLocationId() != null ? r.getLocationId() : 0L)
-            .action("DOWNLOAD_REPORT")
-            .details("Downloaded report: " + r.getFileName())
-            .build());
+        auditLogService.log(r.getLocationId() != null ? r.getLocationId() : 0L, "DOWNLOAD_REPORT", "Downloaded report: " + r.getFileName());
         return java.nio.file.Files.readAllBytes(f.toPath());
     }
 
@@ -309,13 +298,10 @@ public class AdminReportServiceImpl implements AdminReportService {
         scheduled.put("emailRecipients", request.getEmailRecipients());
         scheduled.put("exportFormat", request.getExportFormat());
         scheduled.put("createdAt", System.currentTimeMillis());
-        
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(request.getLocationId() != null ? request.getLocationId() : 0L)
-            .action("SCHEDULE_REPORT")
-            .details("Scheduled report: " + request.getName() + " frequency=" + request.getFrequency())
-            .build());
-        
+
+        auditLogService.log(request.getLocationId() != null ? request.getLocationId() : 0L, "SCHEDULE_REPORT",
+                "Scheduled report: " + request.getName() + " frequency=" + request.getFrequency());
+
         return scheduled;
     }
 
@@ -338,11 +324,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     @Transactional
     public void cancelScheduledReport(Long scheduleId) {
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(0L)
-            .action("CANCEL_SCHEDULED_REPORT")
-            .details("Cancelled scheduled report: " + scheduleId)
-            .build());
+        auditLogService.log(0L, "CANCEL_SCHEDULED_REPORT", "Cancelled scheduled report: " + scheduleId);
     }
 
     private Double weightedAverageSeatedDuration(List<Long> restaurantIds, Date fromDate, Date toDate) {

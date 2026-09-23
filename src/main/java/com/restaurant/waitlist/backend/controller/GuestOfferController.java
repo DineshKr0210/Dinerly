@@ -4,8 +4,7 @@ import com.restaurant.waitlist.backend.dto.request.RedeemOfferRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.dto.response.GuestOfferResponse;
 import com.restaurant.waitlist.backend.dto.response.RedeemOfferResponse;
-import com.restaurant.waitlist.backend.entity.User;
-import com.restaurant.waitlist.backend.repository.UserRepository;
+import com.restaurant.waitlist.backend.service.CurrentUserResolver;
 import com.restaurant.waitlist.backend.service.GuestOfferService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +13,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class GuestOfferController {
 
     private final GuestOfferService guestOfferService;
-    private final UserRepository userRepository;
+    private final CurrentUserResolver currentUserResolver;
 
     @GetMapping
     public ResponseEntity<ApiResponse<Page<GuestOfferResponse>>> list(
@@ -35,7 +32,7 @@ public class GuestOfferController {
         @RequestParam(defaultValue = "20") int size
     ) {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = currentUserResolver.getCurrentUserId();
             Pageable pageable = PageRequest.of(page, size);
 
             Page<GuestOfferResponse> offers;
@@ -55,7 +52,7 @@ public class GuestOfferController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<GuestOfferResponse>> get(@PathVariable Long id) {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = currentUserResolver.getCurrentUserId();
             GuestOfferResponse offer = guestOfferService.getOfferDetail(id, userId);
             return ResponseEntity.ok(ApiResponse.success("Offer details retrieved successfully", offer));
         } catch (Exception e) {
@@ -71,7 +68,7 @@ public class GuestOfferController {
         @RequestParam(required = false) Long locationId
     ) {
         try {
-            Long userId = getCurrentUserId();
+            Long userId = currentUserResolver.getCurrentUserId();
             if (locationId == null) {
                 locationId = 1L; // Default restaurant
             }
@@ -94,30 +91,5 @@ public class GuestOfferController {
             log.error("Error validating code", e);
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-    }
-
-    private Long getCurrentUserId() {
-        try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication == null || !authentication.isAuthenticated()) {
-                return null;
-            }
-
-            // Get the email from the principal (it's set by JwtFilter)
-            String email = authentication.getPrincipal().toString();
-            
-            // Look up the user by email to get their ID
-            User user = userRepository.findByEmail(email).orElse(null);
-            
-            if (user == null) {
-                log.debug("User not found for email: {}", email);
-                return null;
-            }
-            
-            return user.getId();
-        } catch (Exception e) {
-            log.debug("Error getting current user", e);
-        }
-        return null;
     }
 }

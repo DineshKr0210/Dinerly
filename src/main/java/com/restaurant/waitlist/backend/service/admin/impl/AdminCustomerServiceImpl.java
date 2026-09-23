@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.response.admin.CustomerSummaryRespons
 import com.restaurant.waitlist.backend.repository.CustomerAggregation;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminCustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,8 +23,8 @@ import java.util.stream.Collectors;
 public class AdminCustomerServiceImpl implements AdminCustomerService {
 
     private final WaitlistRepository waitlistRepository;
-    private final com.restaurant.waitlist.backend.repository.AuditLogRepository auditLogRepository;
     private final AdminLocationAccessService adminLocationAccessService;
+    private final AuditLogService auditLogService;
 
     @Override
     public CustomerSummaryResponse getCustomerSummary(Long restaurantId) {
@@ -76,12 +77,8 @@ public class AdminCustomerServiceImpl implements AdminCustomerService {
         double regularCustomersPercent = totalGuestsThisMonth > 0 ? 
             (regularGuestsThisMonth * 100.0 / totalGuestsThisMonth) : 0.0;
         
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(restaurantId != null ? restaurantId : 0L)
-            .action("VIEW_CUSTOMER_SUMMARY")
-            .details("Viewed customer summary")
-            .build());
-        
+        auditLogService.log(restaurantId != null ? restaurantId : 0L, "VIEW_CUSTOMER_SUMMARY", "Viewed customer summary");
+
         return CustomerSummaryResponse.builder()
             .totalUniqueGuests(totalGuestsThisMonth)
             .totalGuestsLastMonth(totalGuestsLastMonth)
@@ -119,12 +116,8 @@ public class AdminCustomerServiceImpl implements AdminCustomerService {
         int end = Math.min((start + pageable.getPageSize()), items.size());
         List<CustomerResponse> pageItems = items.subList(Math.min(start, end), end);
 
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-            .restaurantId(restaurantId != null ? restaurantId : 0L)
-            .action("LIST_CUSTOMERS")
-            .details("Listed customers count=" + items.size())
-            .build());
-        
+        auditLogService.log(restaurantId != null ? restaurantId : 0L, "LIST_CUSTOMERS", "Listed customers count=" + items.size());
+
         return new PageImpl<>(pageItems, pageable, items.size());
     }
     

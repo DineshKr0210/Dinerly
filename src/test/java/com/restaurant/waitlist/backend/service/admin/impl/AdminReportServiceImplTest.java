@@ -1,7 +1,6 @@
 package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.entity.ReportRecord;
-import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.CampaignRepository;
 import com.restaurant.waitlist.backend.repository.FeedbackRepository;
 import com.restaurant.waitlist.backend.repository.RedemptionRepository;
@@ -9,6 +8,7 @@ import com.restaurant.waitlist.backend.repository.ReportRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.dto.response.admin.ReportResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,10 +50,10 @@ class AdminReportServiceImplTest {
     private ReportRepository reportRepository;
 
     @Mock
-    private AuditLogRepository auditLogRepository;
+    private AdminLocationAccessService adminLocationAccessService;
 
     @Mock
-    private AdminLocationAccessService adminLocationAccessService;
+    private AuditLogService auditLogService;
 
     private AdminReportServiceImpl service;
 
@@ -66,8 +66,8 @@ class AdminReportServiceImplTest {
                 redemptionRepository,
                 restaurantRepository,
                 reportRepository,
-                auditLogRepository,
-                adminLocationAccessService
+                adminLocationAccessService,
+                auditLogService
         );
     }
 
@@ -87,7 +87,6 @@ class AdminReportServiceImplTest {
             record.setId(1L);
             return record;
         });
-        when(auditLogRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         ReportResponse response = service.generateReport("overall", null, "", null, null);
 

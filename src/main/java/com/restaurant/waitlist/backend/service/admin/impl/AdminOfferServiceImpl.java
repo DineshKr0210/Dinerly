@@ -4,10 +4,10 @@ import com.restaurant.waitlist.backend.dto.request.admin.OfferRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.OfferResponse;
 import com.restaurant.waitlist.backend.entity.Offer;
 import com.restaurant.waitlist.backend.entity.Restaurant;
-import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.OfferRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminOfferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,8 +25,8 @@ public class AdminOfferServiceImpl implements AdminOfferService {
 
     private final OfferRepository offerRepository;
     private final RestaurantRepository restaurantRepository;
-    private final AuditLogRepository auditLogRepository;
     private final AdminLocationAccessService adminLocationAccessService;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -50,11 +50,7 @@ public class AdminOfferServiceImpl implements AdminOfferService {
                 .perUserLimit(request.getPerUserLimit())
                 .build();
         Offer saved = offerRepository.save(o);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(r.getId())
-                .action("CREATE_OFFER")
-                .details("Offer created: " + saved.getName())
-                .build());
+        auditLogService.log(r.getId(), "CREATE_OFFER", "Offer created: " + saved.getName());
         return map(saved);
     }
 
@@ -80,11 +76,7 @@ public class AdminOfferServiceImpl implements AdminOfferService {
         o.setPhotoUrl(request.getPhotoUrl());
         o.setPerUserLimit(request.getPerUserLimit());
         Offer saved = offerRepository.save(o);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(r.getId())
-                .action("UPDATE_OFFER")
-                .details("Offer updated: " + saved.getName())
-                .build());
+        auditLogService.log(r.getId(), "UPDATE_OFFER", "Offer updated: " + saved.getName());
         return map(saved);
     }
 
@@ -95,11 +87,7 @@ public class AdminOfferServiceImpl implements AdminOfferService {
         Long rid = o.getRestaurant().getId();
         adminLocationAccessService.assertAccess(rid);
         offerRepository.delete(o);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(rid)
-                .action("DELETE_OFFER")
-                .details("Offer deleted: " + o.getName())
-                .build());
+        auditLogService.log(rid, "DELETE_OFFER", "Offer deleted: " + o.getName());
     }
 
     private OfferResponse map(Offer o) {

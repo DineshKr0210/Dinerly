@@ -35,6 +35,9 @@ public class NotificationService {
     @Autowired
     private RestaurantSettingsRepository restaurantSettingsRepository;
 
+    @Autowired
+    private WaitlistService waitlistService;
+
     public NotificationSummaryResponse getSummary(Long restaurantId) {
         restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
@@ -99,23 +102,13 @@ public class NotificationService {
     }
 
     public WaitlistResponse getNotificationDetail(Long restaurantId, Long waitlistId) {
-        Waitlist waitlist = waitlistRepository.findById(waitlistId)
-                .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
-
-        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
-            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
-        }
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
 
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
     public SendSmsResponse sendSms(Long restaurantId, Long waitlistId, String message) {
-        Waitlist waitlist = waitlistRepository.findById(waitlistId)
-                .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
-
-        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
-            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
-        }
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
 
         try {
             smsService.sendSms(waitlist.getGuestPhone(), message);
@@ -138,12 +131,7 @@ public class NotificationService {
     }
 
     public SendCallResponse makeCall(Long restaurantId, Long waitlistId, String message) {
-        Waitlist waitlist = waitlistRepository.findById(waitlistId)
-                .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
-
-        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
-            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
-        }
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
 
         RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId).orElse(null);
         NotificationSettingsPayload payload = settings != null ? settings.getNotificationSettings() : NotificationSettingsPayload.defaults();
@@ -170,12 +158,7 @@ public class NotificationService {
     }
 
     public SmsHistoryResponse getSmsHistory(Long restaurantId, Long waitlistId) {
-        Waitlist waitlist = waitlistRepository.findById(waitlistId)
-                .orElseThrow(() -> new RuntimeException("Waitlist entry not found"));
-
-        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
-            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
-        }
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
 
         return SmsHistoryResponse.builder()
                 .smsMessage(waitlist.getSmsMessage())

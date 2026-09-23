@@ -89,22 +89,18 @@ public class AdminReviewServiceImpl implements AdminReviewService {
         if (averageRating > 4.0) trend = "UP";
         else if (averageRating < 3.0) trend = "DOWN";
 
-        long count5 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 5).count();
-        long count4 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 4).count();
-        long count3 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 3).count();
-        long count2 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 2).count();
-        long count1 = reviews.stream().filter(f -> f.getRating() != null && f.getRating() == 1).count();
+        java.util.Map<Integer, Long> starCounts = countRatingsByStar(reviews);
 
         return com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse.builder()
                 .averageRating(averageRating)
                 .totalReviews((long) reviews.size())
                 .needsReplyCount(needsReply)
                 .replyRate(replyRate)
-                .ratingCount5Star(count5)
-                .ratingCount4Star(count4)
-                .ratingCount3Star(count3)
-                .ratingCount2Star(count2)
-                .ratingCount1Star(count1)
+                .ratingCount5Star(starCounts.get(5))
+                .ratingCount4Star(starCounts.get(4))
+                .ratingCount3Star(starCounts.get(3))
+                .ratingCount2Star(starCounts.get(2))
+                .ratingCount1Star(starCounts.get(1))
                 .trend(trend)
                 .daysAnalyzed(days)
                 .build();
@@ -115,16 +111,26 @@ public class AdminReviewServiceImpl implements AdminReviewService {
         List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
         List<Feedback> reviews = feedbackRepository.findByWaitlistRestaurantIdIn(restaurantIds);
 
+        java.util.Map<Integer, Long> starCounts = countRatingsByStar(reviews);
         java.util.Map<String, Long> distribution = new java.util.HashMap<>();
+        for (int i = 1; i <= 5; i++) {
+            long count = starCounts.get(i);
+            distribution.put(i + " star" + (count != 1 ? "s" : ""), count);
+        }
+
+        return distribution;
+    }
+
+    private java.util.Map<Integer, Long> countRatingsByStar(List<Feedback> reviews) {
+        java.util.Map<Integer, Long> counts = new java.util.HashMap<>();
         for (int i = 1; i <= 5; i++) {
             final int rating = i;
             long count = reviews.stream()
                     .filter(f -> f.getRating() != null && f.getRating() == rating)
                     .count();
-            distribution.put(rating + " star" + (count != 1 ? "s" : ""), count);
+            counts.put(rating, count);
         }
-
-        return distribution;
+        return counts;
     }
 
 }

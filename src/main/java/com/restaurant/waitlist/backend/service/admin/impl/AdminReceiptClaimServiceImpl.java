@@ -100,48 +100,40 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
     @Override
     public Map<String, Object> approveBulkClaims(List<Long> claimIds, Long pointsOverride) {
         log.info("Approving {} receipt claims in bulk", claimIds.size());
-        int approved = 0;
-        
-        for (Long claimId : claimIds) {
-            ReceiptClaim claim = receiptClaimRepository.findById(claimId).orElse(null);
-            if (claim != null && ReceiptClaim.ClaimStatus.UPLOADED.equals(claim.getStatus())
-                    && adminLocationAccessService.canAccessRestaurant(claim.getRestaurant().getId())) {
-                claim.setStatus(ReceiptClaim.ClaimStatus.APPROVED);
-                if (pointsOverride != null) {
-                    claim.setPointsClaimed(pointsOverride);
-                }
-                claim.setApprovedAt(LocalDateTime.now());
-                claim.setApprovedBy(1L); // TODO: Get actual admin user ID from auth
-                receiptClaimRepository.save(claim);
-                approved++;
+        return processBulkClaims(claimIds, ReceiptClaim.ClaimStatus.APPROVED, "approved", claim -> {
+            if (pointsOverride != null) {
+                claim.setPointsClaimed(pointsOverride);
             }
-        }
-        
-        return Map.of(
-            "totalRequested", claimIds.size(),
-            "approved", approved
-        );
+            claim.setApprovedAt(LocalDateTime.now());
+            claim.setApprovedBy(1L); // TODO: Get actual admin user ID from auth
+        });
     }
 
     @Override
     public Map<String, Object> rejectBulkClaims(List<Long> claimIds, String reason) {
         log.info("Rejecting {} receipt claims in bulk", claimIds.size());
-        int rejected = 0;
-        
+        return processBulkClaims(claimIds, ReceiptClaim.ClaimStatus.REJECTED, "rejected", claim ->
+                claim.setRejectionReason(reason));
+    }
+
+    private Map<String, Object> processBulkClaims(List<Long> claimIds, ReceiptClaim.ClaimStatus targetStatus,
+            String resultCountKey, java.util.function.Consumer<ReceiptClaim> mutator) {
+        int processed = 0;
+
         for (Long claimId : claimIds) {
             ReceiptClaim claim = receiptClaimRepository.findById(claimId).orElse(null);
             if (claim != null && ReceiptClaim.ClaimStatus.UPLOADED.equals(claim.getStatus())
                     && adminLocationAccessService.canAccessRestaurant(claim.getRestaurant().getId())) {
-                claim.setStatus(ReceiptClaim.ClaimStatus.REJECTED);
-                claim.setRejectionReason(reason);
+                claim.setStatus(targetStatus);
+                mutator.accept(claim);
                 receiptClaimRepository.save(claim);
-                rejected++;
+                processed++;
             }
         }
-        
+
         return Map.of(
             "totalRequested", claimIds.size(),
-            "rejected", rejected
+            resultCountKey, processed
         );
     }
 

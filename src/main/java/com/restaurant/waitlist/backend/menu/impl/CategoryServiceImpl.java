@@ -101,12 +101,7 @@ public class CategoryServiceImpl implements CategoryService {
     @CacheEvict(value = {"AllCategories", "AllCategoriesWithDishes", "CategoriesByID"}, allEntries = true)
     public void deleteCategoryById(Long id, Long locationId) {
 
-        Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
-
-        if (locationId != null && category.getRestaurant() != null && !category.getRestaurant().getId().equals(locationId)) {
-            throw new ResourceNotFoundException("Category not found for this location");
-        }
+        Category category = getCategoryBelongingToLocation(id, locationId);
 
         categoryRepository.softDeleteById(category.getId());
     }
@@ -122,6 +117,12 @@ public class CategoryServiceImpl implements CategoryService {
     @CacheEvict(value = {"AllCategories", "AllCategoriesWithDishes", "CategoriesByID"}, allEntries = true)
     public void restoreCategoryById(Long id, Long locationId) {
 
+        Category category = getCategoryBelongingToLocation(id, locationId);
+
+        categoryRepository.restoreById(category.getId());
+    }
+
+    private Category getCategoryBelongingToLocation(Long id, Long locationId) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
 
@@ -129,6 +130,6 @@ public class CategoryServiceImpl implements CategoryService {
             throw new ResourceNotFoundException("Category not found for this location");
         }
 
-        categoryRepository.restoreById(category.getId());
+        return category;
     }
 }

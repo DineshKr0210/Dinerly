@@ -23,6 +23,7 @@ import com.restaurant.waitlist.backend.repository.StaffPermissionRepository;
 import com.restaurant.waitlist.backend.repository.StaffRepository;
 import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.EmailService;
 import com.restaurant.waitlist.backend.service.admin.AdminStaffService;
 import lombok.RequiredArgsConstructor;
@@ -51,12 +52,17 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     private final UserRepository userRepository;
     private final StaffPermissionRepository staffPermissionRepository;
     private final AdminLocationAccessService adminLocationAccessService;
+    private final AuditLogService auditLogService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     public Object listStaff(Pageable pageable) {
         Page<Staff> page = staffRepository.findByRestaurantIdIn(adminLocationAccessService.getAccessibleRestaurantIds(), pageable);
-        return page.map(s -> AdminStaffResponse.builder()
+        return page.map(this::toResponse);
+    }
+
+    private AdminStaffResponse toResponse(Staff s) {
+        return AdminStaffResponse.builder()
                 .id(s.getId())
                 .name(s.getName())
                 .role(s.getRole().name())
@@ -64,7 +70,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
                 .status(s.getStatus() != null ? s.getStatus().name() : null)
                 .locationId(s.getRestaurant() != null ? s.getRestaurant().getId() : null)
                 .location(s.getRestaurant() != null ? s.getRestaurant().getName() : null)
-                .build());
+                .build();
     }
 
     @Override
@@ -114,37 +120,17 @@ public class AdminStaffServiceImpl implements AdminStaffService {
             System.err.println("Failed to send invitation email: " + e.getMessage());
         }
 
-        AuditLog log = AuditLog.builder()
-                .restaurantId(restaurant.getId())
-                .action("STAFF_INVITED")
-                .details("Invited " + saved.getName() + " (" + saved.getEmail() + ") as " + saved.getRole().name())
-                .build();
-        auditLogRepository.save(log);
+        auditLogService.log(restaurant.getId(), "STAFF_INVITED",
+                "Invited " + saved.getName() + " (" + saved.getEmail() + ") as " + saved.getRole().name());
 
-        return AdminStaffResponse.builder()
-                .id(saved.getId())
-                .name(saved.getName())
-                .role(saved.getRole().name())
-                .email(saved.getEmail())
-                .status(saved.getStatus().name())
-                .locationId(restaurant.getId())
-                .location(restaurant.getName())
-                .build();
+        return toResponse(saved);
     }
 
     @Override
     public AdminStaffResponse getStaffById(Long staffId) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
         adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
-        return AdminStaffResponse.builder()
-                .id(s.getId())
-                .name(s.getName())
-                .role(s.getRole().name())
-                .email(s.getEmail())
-                .status(s.getStatus().name())
-                .locationId(s.getRestaurant() != null ? s.getRestaurant().getId() : null)
-                .location(s.getRestaurant() != null ? s.getRestaurant().getName() : null)
-                .build();
+        return toResponse(s);
     }
 
     @Override
@@ -168,23 +154,10 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         }
         
         Staff saved = staffRepository.save(s);
-        
-        AuditLog log = AuditLog.builder()
-                .restaurantId(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L)
-                .action("STAFF_UPDATED")
-                .details("Updated staff: " + saved.getName())
-                .build();
-        auditLogRepository.save(log);
-        
-        return AdminStaffResponse.builder()
-                .id(saved.getId())
-                .name(saved.getName())
-                .role(saved.getRole().name())
-                .email(saved.getEmail())
-                .status(saved.getStatus().name())
-                .locationId(saved.getRestaurant() != null ? saved.getRestaurant().getId() : null)
-                .location(saved.getRestaurant() != null ? saved.getRestaurant().getName() : null)
-                .build();
+
+        auditLogService.log(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L, "STAFF_UPDATED", "Updated staff: " + saved.getName());
+
+        return toResponse(saved);
     }
 
     @Override
@@ -194,13 +167,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
         s.setStatus(Staff.StaffStatus.INACTIVE);
         staffRepository.save(s);
-        
-        AuditLog log = AuditLog.builder()
-                .restaurantId(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L)
-                .action("STAFF_DEACTIVATED")
-                .details("Deactivated staff: " + s.getName())
-                .build();
-        auditLogRepository.save(log);
+
+        auditLogService.log(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L, "STAFF_DEACTIVATED", "Deactivated staff: " + s.getName());
     }
 
     @Override
@@ -210,13 +178,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
         s.setStatus(Staff.StaffStatus.ACTIVE);
         staffRepository.save(s);
-        
-        AuditLog log = AuditLog.builder()
-                .restaurantId(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L)
-                .action("STAFF_ACTIVATED")
-                .details("Activated staff: " + s.getName())
-                .build();
-        auditLogRepository.save(log);
+
+        auditLogService.log(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L, "STAFF_ACTIVATED", "Activated staff: " + s.getName());
     }
 
     @Override
@@ -261,12 +224,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         staffPermission.setCustom(true);
         staffPermissionRepository.save(staffPermission);
 
-        AuditLog log = AuditLog.builder()
-                .restaurantId(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L)
-                .action("STAFF_PERMISSIONS_UPDATED")
-                .details("Updated permissions for staff: " + s.getName())
-                .build();
-        auditLogRepository.save(log);
+        auditLogService.log(s.getRestaurant() != null ? s.getRestaurant().getId() : 0L, "STAFF_PERMISSIONS_UPDATED", "Updated permissions for staff: " + s.getName());
 
         return getStaffPermissions(staffId);
     }
@@ -320,56 +278,46 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
         adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
 
-        List<AuditLog> logs = auditLogRepository.findAll().stream()
-                .filter(l -> "STAFF_INVITED".equals(l.getAction()) || "STAFF_UPDATED".equals(l.getAction()) 
-                        || "STAFF_DEACTIVATED".equals(l.getAction()) || "STAFF_ACTIVATED".equals(l.getAction()))
-                .sorted((a, b) -> b.getId().compareTo(a.getId()))
-                .collect(Collectors.toList());
-        
-        List<Map<String, Object>> activities = logs.stream()
-                .map(log -> {
-                    Map<String, Object> activity = new HashMap<>();
-                    activity.put("id", log.getId());
-                    activity.put("action", log.getAction());
-                    activity.put("details", log.getDetails());
-                    activity.put("timestamp", log.getId()); // Use ID as timestamp placeholder
-                    return activity;
-                })
-                .collect(Collectors.toList());
-        
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), activities.size());
-        
-        return new PageImpl<>(
-            activities.subList(start, end),
-            pageable,
-            activities.size()
-        );
+        return buildActivityLogPage(
+                l -> "STAFF_INVITED".equals(l.getAction()) || "STAFF_UPDATED".equals(l.getAction())
+                        || "STAFF_DEACTIVATED".equals(l.getAction()) || "STAFF_ACTIVATED".equals(l.getAction()),
+                false,
+                pageable);
     }
 
     @Override
     public Page<Map<String, Object>> getAllStaffActivityLog(Pageable pageable) {
         List<Long> restaurantIds = adminLocationAccessService.getAccessibleRestaurantIds();
+        return buildActivityLogPage(
+                l -> l.getAction().contains("STAFF") && restaurantIds.contains(l.getRestaurantId()),
+                true,
+                pageable);
+    }
+
+    private Page<Map<String, Object>> buildActivityLogPage(java.util.function.Predicate<AuditLog> filter,
+                                                             boolean includeRestaurantId, Pageable pageable) {
         List<AuditLog> logs = auditLogRepository.findAll().stream()
-                .filter(l -> l.getAction().contains("STAFF") && restaurantIds.contains(l.getRestaurantId()))
+                .filter(filter)
                 .sorted((a, b) -> b.getId().compareTo(a.getId()))
                 .collect(Collectors.toList());
-        
+
         List<Map<String, Object>> activities = logs.stream()
                 .map(log -> {
                     Map<String, Object> activity = new HashMap<>();
                     activity.put("id", log.getId());
                     activity.put("action", log.getAction());
                     activity.put("details", log.getDetails());
-                    activity.put("restaurantId", log.getRestaurantId());
-                    activity.put("timestamp", log.getId());
+                    if (includeRestaurantId) {
+                        activity.put("restaurantId", log.getRestaurantId());
+                    }
+                    activity.put("timestamp", log.getId()); // Use ID as timestamp placeholder
                     return activity;
                 })
                 .collect(Collectors.toList());
-        
+
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), activities.size());
-        
+
         return new PageImpl<>(
             activities.subList(start, end),
             pageable,
@@ -462,22 +410,10 @@ public class AdminStaffServiceImpl implements AdminStaffService {
         staffInvitationTokenRepository.save(invitationToken);
 
         // Log the action
-        AuditLog log = AuditLog.builder()
-                .restaurantId(staff.getRestaurant().getId())
-                .action("STAFF_ACTIVATED_VIA_INVITATION")
-                .details("Staff " + staff.getName() + " (" + staff.getEmail() + ") activated with role: " + staff.getRole().name())
-                .build();
-        auditLogRepository.save(log);
+        auditLogService.log(staff.getRestaurant().getId(), "STAFF_ACTIVATED_VIA_INVITATION",
+                "Staff " + staff.getName() + " (" + staff.getEmail() + ") activated with role: " + staff.getRole().name());
 
-        return AdminStaffResponse.builder()
-                .id(savedStaff.getId())
-                .name(savedStaff.getName())
-                .role(savedStaff.getRole().name())
-                .email(savedStaff.getEmail())
-                .status(savedStaff.getStatus().name())
-                .locationId(savedStaff.getRestaurant().getId())
-                .location(savedStaff.getRestaurant().getName())
-                .build();
+        return toResponse(savedStaff);
     }
 
     /**

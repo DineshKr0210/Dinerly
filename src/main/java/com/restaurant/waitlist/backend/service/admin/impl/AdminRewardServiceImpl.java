@@ -6,11 +6,11 @@ import com.restaurant.waitlist.backend.dto.response.admin.RewardTierResponse;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.entity.RewardSettings;
 import com.restaurant.waitlist.backend.entity.RewardTier;
-import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.RewardSettingsRepository;
 import com.restaurant.waitlist.backend.repository.RewardTierRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminRewardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,9 +26,9 @@ public class AdminRewardServiceImpl implements AdminRewardService {
 
     private final RewardTierRepository rewardTierRepository;
     private final RewardSettingsRepository rewardSettingsRepository;
-    private final AuditLogRepository auditLogRepository;
     private final RestaurantRepository restaurantRepository;
     private final AdminLocationAccessService adminLocationAccessService;
+    private final AuditLogService auditLogService;
 
 
     @Override
@@ -54,11 +54,7 @@ public class AdminRewardServiceImpl implements AdminRewardService {
                 .perks(request.getPerks())
                 .build();
         RewardTier saved = rewardTierRepository.save(t);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(request.getRestaurantId())
-                .action("CREATE_REWARD_TIER")
-                .details("Tier: " + saved.getName())
-                .build());
+        auditLogService.log(request.getRestaurantId(), "CREATE_REWARD_TIER", "Tier: " + saved.getName());
         return map(saved);
     }
 
@@ -82,11 +78,7 @@ public class AdminRewardServiceImpl implements AdminRewardService {
         t.setPerks(request.getPerks());
         
         RewardTier saved = rewardTierRepository.save(t);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(request.getRestaurantId())
-                .action("UPDATE_REWARD_TIER")
-                .details("Tier: " + saved.getName())
-                .build());
+        auditLogService.log(request.getRestaurantId(), "UPDATE_REWARD_TIER", "Tier: " + saved.getName());
         return map(saved);
     }
 
@@ -98,11 +90,7 @@ public class AdminRewardServiceImpl implements AdminRewardService {
         Long restaurantId = tier.getRestaurant() != null ? tier.getRestaurant().getId() : 0L;
         adminLocationAccessService.assertAccess(tier.getRestaurant() != null ? tier.getRestaurant().getId() : null);
         rewardTierRepository.deleteById(tierId);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(restaurantId)
-                .action("DELETE_REWARD_TIER")
-                .details("Tier deleted: " + tier.getName() + " (ID: " + tierId + ")")
-                .build());
+        auditLogService.log(restaurantId, "DELETE_REWARD_TIER", "Tier deleted: " + tier.getName() + " (ID: " + tierId + ")");
     }
 
     @Override
@@ -118,11 +106,7 @@ public class AdminRewardServiceImpl implements AdminRewardService {
     public RewardSettingsRequest updateSettings(RewardSettingsRequest request) {
         RewardSettings s = RewardSettings.builder().preventDuplicateRedemptionsWithinVisit(request.getPreventDuplicateRedemptionsWithinVisit()).build();
         rewardSettingsRepository.save(s);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(0L)
-                .action("UPDATE_REWARD_SETTINGS")
-                .details("Settings updated")
-                .build());
+        auditLogService.log(0L, "UPDATE_REWARD_SETTINGS", "Settings updated");
         return request;
     }
 
@@ -156,11 +140,7 @@ public class AdminRewardServiceImpl implements AdminRewardService {
             .build();
         duplicate = rewardTierRepository.save(duplicate);
         Long restaurantId = duplicate.getRestaurant() != null ? duplicate.getRestaurant().getId() : 0L;
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(restaurantId)
-                .action("DUPLICATE_REWARD_TIER")
-                .details("Tier duplicated: " + original.getName() + " -> " + duplicate.getName())
-                .build());
+        auditLogService.log(restaurantId, "DUPLICATE_REWARD_TIER", "Tier duplicated: " + original.getName() + " -> " + duplicate.getName());
         return map(duplicate);
     }
 

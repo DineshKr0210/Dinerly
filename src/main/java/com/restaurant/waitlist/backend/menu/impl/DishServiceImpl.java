@@ -155,12 +155,7 @@ public class DishServiceImpl implements DishService {
     @CacheEvict(value = {"AllDishes", "DishesByCategory", "DishesByType", "DishesByID"}, allEntries = true)
     public void deleteDishById(Long id, Long locationId) {
 
-        Dish dish = dishRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Dish not found with id: " + id));
-
-        if (locationId != null && dish.getRestaurant() != null && !dish.getRestaurant().getId().equals(locationId)) {
-            throw new ResourceNotFoundException("Dish not found for this location");
-        }
+        Dish dish = getDishBelongingToLocation(id, locationId);
 
         dishRepository.softDeleteById(dish.getId());
     }
@@ -177,12 +172,7 @@ public class DishServiceImpl implements DishService {
     @CacheEvict(value = {"AllDishes", "DishesByCategory", "DishesByType", "DishesByID"}, allEntries = true)
     public void restoreDishById(Long id, Long locationId) {
 
-        Dish dish = dishRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Dish not found with id: " + id));
-
-        if (locationId != null && dish.getRestaurant() != null && !dish.getRestaurant().getId().equals(locationId)) {
-            throw new ResourceNotFoundException("Dish not found for this location");
-        }
+        Dish dish = getDishBelongingToLocation(id, locationId);
 
         dishRepository.restoreById(dish.getId());
     }
@@ -191,6 +181,17 @@ public class DishServiceImpl implements DishService {
         if (dto.getPrice() <= 0) {
             throw new BadRequestException("Price must be greater than zero");
         }
+    }
+
+    private Dish getDishBelongingToLocation(Long id, Long locationId) {
+        Dish dish = dishRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Dish not found with id: " + id));
+
+        if (locationId != null && dish.getRestaurant() != null && !dish.getRestaurant().getId().equals(locationId)) {
+            throw new ResourceNotFoundException("Dish not found for this location");
+        }
+
+        return dish;
     }
 
 }

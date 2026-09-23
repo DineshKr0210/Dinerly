@@ -2,11 +2,11 @@ package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.dto.response.admin.RewardTierResponse;
 import com.restaurant.waitlist.backend.entity.RewardTier;
-import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.RewardSettingsRepository;
 import com.restaurant.waitlist.backend.repository.RewardTierRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,13 +31,13 @@ class AdminRewardServiceImplTest {
     private RewardSettingsRepository rewardSettingsRepository;
 
     @Mock
-    private AuditLogRepository auditLogRepository;
-
-    @Mock
     private RestaurantRepository restaurantRepository;
 
     @Mock
     private AdminLocationAccessService adminLocationAccessService;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     private AdminRewardServiceImpl service;
 
@@ -46,9 +46,9 @@ class AdminRewardServiceImplTest {
         service = new AdminRewardServiceImpl(
                 rewardTierRepository,
                 rewardSettingsRepository,
-                auditLogRepository,
                 restaurantRepository,
-                adminLocationAccessService
+                adminLocationAccessService,
+                auditLogService
         );
     }
 

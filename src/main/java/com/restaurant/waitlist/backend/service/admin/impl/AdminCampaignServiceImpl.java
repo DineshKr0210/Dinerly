@@ -4,13 +4,13 @@ import com.restaurant.waitlist.backend.dto.request.admin.CampaignRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.CampaignResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.MarketingSummaryResponse;
 import com.restaurant.waitlist.backend.entity.Campaign;
-import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.CampaignRepository;
 import com.restaurant.waitlist.backend.repository.RedemptionRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import com.restaurant.waitlist.backend.service.SmsService;
 import com.restaurant.waitlist.backend.service.SmsTemplateService;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
+import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminCampaignService;
 import com.restaurant.waitlist.backend.service.audience.AudienceFilterResolver;
 import com.restaurant.waitlist.backend.util.RedemptionCodeGenerator;
@@ -42,8 +42,8 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
     private final WaitlistRepository waitlistRepository;
     private final SmsService smsService;
     private final SmsTemplateService smsTemplateService;
-    private final AuditLogRepository auditLogRepository;
     private final AdminLocationAccessService adminLocationAccessService;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -66,11 +66,7 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
                 .revenueInfluenced(null)
                 .build();
         Campaign saved = campaignRepository.save(c);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(req.getRestaurantId() != null ? req.getRestaurantId() : 0L)
-                .action("CREATE_CAMPAIGN")
-                .details("Campaign created: " + saved.getName())
-                .build());
+        auditLogService.log(req.getRestaurantId() != null ? req.getRestaurantId() : 0L, "CREATE_CAMPAIGN", "Campaign created: " + saved.getName());
         return toDto(saved);
     }
 
@@ -91,11 +87,7 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
         if (req.getHasRedemptionCode() != null) c.setHasRedemptionCode(req.getHasRedemptionCode());
         if (req.getScheduledAt() != null) c.setStatus("SCHEDULED");
         Campaign saved = campaignRepository.save(c);
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(c.getRestaurantId() != null ? c.getRestaurantId() : 0L)
-                .action("UPDATE_CAMPAIGN")
-                .details("Campaign updated: " + saved.getName())
-                .build());
+        auditLogService.log(c.getRestaurantId() != null ? c.getRestaurantId() : 0L, "UPDATE_CAMPAIGN", "Campaign updated: " + saved.getName());
         return toDto(saved);
     }
 
@@ -286,11 +278,8 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
         c.setStatus("ACTIVE");
         campaignRepository.save(c);
 
-        auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
-                .restaurantId(c.getRestaurantId() != null ? c.getRestaurantId() : 0L)
-                .action("PUBLISH_CAMPAIGN")
-                .details("Published campaign id=" + c.getId() + " sent=" + sent + " reach=" + uniqueRecipients.size())
-                .build());
+        auditLogService.log(c.getRestaurantId() != null ? c.getRestaurantId() : 0L, "PUBLISH_CAMPAIGN",
+                "Published campaign id=" + c.getId() + " sent=" + sent + " reach=" + uniqueRecipients.size());
 
         return toDto(c);
     }

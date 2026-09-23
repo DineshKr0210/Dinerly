@@ -131,21 +131,13 @@ public class SettingsService {
     }
 
     public RestaurantSettingsResponse getRestaurantSettings(Long restaurantId) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         return RestaurantSettingsResponse.fromSettings(settings);
     }
 
     public RestaurantSettingsResponse updateRestaurantSettings(Long restaurantId, UpdateRestaurantSettingsRequest request) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         if (request.getSendSmsNotifications() != null) {
             settings.setSendSmsNotifications(request.getSendSmsNotifications());
@@ -178,21 +170,13 @@ public class SettingsService {
     }
 
     public AdvancedSettingsResponse getAdvancedSettings(Long restaurantId) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         return AdvancedSettingsResponse.fromPayload(settings.getAdvancedSettings());
     }
 
     public AdvancedSettingsResponse updateAdvancedSettings(Long restaurantId, AdvancedSettingsRequest request) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         AdvancedSettingsPayload payload = settings.getAdvancedSettings();
         if (request.getDarkMode() != null) {
@@ -217,21 +201,13 @@ public class SettingsService {
     }
 
     public WaitlistSettingsResponse getWaitlistSettings(Long restaurantId) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         return WaitlistSettingsResponse.fromSettings(settings);
     }
 
     public WaitlistSettingsResponse updateWaitlistSettings(Long restaurantId, UpdateWaitlistSettingsRequest request) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         WaitlistSettingsPayload payload = settings.getWaitlistSettings();
         if (request.getMaxPartySize() != null) {
@@ -259,21 +235,13 @@ public class SettingsService {
     }
 
     public HolidayHoursResponse getHolidayHours(Long restaurantId) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         return HolidayHoursResponse.fromPayload(settings.getHolidayHours());
     }
 
     public HolidayHourResponse addHolidayHour(Long restaurantId, HolidayHourRequest request) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         HolidayHourPayload holidayHour = HolidayHourPayload.builder()
                 .date(request.getDate())
@@ -293,11 +261,7 @@ public class SettingsService {
     }
 
     public HolidayHourResponse updateHolidayHour(Long restaurantId, String holidayHourId, UpdateHolidayHourRequest request) {
-        Restaurant restaurant = restaurantRepository.findById(restaurantId)
-                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-
-        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId)
-                .orElseGet(() -> createDefaultSettings(restaurant));
+        RestaurantSettings settings = getOrCreateSettings(restaurantId);
 
         HolidayHoursPayload holidayHours = settings.getHolidayHours();
         HolidayHourPayload holidayHour = holidayHours.getHolidayHours().stream()
@@ -411,6 +375,14 @@ public class SettingsService {
         }
         Path fallback = currentDir.resolve("application.properties");
         return Files.exists(fallback) ? fallback : null;
+    }
+
+    private RestaurantSettings getOrCreateSettings(Long restaurantId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Restaurant not found"));
+
+        return restaurantSettingsRepository.findByRestaurantId(restaurantId)
+                .orElseGet(() -> createDefaultSettings(restaurant));
     }
 
     private RestaurantSettings createDefaultSettings(Restaurant restaurant) {
