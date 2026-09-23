@@ -16,8 +16,10 @@ public interface GuestRewardsService {
 
     /**
      * Validate a generated reward redemption code and mark it complete.
+     * The code must belong to the given restaurant — a code generated at one
+     * location cannot be redeemed at another.
      */
-    java.util.Map<String, Object> validateRewardCode(String code);
+    java.util.Map<String, Object> validateRewardCode(String code, Long restaurantId);
 
     /**
      * Calculate current tier based on points

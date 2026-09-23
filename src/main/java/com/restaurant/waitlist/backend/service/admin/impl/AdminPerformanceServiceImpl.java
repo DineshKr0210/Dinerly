@@ -55,7 +55,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         Double avgWait = weightedAvgWait(restaurantIds, fromDate, toDate);
 
         // Previous period metrics for comparison
-        LocalDate prevFrom = getPreviousPeriodStart(period, from, startDate);
+        LocalDate prevFrom = getPreviousPeriodStart(from, to);
         LocalDate prevTo = from.minusDays(1);
         Date prevFromDate = Date.valueOf(prevFrom);
         Date prevToDate = Date.valueOf(prevTo);
@@ -100,7 +100,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         long replyRate = reviewsReceived > 0 ? Math.round((replied * 100.0) / reviewsReceived) : 0L;
 
         // Previous period reviews
-        LocalDate prevFrom = getPreviousPeriodStart(period, from, startDate);
+        LocalDate prevFrom = getPreviousPeriodStart(from, to);
         LocalDate prevTo = from.minusDays(1);
         Date prevFromDate = Date.valueOf(prevFrom);
         Date prevToDate = Date.valueOf(prevTo);
@@ -153,7 +153,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
                 .sum();
 
         // Previous period campaigns/redemptions
-        LocalDate prevFrom = getPreviousPeriodStart(period, from, startDate);
+        LocalDate prevFrom = getPreviousPeriodStart(from, to);
         LocalDate prevTo = from.minusDays(1);
         Date prevFromDate = Date.valueOf(prevFrom);
         Date prevToDate = Date.valueOf(prevTo);
@@ -202,31 +202,14 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
     }
 
     /**
-     * Get the start date of the previous period for comparison.
-     * If custom startDate is provided, calculates previous period based on same duration.
+     * Get the start date of the previous period for comparison, sized to exactly
+     * match the length (in days) of the current period [from, to] — otherwise the
+     * two periods being compared have different lengths and the change-percent
+     * figures are meaningless (e.g. an 8-day current period vs. a 7-day previous one).
      */
-    private LocalDate getPreviousPeriodStart(String period, LocalDate currentPeriodStart, LocalDate customStartDate) {
-        // If custom start date provided, use same period length for previous period
-        if (customStartDate != null) {
-            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(customStartDate, currentPeriodStart);
-            return customStartDate.minusDays(daysBetween + 1);
-        }
-        
-        // Otherwise use period string
-        if (period == null) return currentPeriodStart.minusDays(7);
-        switch (period.trim().toLowerCase()) {
-            case "pastweek":
-            case "last7days":
-                return currentPeriodStart.minusDays(7);
-            case "pastmonth":
-            case "last30days":
-            case "lastmonth":
-                return currentPeriodStart.minusMonths(1);
-            case "last3months":
-                return currentPeriodStart.minusMonths(3);
-            default:
-                return currentPeriodStart.minusDays(7);
-        }
+    private LocalDate getPreviousPeriodStart(LocalDate from, LocalDate to) {
+        long periodLengthDays = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1;
+        return from.minusDays(periodLengthDays);
     }
 
     private LocalDate fromPeriod(String period, LocalDate to) {

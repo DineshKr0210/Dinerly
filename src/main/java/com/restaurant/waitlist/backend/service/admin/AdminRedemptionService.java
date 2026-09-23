@@ -17,5 +17,9 @@ public interface AdminRedemptionService {
     Map<String, Object> getStatistics(Long locationId, LocalDateTime from, LocalDateTime to);
     Page<RedemptionResponse> getByOffer(Long offerId, Pageable pageable);
     Page<RedemptionResponse> getByUser(Long userId, Pageable pageable);
-    Map<String, Object> validateAndCompleteCampaignCodeByCode(String code);
+    /**
+     * The code must belong to the given restaurant — a code generated at one
+     * location cannot be redeemed at another.
+     */
+    Map<String, Object> validateAndCompleteCampaignCodeByCode(String code, Long restaurantId);
 }

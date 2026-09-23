@@ -2,6 +2,7 @@ package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.dto.request.admin.MarketingCampaignRequest;
 import com.restaurant.waitlist.backend.dto.response.SmsTemplateResponse;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminMarketingService;
 import com.restaurant.waitlist.backend.service.SmsService;
@@ -20,6 +21,7 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
     private final SmsTemplateService smsTemplateService;
     private final SmsService smsService;
     private final AuditLogService auditLogService;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     public List<SmsTemplateResponse> listTemplates() {
@@ -53,6 +55,9 @@ public class AdminMarketingServiceImpl implements AdminMarketingService {
 
     @Override
     public int sendCampaign(MarketingCampaignRequest request) {
+        if (request.getRestaurantId() != null) {
+            adminLocationAccessService.assertAccess(request.getRestaurantId());
+        }
         if (request.getPhoneNumbers() == null || request.getPhoneNumbers().isEmpty()) return 0;
         int sent = 0;
         for (String to : request.getPhoneNumbers()) {

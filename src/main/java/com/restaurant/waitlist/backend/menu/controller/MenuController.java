@@ -57,26 +57,26 @@ public class MenuController {
     }
 
     @GetMapping("/dishes/category/{categoryName}")
-    public ResponseEntity<List<DishDTO>> getDishesByCategory(@PathVariable String categoryName) {
-        List<DishDTO> dishes = dishService.getDishesByCategory(categoryName, null);
+    public ResponseEntity<List<DishDTO>> getDishesByCategory(@PathVariable String categoryName, @RequestParam Long locationId) {
+        List<DishDTO> dishes = dishService.getDishesByCategory(categoryName, locationId);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .body(dishes);
     }
 
     @GetMapping("/dishes/{id}")
-    public ResponseEntity<List<DishDTO>> getDishesByID(@PathVariable Long id) {
-        List<DishDTO> dishes = dishService.getDishesByID(id, null);
+    public ResponseEntity<List<DishDTO>> getDishesByID(@PathVariable Long id, @RequestParam Long locationId) {
+        List<DishDTO> dishes = dishService.getDishesByID(id, locationId);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .body(dishes);
     }
 
     @GetMapping("/dishes/type/{type}")
-    public ResponseEntity<List<DishDTO>> getDishesByType(@PathVariable String type) {
+    public ResponseEntity<List<DishDTO>> getDishesByType(@PathVariable String type, @RequestParam Long locationId) {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
-                .body(dishService.getDishesByType(type, null));
+                .body(dishService.getDishesByType(type, locationId));
     }
 
     @GetMapping("/types")

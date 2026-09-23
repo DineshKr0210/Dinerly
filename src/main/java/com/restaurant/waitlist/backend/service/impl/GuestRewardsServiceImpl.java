@@ -119,12 +119,17 @@ public class GuestRewardsServiceImpl implements GuestRewardsService {
     }
 
     @Override
-    public Map<String, Object> validateRewardCode(String code) {
+    public Map<String, Object> validateRewardCode(String code, Long restaurantId) {
         Map<String, Object> response = new HashMap<>();
 
         try {
             Redemption redemption = redemptionRepository.findValidRedemptionCode(code)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reward code"));
+
+            if (!redemption.getRestaurantId().equals(restaurantId)) {
+                // Same error as "not found" — avoid revealing that the code exists at another location.
+                throw new IllegalArgumentException("Invalid or expired reward code");
+            }
 
             redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
             redemption.setRedeemedAt(LocalDateTime.now());

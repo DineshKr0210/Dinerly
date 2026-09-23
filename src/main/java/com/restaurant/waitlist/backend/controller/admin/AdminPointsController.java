@@ -141,9 +141,17 @@ public class AdminPointsController {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> reverses = (List<Map<String, Object>>) request.get("reverses");
         log.info("Bulk reverse points for {} users", reverses.size());
+        int completed = 0;
+        for (Map<String, Object> entry : reverses) {
+            Long userId = Long.valueOf(entry.get("userId").toString());
+            Long amount = Long.valueOf(entry.get("amount").toString());
+            String reason = (String) entry.get("reason");
+            pointsService.debit(userId, amount, reason, "admin", null);
+            completed++;
+        }
         Map<String, Object> result = Map.of(
             "totalReverses", reverses.size(),
-            "completedReverses", reverses.size()
+            "completedReverses", completed
         );
         return ResponseEntity.ok().body(ApiResponse.success("Bulk reverse completed successfully", result));
     }

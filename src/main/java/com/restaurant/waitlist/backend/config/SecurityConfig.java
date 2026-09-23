@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         // Public endpoints
                         .requestMatchers("/api/health").permitAll()
-                        .requestMatchers("/api/auth/register", "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/encode-password").permitAll()
+                        .requestMatchers("/api/auth/register", "/api/auth/verify-email", "/api/auth/resend-verification", "/api/auth/login", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-docs", "/swagger-docs/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                         .requestMatchers("/api/waitlist/**").permitAll()
                         .requestMatchers("/api/twilio/**").permitAll()

@@ -84,7 +84,7 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
         Redemption r = redemptionRepository.findById(redemptionId)
             .orElseThrow(() -> new IllegalArgumentException("Redemption not found"));
         adminLocationAccessService.assertAccess(r.getRestaurantId());
-        // Mark as cancelled
+        r.setStatus(Redemption.RedemptionStatus.CANCELLED);
         redemptionRepository.save(r);
         return map(r);
     }
@@ -118,14 +118,19 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
     }
 
     @Override
-    public java.util.Map<String, Object> validateAndCompleteCampaignCodeByCode(String code) {
+    public java.util.Map<String, Object> validateAndCompleteCampaignCodeByCode(String code, Long restaurantId) {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
-        
+
         try {
             // Find the redemption record for this campaign code (campaign ID auto-looked-up)
             Redemption redemption = redemptionRepository.findValidCampaignCodeByCodeOnly(code)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid or expired campaign code"));
-            
+
+            if (!redemption.getRestaurantId().equals(restaurantId)) {
+                // Same error as "not found" — avoid revealing that the code exists at another location.
+                throw new IllegalArgumentException("Invalid or expired campaign code");
+            }
+
             // Mark as completed
             redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
             redemption.setRedeemedAt(LocalDateTime.now());

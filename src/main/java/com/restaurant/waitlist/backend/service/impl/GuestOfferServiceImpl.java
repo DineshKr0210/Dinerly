@@ -109,13 +109,17 @@ public class GuestOfferServiceImpl implements GuestOfferService {
 
     @Override
     @Transactional
-    public ConfirmRedemptionResponse validateAndCompleteCode(String code) {
+    public ConfirmRedemptionResponse validateAndCompleteCode(String code, Long restaurantId) {
         Optional<Redemption> redemptionOpt = redemptionRepository.findValidRedemptionCode(code);
         if (redemptionOpt.isEmpty()) {
             throw new IllegalArgumentException("Invalid or expired redemption code");
         }
 
         Redemption redemption = redemptionOpt.get();
+        if (!redemption.getRestaurantId().equals(restaurantId)) {
+            // Same error as "not found" — avoid revealing that the code exists at another location.
+            throw new IllegalArgumentException("Invalid or expired redemption code");
+        }
         redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
         redemptionRepository.save(redemption);
 

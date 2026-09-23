@@ -11,7 +11,6 @@ import com.restaurant.waitlist.backend.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,9 +20,6 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
@@ -89,18 +85,6 @@ public class AuthController {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
-    }
-
-    /**
-     * TEMPORARY DEV ENDPOINT - Generate BCrypt hash for a password.
-     * Remove this endpoint in production!
-     * Usage: POST /api/auth/encode-password?password=123456
-     */
-    @PostMapping("/encode-password")
-    public ResponseEntity<ApiResponse<String>> encodePassword(@RequestParam String password) {
-        // WARNING: This is for development/testing only. Remove in production.
-        String encoded = passwordEncoder.encode(password);
-        return ResponseEntity.ok(ApiResponse.success("Encoded password (use in INSERT script)", encoded));
     }
 }
 

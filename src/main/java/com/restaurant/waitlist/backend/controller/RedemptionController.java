@@ -38,7 +38,7 @@ public class RedemptionController {
             @PathVariable Long restaurantId,
             @PathVariable String code) {
         try {
-            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(code);
+            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(code, restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Offer code validated and completed", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
@@ -78,7 +78,7 @@ public class RedemptionController {
                     .body(ApiResponse.error("Code is required"));
         }
         
-        Map<String, Object> resp = adminRedemptionService.validateAndCompleteCampaignCodeByCode(code);
+        Map<String, Object> resp = adminRedemptionService.validateAndCompleteCampaignCodeByCode(code, restaurantId);
         return ResponseEntity.ok(ApiResponse.success("Campaign code validated successfully", resp));
     }
 
@@ -95,7 +95,7 @@ public class RedemptionController {
                     .body(ApiResponse.error("Code is required"));
         }
 
-        Map<String, Object> resp = guestRewardsService.validateRewardCode(code);
+        Map<String, Object> resp = guestRewardsService.validateRewardCode(code, restaurantId);
         return ResponseEntity.ok(ApiResponse.success("Reward code validated successfully", resp));
     }
 }

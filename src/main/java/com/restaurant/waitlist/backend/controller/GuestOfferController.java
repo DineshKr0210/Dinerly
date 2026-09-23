@@ -83,9 +83,11 @@ public class GuestOfferController {
 
     @PostMapping("/redeem/{code}/confirm")
     @PreAuthorize("hasRole('STAFF') or hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> confirmCode(@PathVariable String code) {
+    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> confirmCode(
+            @PathVariable String code,
+            @RequestParam Long restaurantId) {
         try {
-            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(code);
+            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(code, restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Code validated and redeemed", response));
         } catch (Exception e) {
             log.error("Error validating code", e);

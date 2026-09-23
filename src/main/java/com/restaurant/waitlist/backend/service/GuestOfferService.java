@@ -28,9 +28,11 @@ public interface GuestOfferService {
     RedeemOfferResponse redeemOffer(Long offerId, Long userId, Long restaurantId);
 
     /**
-     * Validate redemption code and mark as completed
+     * Validate redemption code and mark as completed.
+     * The code must belong to the given restaurant — a code generated at one
+     * location cannot be redeemed at another.
      */
-    com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse validateAndCompleteCode(String code);
+    com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse validateAndCompleteCode(String code, Long restaurantId);
 
     /**
      * Check if user can redeem an offer
