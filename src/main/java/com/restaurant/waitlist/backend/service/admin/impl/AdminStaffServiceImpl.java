@@ -22,6 +22,7 @@ import com.restaurant.waitlist.backend.repository.StaffInvitationTokenRepository
 import com.restaurant.waitlist.backend.repository.StaffPermissionRepository;
 import com.restaurant.waitlist.backend.repository.StaffRepository;
 import com.restaurant.waitlist.backend.repository.UserRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.EmailService;
 import com.restaurant.waitlist.backend.service.admin.AdminStaffService;
 import lombok.RequiredArgsConstructor;
@@ -49,11 +50,12 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     private final StaffInvitationTokenRepository staffInvitationTokenRepository;
     private final UserRepository userRepository;
     private final StaffPermissionRepository staffPermissionRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     public Object listStaff(Pageable pageable) {
-        Page<Staff> page = staffRepository.findAll(pageable);
+        Page<Staff> page = staffRepository.findByRestaurantIdIn(adminLocationAccessService.getAccessibleRestaurantIds(), pageable);
         return page.map(s -> AdminStaffResponse.builder()
                 .id(s.getId())
                 .name(s.getName())
@@ -68,6 +70,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Override
     @Transactional
     public AdminStaffResponse inviteStaff(AdminStaffRequest request) {
+        adminLocationAccessService.assertAccess(request.getLocationId());
         Restaurant restaurant = restaurantRepository.findById(request.getLocationId())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
@@ -132,6 +135,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Override
     public AdminStaffResponse getStaffById(Long staffId) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
+        adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
         return AdminStaffResponse.builder()
                 .id(s.getId())
                 .name(s.getName())
@@ -147,7 +151,9 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Transactional
     public AdminStaffResponse updateStaff(Long staffId, StaffUpdateRequest request) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
-        
+        adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
+        adminLocationAccessService.assertAccess(request.getLocationId());
+
         if (request.getName() != null) s.setName(request.getName());
         if (request.getRole() != null) {
             s.setRole(StaffRole.fromString(request.getRole()));
@@ -185,6 +191,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Transactional
     public void deactivateStaff(Long staffId) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
+        adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
         s.setStatus(Staff.StaffStatus.INACTIVE);
         staffRepository.save(s);
         
@@ -200,6 +207,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Transactional
     public void activateStaff(Long staffId) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
+        adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
         s.setStatus(Staff.StaffStatus.ACTIVE);
         staffRepository.save(s);
         
@@ -214,6 +222,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Override
     public StaffPermissionResponse getStaffPermissions(Long staffId) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
+        adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
         Map<String, Boolean> effective = getEffectivePermissions(staffId);
         StaffPermission existing = staffPermissionRepository.findByStaffId(staffId).orElse(null);
 
@@ -235,6 +244,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Transactional
     public StaffPermissionResponse updateStaffPermissions(Long staffId, StaffPermissionRequest request) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
+        adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
 
         if (request == null) {
             throw new RuntimeException("Permission payload is required");
@@ -314,7 +324,8 @@ public class AdminStaffServiceImpl implements AdminStaffService {
     @Override
     public Page<Map<String, Object>> getStaffActivityLog(Long staffId, Pageable pageable) {
         Staff s = staffRepository.findById(staffId).orElseThrow(() -> new RuntimeException("Staff not found"));
-        
+        adminLocationAccessService.assertAccess(s.getRestaurant() != null ? s.getRestaurant().getId() : null);
+
         List<AuditLog> logs = auditLogRepository.findAll().stream()
                 .filter(l -> "STAFF_INVITED".equals(l.getAction()) || "STAFF_UPDATED".equals(l.getAction()) 
                         || "STAFF_DEACTIVATED".equals(l.getAction()) || "STAFF_ACTIVATED".equals(l.getAction()))
@@ -344,8 +355,9 @@ public class AdminStaffServiceImpl implements AdminStaffService {
 
     @Override
     public Page<Map<String, Object>> getAllStaffActivityLog(Pageable pageable) {
+        List<Long> restaurantIds = adminLocationAccessService.getAccessibleRestaurantIds();
         List<AuditLog> logs = auditLogRepository.findAll().stream()
-                .filter(l -> l.getAction().contains("STAFF"))
+                .filter(l -> l.getAction().contains("STAFF") && restaurantIds.contains(l.getRestaurantId()))
                 .sorted((a, b) -> b.getId().compareTo(a.getId()))
                 .collect(Collectors.toList());
         

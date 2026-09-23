@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.response.HolidayHourResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.AvailabilityResponse;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.SettingsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,11 +29,14 @@ class AdminAvailabilityControllerTest {
     @Mock
     private RestaurantRepository restaurantRepository;
 
+    @Mock
+    private AdminLocationAccessService adminLocationAccessService;
+
     private AdminAvailabilityController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new AdminAvailabilityController(settingsService, restaurantRepository);
+        controller = new AdminAvailabilityController(settingsService, restaurantRepository, adminLocationAccessService);
     }
 
     @Test

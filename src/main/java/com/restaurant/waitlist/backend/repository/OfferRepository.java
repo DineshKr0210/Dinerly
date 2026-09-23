@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -22,6 +23,14 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
             "AND (:fromDate IS NULL OR o.startDate >= :fromDate) " +
             "AND (:toDate IS NULL OR o.endDate <= :toDate)")
     Page<Offer> findFiltered(Long restaurantId, String status, LocalDate fromDate, LocalDate toDate, Pageable pageable);
+
+    // Franchise-group scoped variant: an admin's "all my locations" view
+    // resolves to a restaurant id list rather than a truly global query.
+    @Query("SELECT o FROM Offer o WHERE o.restaurant.id IN :restaurantIds " +
+            "AND (:status IS NULL OR o.status = :status) " +
+            "AND (:fromDate IS NULL OR o.startDate >= :fromDate) " +
+            "AND (:toDate IS NULL OR o.endDate <= :toDate)")
+    Page<Offer> findFilteredByRestaurantIds(List<Long> restaurantIds, String status, LocalDate fromDate, LocalDate toDate, Pageable pageable);
 
     @Query("SELECT o FROM Offer o WHERE o.restaurant.id = :restaurantId " +
             "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE " +

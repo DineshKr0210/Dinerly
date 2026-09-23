@@ -10,6 +10,7 @@ import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.RewardSettingsRepository;
 import com.restaurant.waitlist.backend.repository.RewardTierRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminRewardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -28,19 +29,19 @@ public class AdminRewardServiceImpl implements AdminRewardService {
     private final RewardSettingsRepository rewardSettingsRepository;
     private final AuditLogRepository auditLogRepository;
     private final RestaurantRepository restaurantRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
 
     @Override
     public Page<RewardTierResponse> listTiers(Long restaurantId, Pageable pageable) {
-        if (restaurantId != null) {
-            return rewardTierRepository.findByRestaurantIdOrderByTierOrderAsc(restaurantId, pageable).map(this::map);
-        }
-        return rewardTierRepository.findAll(pageable).map(this::map);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        return rewardTierRepository.findByRestaurantIdInOrderByTierOrderAsc(restaurantIds, pageable).map(this::map);
     }
 
     @Override
     @Transactional
     public RewardTierResponse createTier(RewardTierRequest request) {
+        adminLocationAccessService.assertAccess(request.getRestaurantId());
 
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found with id: " + request.getRestaurantId()));
@@ -66,7 +67,9 @@ public class AdminRewardServiceImpl implements AdminRewardService {
     @Transactional
     public RewardTierResponse updateTier(Long tierId, RewardTierRequest request) {
         RewardTier t = rewardTierRepository.findById(tierId).orElseThrow(() -> new IllegalArgumentException("Tier not found"));
-        
+        adminLocationAccessService.assertAccess(t.getRestaurant() != null ? t.getRestaurant().getId() : null);
+        adminLocationAccessService.assertAccess(request.getRestaurantId());
+
         if (request.getRestaurantId() != null) {
             Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
                     .orElseThrow(() -> new RuntimeException("Restaurant not found with id: " + request.getRestaurantId()));
@@ -94,6 +97,7 @@ public class AdminRewardServiceImpl implements AdminRewardService {
         RewardTier tier = rewardTierRepository.findById(tierId)
                 .orElseThrow(() -> new IllegalArgumentException("Tier not found"));
         Long restaurantId = tier.getRestaurant() != null ? tier.getRestaurant().getId() : 0L;
+        adminLocationAccessService.assertAccess(tier.getRestaurant() != null ? tier.getRestaurant().getId() : null);
         rewardTierRepository.deleteById(tierId);
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
                 .restaurantId(restaurantId)
@@ -148,6 +152,7 @@ public class AdminRewardServiceImpl implements AdminRewardService {
     public RewardTierResponse duplicateTier(Long tierId, String newName) {
         RewardTier original = rewardTierRepository.findById(tierId)
             .orElseThrow(() -> new IllegalArgumentException("Tier not found"));
+        adminLocationAccessService.assertAccess(original.getRestaurant() != null ? original.getRestaurant().getId() : null);
         RewardTier duplicate = RewardTier.builder()
             .restaurant(original.getRestaurant())
             .name(newName != null ? newName : original.getName() + " (Copy)")
@@ -169,12 +174,8 @@ public class AdminRewardServiceImpl implements AdminRewardService {
 
     @Override
     public java.util.Map<String, Object> getStatistics(Long restaurantId) {
-        long totalTiers;
-        if (restaurantId != null) {
-            totalTiers = rewardTierRepository.findByRestaurantId(restaurantId).size();
-        } else {
-            totalTiers = rewardTierRepository.count();
-        }
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        long totalTiers = rewardTierRepository.findByRestaurantIdIn(restaurantIds).size();
         return java.util.Map.of(
             "totalTiers", totalTiers,
             "totalMembers", 0,
@@ -184,10 +185,8 @@ public class AdminRewardServiceImpl implements AdminRewardService {
 
     @Override
     public java.util.Map<String, Object> getUserTierDistribution(Long restaurantId) {
-        if (restaurantId != null) {
-            long tierCount = rewardTierRepository.findByRestaurantId(restaurantId).size();
-            return java.util.Map.of("tierCount", tierCount, "restaurantId", restaurantId);
-        }
-        return java.util.Map.of("tierCount", rewardTierRepository.count(), "restaurantId", "all");
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        long tierCount = rewardTierRepository.findByRestaurantIdIn(restaurantIds).size();
+        return java.util.Map.of("tierCount", tierCount, "restaurantId", restaurantId != null ? restaurantId : "all");
     }
 }

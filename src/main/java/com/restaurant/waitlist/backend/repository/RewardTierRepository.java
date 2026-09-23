@@ -23,4 +23,10 @@ public interface RewardTierRepository extends JpaRepository<RewardTier, Long> {
     Optional<RewardTier> findTierForPoints(Long restaurantId, Long points);
 
     List<RewardTier> findByRestaurantId(Long restaurantId);
+
+    // Franchise-group scoped variants: an admin's "all my locations" view
+    // resolves to a restaurant id list rather than a truly global query.
+    Page<RewardTier> findByRestaurantIdInOrderByTierOrderAsc(List<Long> restaurantIds, Pageable pageable);
+
+    List<RewardTier> findByRestaurantIdIn(List<Long> restaurantIds);
 }

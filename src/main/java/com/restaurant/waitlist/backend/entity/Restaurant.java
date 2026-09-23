@@ -60,13 +60,18 @@ public class Restaurant {
     @Builder.Default
     private Boolean locationOpen = true;
 
+    // Self-reference to the main/head restaurant when this row is a franchise location.
+    // Null means this restaurant is a main/standalone restaurant (not a franchise of another).
+    @Column(name = "main_restaurant_id")
+    private Long mainRestaurantId;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-    
+
     // Explicit getters to avoid relying solely on Lombok in case annotation processing fails
     public Long getId() { return id; }
     public String getName() { return name; }
@@ -82,6 +87,7 @@ public class Restaurant {
     public Integer getTotalTables() { return totalTables; }
     public Integer getSeats() { return seats; }
     public Boolean getLocationOpen() { return locationOpen; }
+    public Long getMainRestaurantId() { return mainRestaurantId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 

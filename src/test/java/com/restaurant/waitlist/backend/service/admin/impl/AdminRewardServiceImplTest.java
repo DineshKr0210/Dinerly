@@ -6,6 +6,7 @@ import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.RewardSettingsRepository;
 import com.restaurant.waitlist.backend.repository.RewardTierRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,9 @@ class AdminRewardServiceImplTest {
     @Mock
     private RestaurantRepository restaurantRepository;
 
+    @Mock
+    private AdminLocationAccessService adminLocationAccessService;
+
     private AdminRewardServiceImpl service;
 
     @BeforeEach
@@ -43,7 +47,8 @@ class AdminRewardServiceImplTest {
                 rewardTierRepository,
                 rewardSettingsRepository,
                 auditLogRepository,
-                restaurantRepository
+                restaurantRepository,
+                adminLocationAccessService
         );
     }
 
@@ -59,7 +64,8 @@ class AdminRewardServiceImplTest {
                 .build();
 
         PageRequest pageRequest = PageRequest.of(0, 20);
-        when(rewardTierRepository.findByRestaurantIdOrderByTierOrderAsc(1L, pageRequest))
+        when(adminLocationAccessService.resolveRestaurantIds(1L)).thenReturn(List.of(1L));
+        when(rewardTierRepository.findByRestaurantIdInOrderByTierOrderAsc(List.of(1L), pageRequest))
                 .thenReturn(new PageImpl<>(List.of(tier), pageRequest, 1));
 
         Page<RewardTierResponse> result = service.listTiers(1L, pageRequest);

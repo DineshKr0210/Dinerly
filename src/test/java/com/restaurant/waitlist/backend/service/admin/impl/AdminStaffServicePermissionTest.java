@@ -10,6 +10,7 @@ import com.restaurant.waitlist.backend.repository.StaffInvitationTokenRepository
 import com.restaurant.waitlist.backend.repository.StaffPermissionRepository;
 import com.restaurant.waitlist.backend.repository.StaffRepository;
 import com.restaurant.waitlist.backend.repository.UserRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.EmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,9 @@ class AdminStaffServicePermissionTest {
     @Mock
     private StaffPermissionRepository staffPermissionRepository;
 
+    @Mock
+    private AdminLocationAccessService adminLocationAccessService;
+
     private AdminStaffServiceImpl service;
 
     @BeforeEach
@@ -59,7 +63,8 @@ class AdminStaffServicePermissionTest {
                 auditLogRepository,
                 staffInvitationTokenRepository,
                 userRepository,
-                staffPermissionRepository
+                staffPermissionRepository,
+                adminLocationAccessService
         );
     }
 

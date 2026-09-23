@@ -7,6 +7,7 @@ import com.restaurant.waitlist.backend.entity.PointsEarningRule;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.repository.PointsEarningRuleRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminPointsEarningRuleService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -27,14 +28,18 @@ import java.util.stream.Collectors;
 @Transactional
 public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRuleService {
     private static final Logger log = LoggerFactory.getLogger(AdminPointsEarningRuleServiceImpl.class);
-    
+
     private final PointsEarningRuleRepository pointsEarningRuleRepository;
     private final RestaurantRepository restaurantRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     public Page<PointsEarningRuleResponse> listEarningRules(Long restaurantId, String action, Pageable pageable) {
         log.info("Listing earning rules - restaurantId: {}, action: {}", restaurantId, action);
-        Page<PointsEarningRule> rules = pointsEarningRuleRepository.findAll(pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        Page<PointsEarningRule> rules = (action != null && !action.isBlank())
+                ? pointsEarningRuleRepository.findByRestaurantIdInAndAction(restaurantIds, action, pageable)
+                : pointsEarningRuleRepository.findByRestaurantIdIn(restaurantIds, pageable);
         return rules.map(this::map);
     }
 
@@ -43,13 +48,15 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
         log.info("Getting earning rule - ruleId: {}", ruleId);
         PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuntimeException("Earning rule not found"));
+        adminLocationAccessService.assertAccess(rule.getRestaurant() != null ? rule.getRestaurant().getId() : null);
         return map(rule);
     }
 
     @Override
     public PointsEarningRuleResponse createEarningRule(PointsEarningRuleRequest request) {
         log.info("Creating earning rule - action: {}, restaurantId: {}", request.getAction(), request.getRestaurantId());
-        
+        adminLocationAccessService.assertAccess(request.getRestaurantId());
+
         // Fetch restaurant by ID
         Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
                 .orElseThrow(() -> new RuntimeException("Restaurant not found with ID: " + request.getRestaurantId()));
@@ -72,7 +79,9 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
         log.info("Updating earning rule - ruleId: {}, restaurantId: {}", ruleId, request.getRestaurantId());
         PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuntimeException("Earning rule not found"));
-        
+        adminLocationAccessService.assertAccess(rule.getRestaurant() != null ? rule.getRestaurant().getId() : null);
+        adminLocationAccessService.assertAccess(request.getRestaurantId());
+
         // Update restaurant if restaurantId is provided
         if (request.getRestaurantId() != null) {
             Restaurant restaurant = restaurantRepository.findById(request.getRestaurantId())
@@ -107,19 +116,25 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
     @Override
     public void deleteEarningRule(Long ruleId) {
         log.info("Deleting earning rule - ruleId: {}", ruleId);
+        PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId)
+                .orElseThrow(() -> new RuntimeException("Earning rule not found"));
+        adminLocationAccessService.assertAccess(rule.getRestaurant() != null ? rule.getRestaurant().getId() : null);
         pointsEarningRuleRepository.deleteById(ruleId);
     }
 
     @Override
     public List<PointsEarningRuleResponse> getByAction(Long restaurantId, String action) {
         log.info("Getting rules by action - action: {}", action);
-        Optional<PointsEarningRule> rule = pointsEarningRuleRepository.findByRestaurantIdAndAction(restaurantId, action);
-        return rule.map(r -> List.of(map(r))).orElse(List.of());
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        return pointsEarningRuleRepository.findByRestaurantIdInAndAction(restaurantIds, action).stream()
+                .map(this::map)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Map<String, Object>> getAvailableActions(Long restaurantId) {
         log.info("Getting available actions");
+        adminLocationAccessService.assertAccess(restaurantId);
         return List.of(
             Map.of("action", "dine_in", "display", "Dined in restaurant", "default", 15L),
             Map.of("action", "join_waitlist", "display", "Joined waitlist", "default", 10L),
@@ -134,7 +149,8 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
         log.info("Toggling earning rule active status - ruleId: {}", ruleId);
         PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId)
                 .orElseThrow(() -> new RuntimeException("Earning rule not found"));
-        
+        adminLocationAccessService.assertAccess(rule.getRestaurant() != null ? rule.getRestaurant().getId() : null);
+
         rule.setClickable(!Boolean.TRUE.equals(rule.getClickable()));
         rule = pointsEarningRuleRepository.save(rule);
         return map(rule);
@@ -150,7 +166,8 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
             Long newPoints = Long.valueOf(update.get("newPoints").toString());
             
             PointsEarningRule rule = pointsEarningRuleRepository.findById(ruleId).orElse(null);
-            if (rule != null) {
+            if (rule != null && adminLocationAccessService.canAccessRestaurant(
+                    rule.getRestaurant() != null ? rule.getRestaurant().getId() : null)) {
                 rule.setPointsValue(newPoints);
                 pointsEarningRuleRepository.save(rule);
                 updated++;
@@ -166,6 +183,7 @@ public class AdminPointsEarningRuleServiceImpl implements AdminPointsEarningRule
     @Override
     public Map<String, Object> getStatistics(Long restaurantId) {
         log.info("Getting points earning statistics");
+        adminLocationAccessService.assertAccess(restaurantId);
         return Map.of(
             "totalRules", 0,
             "activeRules", 0,

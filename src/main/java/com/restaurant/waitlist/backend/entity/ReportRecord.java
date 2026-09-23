@@ -26,6 +26,10 @@ public class ReportRecord {
 
     private Long locationId;
 
+    // The admin's own restaurant id at generation time, used to scope who can
+    // list/download this report (locationId alone is null for "overall" reports).
+    private Long generatedByRestaurantId;
+
     private String period; // e.g., Past month
 
     private String filePath;

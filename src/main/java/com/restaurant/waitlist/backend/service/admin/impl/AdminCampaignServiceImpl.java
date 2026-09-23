@@ -10,6 +10,7 @@ import com.restaurant.waitlist.backend.repository.RedemptionRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import com.restaurant.waitlist.backend.service.SmsService;
 import com.restaurant.waitlist.backend.service.SmsTemplateService;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminCampaignService;
 import com.restaurant.waitlist.backend.service.audience.AudienceFilterResolver;
 import com.restaurant.waitlist.backend.util.RedemptionCodeGenerator;
@@ -42,10 +43,12 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
     private final SmsService smsService;
     private final SmsTemplateService smsTemplateService;
     private final AuditLogRepository auditLogRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     @Transactional
     public CampaignResponse createCampaign(CampaignRequest req) {
+        adminLocationAccessService.assertAccess(req.getRestaurantId());
         Campaign c = Campaign.builder()
                 .name(req.getName())
                 .channels(req.getChannel())
@@ -75,6 +78,8 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
     @Transactional
     public CampaignResponse updateCampaign(Long id, CampaignRequest req) {
         Campaign c = campaignRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Campaign not found"));
+        adminLocationAccessService.assertAccess(c.getRestaurantId());
+        adminLocationAccessService.assertAccess(req.getRestaurantId());
         c.setName(req.getName());
         c.setChannels(req.getChannel());
         c.setAudience(req.getAudience());
@@ -101,26 +106,19 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
 
     @Override
     public Page<CampaignResponse> listCampaigns(Pageable pageable, Long locationId, String status, String channel) {
-        Page<Campaign> p;
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
         String normalizedStatus = status == null || status.isBlank() ? null : status.trim().toUpperCase(Locale.ROOT);
         String normalizedChannel = channel == null || channel.isBlank() ? null : channel.trim().toUpperCase(Locale.ROOT);
 
-        if (locationId != null && normalizedStatus != null && normalizedChannel != null) {
-            p = campaignRepository.findByRestaurantIdAndStatusAndChannel(locationId, normalizedStatus, normalizedChannel, pageable);
-        } else if (locationId != null && normalizedStatus != null) {
-            p = campaignRepository.findByRestaurantIdAndStatus(locationId, normalizedStatus, pageable);
-        } else if (locationId != null && normalizedChannel != null) {
-            p = campaignRepository.findByRestaurantIdAndChannel(locationId, normalizedChannel, pageable);
-        } else if (locationId != null) {
-            p = campaignRepository.findByRestaurantId(locationId, pageable);
-        } else if (normalizedStatus != null && normalizedChannel != null) {
-            p = campaignRepository.findByStatusAndChannel(normalizedStatus, normalizedChannel, pageable);
+        Page<Campaign> p;
+        if (normalizedStatus != null && normalizedChannel != null) {
+            p = campaignRepository.findByRestaurantIdInAndStatusAndChannel(restaurantIds, normalizedStatus, normalizedChannel, pageable);
         } else if (normalizedStatus != null) {
-            p = campaignRepository.findByStatus(normalizedStatus, pageable);
+            p = campaignRepository.findByRestaurantIdInAndStatus(restaurantIds, normalizedStatus, pageable);
         } else if (normalizedChannel != null) {
-            p = campaignRepository.findByChannel(normalizedChannel, pageable);
+            p = campaignRepository.findByRestaurantIdInAndChannel(restaurantIds, normalizedChannel, pageable);
         } else {
-            p = campaignRepository.findAll(pageable);
+            p = campaignRepository.findByRestaurantIdIn(restaurantIds, pageable);
         }
 
         List<CampaignResponse> items = p.getContent().stream().map(this::toDto).collect(Collectors.toList());
@@ -129,22 +127,20 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
 
     @Override
     public MarketingSummaryResponse getMarketingSummary(Long locationId) {
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+
         LocalDateTime now = LocalDateTime.now();
         YearMonth currentMonth = YearMonth.from(now);
         YearMonth lastMonth = currentMonth.minusMonths(1);
-        
+
         LocalDateTime currentMonthStart = currentMonth.atDay(1).atStartOfDay();
         LocalDateTime currentMonthEnd = currentMonth.atEndOfMonth().plusDays(1).atStartOfDay().minusSeconds(1);
         LocalDateTime lastMonthStart = lastMonth.atDay(1).atStartOfDay();
         LocalDateTime lastMonthEnd = lastMonth.atEndOfMonth().plusDays(1).atStartOfDay().minusSeconds(1);
-        
-        List<Campaign> campaignsThisMonth = (locationId != null)
-                ? campaignRepository.findByRestaurantIdAndDateRange(locationId, currentMonthStart, currentMonthEnd)
-                : campaignRepository.findByDateRange(currentMonthStart, currentMonthEnd);
-        
-        List<Campaign> campaignsLastMonth = (locationId != null)
-                ? campaignRepository.findByRestaurantIdAndDateRange(locationId, lastMonthStart, lastMonthEnd)
-                : campaignRepository.findByDateRange(lastMonthStart, lastMonthEnd);
+
+        List<Campaign> campaignsThisMonth = campaignRepository.findByRestaurantIdInAndCreatedAtBetween(restaurantIds, currentMonthStart, currentMonthEnd);
+
+        List<Campaign> campaignsLastMonth = campaignRepository.findByRestaurantIdInAndCreatedAtBetween(restaurantIds, lastMonthStart, lastMonthEnd);
         
         long activeCampaignsThisMonth = campaignsThisMonth.stream().filter(c -> "ACTIVE".equalsIgnoreCase(c.getStatus())).count();
         long activeCampaignsLastMonth = campaignsLastMonth.stream().filter(c -> "ACTIVE".equalsIgnoreCase(c.getStatus())).count();
@@ -197,6 +193,7 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
     @Override
     public CampaignResponse getCampaign(Long id) {
         Campaign c = campaignRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Campaign not found"));
+        adminLocationAccessService.assertAccess(c.getRestaurantId());
         return toDto(c);
     }
 
@@ -204,14 +201,18 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
     @Transactional
     public CampaignResponse publishCampaign(Long id, boolean immediate) throws Exception {
         Campaign c = campaignRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Campaign not found"));
+        adminLocationAccessService.assertAccess(c.getRestaurantId());
         if (!immediate && c.getScheduledAt() != null && c.getScheduledAt().isAfter(LocalDateTime.now())) {
             c.setStatus("SCHEDULED");
             campaignRepository.save(c);
             return toDto(c);
         }
 
-        // evaluate audience -> get phone numbers
-        List<com.restaurant.waitlist.backend.repository.CustomerAggregation> agg = waitlistRepository.aggregateCustomers(c.getRestaurantId());
+        // evaluate audience -> get phone numbers. A campaign with no specific
+        // restaurant targets the publishing admin's whole franchise group,
+        // never every restaurant in the system.
+        List<Long> targetRestaurantIds = adminLocationAccessService.resolveRestaurantIds(c.getRestaurantId());
+        List<com.restaurant.waitlist.backend.repository.CustomerAggregation> agg = waitlistRepository.aggregateCustomersByRestaurantIds(targetRestaurantIds);
         
         // ✅ Use strategy pattern for audience filtering (replaces hardcoded if-else)
         List<String> recipients = AudienceFilterResolver.resolve(c.getAudience(), agg);

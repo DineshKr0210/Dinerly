@@ -9,6 +9,7 @@ import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.mapper.AdminLocationMapper;
 import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminLocationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,10 +23,14 @@ public class AdminLocationServiceImpl implements AdminLocationService {
 
     private final RestaurantRepository restaurantRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     public LocationsPageResponse listLocations(Pageable pageable) {
-        Page<Restaurant> page = restaurantRepository.findAll(pageable);
+        Long ownRestaurantId = adminLocationAccessService.getCurrentAdminRestaurantId();
+        Page<Restaurant> page = ownRestaurantId != null
+                ? restaurantRepository.findByIdOrMainRestaurantId(ownRestaurantId, pageable)
+                : Page.empty(pageable);
         return LocationsPageResponse.builder()
                 .locations(page.stream().map(AdminLocationMapper::toResponse).toList())
                 .pagination(LocationsPageResponse.Pagination.builder()
@@ -40,6 +45,9 @@ public class AdminLocationServiceImpl implements AdminLocationService {
     @Override
     @Transactional
     public LocationResponse createLocation(LocationRequest request) {
+        // A location created by an admin becomes a franchise of their own
+        // restaurant, so it shows up in their franchise group immediately.
+        Long ownRestaurantId = adminLocationAccessService.getCurrentAdminRestaurantId();
         Restaurant restaurant = Restaurant.builder()
                 .name(request.getName())
                 .address(request.getAddress())
@@ -50,6 +58,7 @@ public class AdminLocationServiceImpl implements AdminLocationService {
                 .menuTemplate(request.getMenuTemplate())
                 .seats(request.getSeats())
                 .locationOpen(request.getLocationOpen())
+                .mainRestaurantId(ownRestaurantId)
                 .build();
 
         Restaurant saved = restaurantRepository.save(restaurant);
@@ -67,11 +76,13 @@ public class AdminLocationServiceImpl implements AdminLocationService {
 
     @Override
     public LocationResponse getLocation(Long id) {
+        adminLocationAccessService.assertAccess(id);
         return restaurantRepository.findById(id).map(AdminLocationMapper::toResponse).orElse(null);
     }
 
     @Override
     public java.util.Map<String, Object> getLocationConfiguration(Long locationId) {
+        adminLocationAccessService.assertAccess(locationId);
         Restaurant r = restaurantRepository.findById(locationId).orElseThrow(() -> new RuntimeException("Location not found"));
         java.util.Map<String, Object> config = new java.util.HashMap<>();
         config.put("locationId", r.getId());
@@ -86,6 +97,7 @@ public class AdminLocationServiceImpl implements AdminLocationService {
     @Override
     @Transactional
     public java.util.Map<String, Object> updateLocationConfiguration(com.restaurant.waitlist.backend.dto.request.admin.LocationConfigurationRequest request) {
+        adminLocationAccessService.assertAccess(request.getLocationId());
         Restaurant r = restaurantRepository.findById(request.getLocationId()).orElseThrow(() -> new RuntimeException("Location not found"));
         
         // Save configuration in a key-value store (simplified for now)
@@ -109,6 +121,7 @@ public class AdminLocationServiceImpl implements AdminLocationService {
 
     @Override
     public java.util.Map<String, Object> getLocationContext(Long locationId) {
+        adminLocationAccessService.assertAccess(locationId);
         Restaurant r = restaurantRepository.findById(locationId).orElseThrow(() -> new RuntimeException("Location not found"));
         
         java.util.Map<String, Object> context = new java.util.HashMap<>();
@@ -127,6 +140,7 @@ public class AdminLocationServiceImpl implements AdminLocationService {
     @Override
     @Transactional
     public LocationResponse updateLocation(Long id, LocationRequest request) {
+        adminLocationAccessService.assertAccess(id);
         Restaurant r = restaurantRepository.findById(id).orElseThrow(() -> new RuntimeException("Location not found"));
         r.setName(request.getName());
         r.setAddress(request.getAddress());

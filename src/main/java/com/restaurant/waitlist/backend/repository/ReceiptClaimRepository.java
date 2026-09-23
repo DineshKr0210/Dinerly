@@ -19,4 +19,12 @@ public interface ReceiptClaimRepository extends JpaRepository<ReceiptClaim, Long
     List<ReceiptClaim> findByUserIdAndRestaurantIdAndCreatedAtAfter(Long userId, Long restaurantId, LocalDateTime createdAfter);
 
     Optional<ReceiptClaim> findByUserIdAndRestaurantIdAndReceiptAmountAndReceiptDate(Long userId, Long restaurantId, String amount, String date);
+
+    // Franchise-group scoped variants: an admin's "all my locations" view
+    // resolves to a restaurant id list rather than a truly global query.
+    Page<ReceiptClaim> findByRestaurantIdIn(List<Long> restaurantIds, Pageable pageable);
+
+    Page<ReceiptClaim> findByRestaurantIdInAndStatus(List<Long> restaurantIds, ReceiptClaim.ClaimStatus status, Pageable pageable);
+
+    Page<ReceiptClaim> findByRestaurantIdInAndUserId(List<Long> restaurantIds, Long userId, Pageable pageable);
 }

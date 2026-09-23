@@ -5,6 +5,7 @@ import com.restaurant.waitlist.backend.dto.request.admin.RejectReceiptRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.ReceiptClaimResponse;
 import com.restaurant.waitlist.backend.entity.ReceiptClaim;
 import com.restaurant.waitlist.backend.repository.ReceiptClaimRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminReceiptClaimService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -26,20 +27,25 @@ import java.util.stream.Collectors;
 @Transactional
 public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
     private static final Logger log = LoggerFactory.getLogger(AdminReceiptClaimServiceImpl.class);
-    
+
     private final ReceiptClaimRepository receiptClaimRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     public Page<ReceiptClaimResponse> listReceiptClaims(Long restaurantId, String status, LocalDateTime from, LocalDateTime to, Pageable pageable) {
         log.info("Listing receipt claims - restaurantId: {}, status: {}", restaurantId, status);
-        Page<ReceiptClaim> claims = receiptClaimRepository.findAll(pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        Page<ReceiptClaim> claims = (status != null && !status.isBlank())
+                ? receiptClaimRepository.findByRestaurantIdInAndStatus(restaurantIds, ReceiptClaim.ClaimStatus.valueOf(status), pageable)
+                : receiptClaimRepository.findByRestaurantIdIn(restaurantIds, pageable);
         return claims.map(this::map);
     }
 
     @Override
     public Page<ReceiptClaimResponse> listPendingClaims(Long restaurantId, Pageable pageable) {
         log.info("Listing pending receipt claims - restaurantId: {}", restaurantId);
-        Page<ReceiptClaim> claims = receiptClaimRepository.findByRestaurantIdAndStatus(restaurantId, ReceiptClaim.ClaimStatus.UPLOADED, pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        Page<ReceiptClaim> claims = receiptClaimRepository.findByRestaurantIdInAndStatus(restaurantIds, ReceiptClaim.ClaimStatus.UPLOADED, pageable);
         return claims.map(this::map);
     }
 
@@ -48,6 +54,7 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
         log.info("Getting receipt claim - claimId: {}", claimId);
         ReceiptClaim claim = receiptClaimRepository.findById(claimId)
                 .orElseThrow(() -> new RuntimeException("Receipt claim not found"));
+        adminLocationAccessService.assertAccess(claim.getRestaurant().getId());
         return map(claim);
     }
 
@@ -56,6 +63,7 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
         log.info("Getting receipt claim details - claimId: {}", claimId);
         ReceiptClaim claim = receiptClaimRepository.findById(claimId)
                 .orElseThrow(() -> new RuntimeException("Receipt claim not found"));
+        adminLocationAccessService.assertAccess(claim.getRestaurant().getId());
         return map(claim);
     }
 
@@ -64,7 +72,8 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
         log.info("Approving receipt claim - claimId: {}, points: {}", claimId, request.getPointsOverride());
         ReceiptClaim claim = receiptClaimRepository.findById(claimId)
                 .orElseThrow(() -> new RuntimeException("Receipt claim not found"));
-        
+        adminLocationAccessService.assertAccess(claim.getRestaurant().getId());
+
         claim.setStatus(ReceiptClaim.ClaimStatus.APPROVED);
         claim.setPointsClaimed(request.getPointsOverride());
         claim.setApprovedAt(LocalDateTime.now());
@@ -79,7 +88,8 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
         log.info("Rejecting receipt claim - claimId: {}, reason: {}", claimId, request.getReason());
         ReceiptClaim claim = receiptClaimRepository.findById(claimId)
                 .orElseThrow(() -> new RuntimeException("Receipt claim not found"));
-        
+        adminLocationAccessService.assertAccess(claim.getRestaurant().getId());
+
         claim.setStatus(ReceiptClaim.ClaimStatus.REJECTED);
         claim.setRejectionReason(request.getReason());
         
@@ -94,7 +104,8 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
         
         for (Long claimId : claimIds) {
             ReceiptClaim claim = receiptClaimRepository.findById(claimId).orElse(null);
-            if (claim != null && ReceiptClaim.ClaimStatus.UPLOADED.equals(claim.getStatus())) {
+            if (claim != null && ReceiptClaim.ClaimStatus.UPLOADED.equals(claim.getStatus())
+                    && adminLocationAccessService.canAccessRestaurant(claim.getRestaurant().getId())) {
                 claim.setStatus(ReceiptClaim.ClaimStatus.APPROVED);
                 if (pointsOverride != null) {
                     claim.setPointsClaimed(pointsOverride);
@@ -119,7 +130,8 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
         
         for (Long claimId : claimIds) {
             ReceiptClaim claim = receiptClaimRepository.findById(claimId).orElse(null);
-            if (claim != null && ReceiptClaim.ClaimStatus.UPLOADED.equals(claim.getStatus())) {
+            if (claim != null && ReceiptClaim.ClaimStatus.UPLOADED.equals(claim.getStatus())
+                    && adminLocationAccessService.canAccessRestaurant(claim.getRestaurant().getId())) {
                 claim.setStatus(ReceiptClaim.ClaimStatus.REJECTED);
                 claim.setRejectionReason(reason);
                 receiptClaimRepository.save(claim);
@@ -136,14 +148,15 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
     @Override
     public Page<ReceiptClaimResponse> getByUser(Long userId, Pageable pageable) {
         log.info("Getting receipt claims by user - userId: {}", userId);
-        // Repository doesn't have findByUserId method, using findAll as fallback
-        Page<ReceiptClaim> claims = receiptClaimRepository.findAll(pageable);
+        List<Long> restaurantIds = adminLocationAccessService.getAccessibleRestaurantIds();
+        Page<ReceiptClaim> claims = receiptClaimRepository.findByRestaurantIdInAndUserId(restaurantIds, userId, pageable);
         return claims.map(this::map);
     }
 
     @Override
     public Page<ReceiptClaimResponse> getByRestaurant(Long restaurantId, String status, Pageable pageable) {
         log.info("Getting receipt claims by restaurant - restaurantId: {}, status: {}", restaurantId, status);
+        adminLocationAccessService.assertAccess(restaurantId);
         Page<ReceiptClaim> claims = receiptClaimRepository.findByRestaurantId(restaurantId, pageable);
         return claims.map(this::map);
     }
@@ -151,19 +164,22 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
     @Override
     public Page<ReceiptClaimResponse> getDuplicateClaims(Long restaurantId, Long userId, Pageable pageable) {
         log.info("Getting duplicate receipt claims");
-        Page<ReceiptClaim> claims = receiptClaimRepository.findByRestaurantIdAndStatus(restaurantId, ReceiptClaim.ClaimStatus.DUPLICATE, pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        Page<ReceiptClaim> claims = receiptClaimRepository.findByRestaurantIdInAndStatus(restaurantIds, ReceiptClaim.ClaimStatus.DUPLICATE, pageable);
         return claims.map(this::map);
     }
 
     @Override
     public void exportReceiptClaimsCsv(Long restaurantId, String status, LocalDateTime from, LocalDateTime to, ByteArrayOutputStream out) {
         log.info("Exporting receipt claims to CSV");
+        adminLocationAccessService.assertAccess(restaurantId);
         // Implementation for CSV export
     }
 
     @Override
     public Map<String, Object> getStatistics(Long restaurantId, LocalDateTime from, LocalDateTime to) {
         log.info("Getting receipt claim statistics");
+        adminLocationAccessService.assertAccess(restaurantId);
         return Map.of(
             "totalClaims", 0L,
             "approved", 0L,
@@ -179,7 +195,8 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
         log.info("Marking receipt claim as duplicate - claimId: {}", claimId);
         ReceiptClaim claim = receiptClaimRepository.findById(claimId)
                 .orElseThrow(() -> new RuntimeException("Receipt claim not found"));
-        
+        adminLocationAccessService.assertAccess(claim.getRestaurant().getId());
+
         claim.setStatus(ReceiptClaim.ClaimStatus.DUPLICATE);
         claim = receiptClaimRepository.save(claim);
         return map(claim);
@@ -190,8 +207,9 @@ public class AdminReceiptClaimServiceImpl implements AdminReceiptClaimService {
         log.info("Reverting receipt claim to pending - claimId: {}", claimId);
         ReceiptClaim claim = receiptClaimRepository.findById(claimId)
                 .orElseThrow(() -> new RuntimeException("Receipt claim not found"));
-        
-        if (ReceiptClaim.ClaimStatus.APPROVED.equals(claim.getStatus()) || 
+        adminLocationAccessService.assertAccess(claim.getRestaurant().getId());
+
+        if (ReceiptClaim.ClaimStatus.APPROVED.equals(claim.getStatus()) ||
             ReceiptClaim.ClaimStatus.REJECTED.equals(claim.getStatus())) {
             claim.setStatus(ReceiptClaim.ClaimStatus.UPLOADED);
             claim.setApprovedAt(null);

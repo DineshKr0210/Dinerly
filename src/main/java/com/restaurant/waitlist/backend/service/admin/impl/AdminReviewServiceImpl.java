@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.service.admin.impl;
 import com.restaurant.waitlist.backend.dto.response.admin.ReviewResponse;
 import com.restaurant.waitlist.backend.entity.Feedback;
 import com.restaurant.waitlist.backend.repository.FeedbackRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,9 +22,13 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     @Autowired
     private FeedbackRepository feedbackRepository;
 
+    @Autowired
+    private AdminLocationAccessService adminLocationAccessService;
+
     @Override
     public Page<ReviewResponse> listReviews(Long locationId, String filter, Pageable pageable) {
-        Page<Feedback> page = feedbackRepository.findAll(pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+        Page<Feedback> page = feedbackRepository.findByWaitlistRestaurantIdIn(restaurantIds, pageable);
 
         List<ReviewResponse> reviews = page.getContent().stream().map(f ->
                 ReviewResponse.builder()
@@ -46,6 +51,8 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     @Transactional
     public void replyToReview(Long reviewId, String reply) {
         Feedback fb = feedbackRepository.findById(reviewId).orElseThrow(() -> new RuntimeException("Review not found"));
+        Long restaurantId = fb.getWaitlist() != null && fb.getWaitlist().getRestaurant() != null ? fb.getWaitlist().getRestaurant().getId() : null;
+        adminLocationAccessService.assertAccess(restaurantId);
         fb.setReply(reply);
         fb.setRepliedAt(LocalDateTime.now());
         feedbackRepository.save(fb);
@@ -53,10 +60,8 @@ public class AdminReviewServiceImpl implements AdminReviewService {
 
     @Override
     public com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse getReviewAnalytics(Long locationId, int days) {
-        List<Feedback> all = feedbackRepository.findAll();
-        List<Feedback> reviews = all.stream()
-                .filter(f -> locationId == null || (f.getWaitlist() != null && f.getWaitlist().getRestaurant() != null && f.getWaitlist().getRestaurant().getId().equals(locationId)))
-                .collect(Collectors.toList());
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+        List<Feedback> reviews = feedbackRepository.findByWaitlistRestaurantIdIn(restaurantIds);
 
         if (reviews.isEmpty()) {
             return com.restaurant.waitlist.backend.dto.response.admin.ReviewAnalyticsResponse.builder()
@@ -107,10 +112,8 @@ public class AdminReviewServiceImpl implements AdminReviewService {
 
     @Override
     public java.util.Map<String, Long> getRatingDistribution(Long locationId, int days) {
-        List<Feedback> all = feedbackRepository.findAll();
-        List<Feedback> reviews = all.stream()
-                .filter(f -> locationId == null || (f.getWaitlist() != null && f.getWaitlist().getRestaurant() != null && f.getWaitlist().getRestaurant().getId().equals(locationId)))
-                .collect(Collectors.toList());
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+        List<Feedback> reviews = feedbackRepository.findByWaitlistRestaurantIdIn(restaurantIds);
 
         java.util.Map<String, Long> distribution = new java.util.HashMap<>();
         for (int i = 1; i <= 5; i++) {

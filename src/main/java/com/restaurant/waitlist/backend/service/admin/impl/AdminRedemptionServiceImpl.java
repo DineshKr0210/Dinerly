@@ -3,6 +3,7 @@ package com.restaurant.waitlist.backend.service.admin.impl;
 import com.restaurant.waitlist.backend.dto.response.admin.RedemptionResponse;
 import com.restaurant.waitlist.backend.entity.Redemption;
 import com.restaurant.waitlist.backend.repository.RedemptionRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminRedemptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -12,21 +13,25 @@ import org.springframework.stereotype.Service;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AdminRedemptionServiceImpl implements AdminRedemptionService {
 
     private final RedemptionRepository redemptionRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     public Page<RedemptionResponse> listRedemptions(Long locationId, String status, LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        Page<Redemption> page = redemptionRepository.findFiltered(locationId, from, to, pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+        Page<Redemption> page = redemptionRepository.findFiltered(restaurantIds, from, to, null, null, pageable);
         return page.map(this::map);
     }
 
     @Override
     public void exportRedemptionsCsv(Long locationId, String status, LocalDateTime from, LocalDateTime to, OutputStream out) throws java.io.IOException {
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
         // stream using pagination to avoid loading everything into memory
         int page = 0;
         int size = 500;
@@ -34,7 +39,7 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
             writer.println("id,itemRedeemed,location,guest,mobileNumber,redeemedAt,value");
             org.springframework.data.domain.Page<Redemption> p;
             do {
-                p = redemptionRepository.findFiltered(locationId, from, to, org.springframework.data.domain.PageRequest.of(page, size));
+                p = redemptionRepository.findFiltered(restaurantIds, from, to, null, null, org.springframework.data.domain.PageRequest.of(page, size));
                 for (Redemption r : p.getContent()) {
                         String line = String.format("%d,%s,%s,%s,%s,%s,%s",
                             r.getId(),
@@ -70,6 +75,7 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
     public RedemptionResponse getRedemptionById(Long redemptionId) {
         Redemption r = redemptionRepository.findById(redemptionId)
             .orElseThrow(() -> new IllegalArgumentException("Redemption not found"));
+        adminLocationAccessService.assertAccess(r.getRestaurantId());
         return map(r);
     }
 
@@ -77,6 +83,7 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
     public RedemptionResponse cancelRedemption(Long redemptionId, String reason) {
         Redemption r = redemptionRepository.findById(redemptionId)
             .orElseThrow(() -> new IllegalArgumentException("Redemption not found"));
+        adminLocationAccessService.assertAccess(r.getRestaurantId());
         // Mark as cancelled
         redemptionRepository.save(r);
         return map(r);
@@ -89,6 +96,7 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
 
     @Override
     public java.util.Map<String, Object> getStatistics(Long locationId, LocalDateTime from, LocalDateTime to) {
+        adminLocationAccessService.assertAccess(locationId);
         return java.util.Map.of(
             "totalRedemptions", 0,
             "totalValue", 0
@@ -97,13 +105,15 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
 
     @Override
     public Page<RedemptionResponse> getByOffer(Long offerId, Pageable pageable) {
-        Page<Redemption> page = redemptionRepository.findAll(pageable);
+        List<Long> restaurantIds = adminLocationAccessService.getAccessibleRestaurantIds();
+        Page<Redemption> page = redemptionRepository.findFiltered(restaurantIds, null, null, offerId, null, pageable);
         return page.map(this::map);
     }
 
     @Override
     public Page<RedemptionResponse> getByUser(Long userId, Pageable pageable) {
-        Page<Redemption> page = redemptionRepository.findAll(pageable);
+        List<Long> restaurantIds = adminLocationAccessService.getAccessibleRestaurantIds();
+        Page<Redemption> page = redemptionRepository.findFiltered(restaurantIds, null, null, null, userId, pageable);
         return page.map(this::map);
     }
 

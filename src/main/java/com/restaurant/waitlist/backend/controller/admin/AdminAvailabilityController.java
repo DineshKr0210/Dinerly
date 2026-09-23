@@ -7,6 +7,7 @@ import com.restaurant.waitlist.backend.dto.response.*;
 import com.restaurant.waitlist.backend.dto.response.admin.AvailabilityResponse;
 import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.SettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -28,10 +29,12 @@ public class AdminAvailabilityController {
 
     private final SettingsService settingsService;
     private final RestaurantRepository restaurantRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @GetMapping("/{restaurantId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<AvailabilityResponse>> getAvailability(@PathVariable Long restaurantId) {
+        adminLocationAccessService.assertAccess(restaurantId);
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
@@ -112,6 +115,7 @@ public class AdminAvailabilityController {
     @GetMapping("/{restaurantId}/settings")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> getSettings(@PathVariable Long restaurantId) {
+        adminLocationAccessService.assertAccess(restaurantId);
         RestaurantSettingsResponse resp = settingsService.getRestaurantSettings(restaurantId);
         return ResponseEntity.ok(ApiResponse.success("Settings retrieved", resp));
     }
@@ -120,6 +124,7 @@ public class AdminAvailabilityController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> updateSettings(@PathVariable Long restaurantId,
                                                                                   @RequestBody UpdateRestaurantSettingsRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         RestaurantSettingsResponse resp = settingsService.updateRestaurantSettings(restaurantId, request);
         return ResponseEntity.ok(ApiResponse.success("Settings updated", resp));
     }
@@ -127,6 +132,7 @@ public class AdminAvailabilityController {
     @GetMapping("/{restaurantId}/waitlist-settings")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistSettingsResponse>> getWaitlistSettings(@PathVariable Long restaurantId) {
+        adminLocationAccessService.assertAccess(restaurantId);
         WaitlistSettingsResponse resp = settingsService.getWaitlistSettings(restaurantId);
         return ResponseEntity.ok(ApiResponse.success("Waitlist settings retrieved", resp));
     }
@@ -135,6 +141,7 @@ public class AdminAvailabilityController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<WaitlistSettingsResponse>> updateWaitlistSettings(@PathVariable Long restaurantId,
                                                                                          @RequestBody com.restaurant.waitlist.backend.dto.request.UpdateWaitlistSettingsRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         WaitlistSettingsResponse resp = settingsService.updateWaitlistSettings(restaurantId, request);
         return ResponseEntity.ok(ApiResponse.success("Waitlist settings updated", resp));
     }
@@ -142,6 +149,7 @@ public class AdminAvailabilityController {
     @GetMapping("/{restaurantId}/holiday-hours")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<HolidayHoursResponse>> getHolidayHours(@PathVariable Long restaurantId) {
+        adminLocationAccessService.assertAccess(restaurantId);
         HolidayHoursResponse resp = settingsService.getHolidayHours(restaurantId);
         return ResponseEntity.ok(ApiResponse.success("Holiday hours retrieved", resp));
     }
@@ -151,6 +159,7 @@ public class AdminAvailabilityController {
     public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.HolidayHourResponse>> addHolidayHour(
             @PathVariable Long restaurantId,
             @RequestBody HolidayHourRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         com.restaurant.waitlist.backend.dto.response.HolidayHourResponse resp = settingsService.addHolidayHour(restaurantId, request);
         return ResponseEntity.ok(ApiResponse.success("Holiday hour added", resp));
     }
@@ -161,6 +170,7 @@ public class AdminAvailabilityController {
             @PathVariable Long restaurantId,
             @PathVariable String holidayHourId,
             @RequestBody UpdateHolidayHourRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         com.restaurant.waitlist.backend.dto.response.HolidayHourResponse resp = settingsService.updateHolidayHour(restaurantId, holidayHourId, request);
         return ResponseEntity.ok(ApiResponse.success("Holiday hour updated", resp));
     }

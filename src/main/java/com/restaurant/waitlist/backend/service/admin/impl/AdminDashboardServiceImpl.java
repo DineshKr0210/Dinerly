@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.dto.response.admin.AdminDashboardResponse
 import com.restaurant.waitlist.backend.dto.response.admin.InsightCardResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.LocationLeaderboardItem;
 import com.restaurant.waitlist.backend.dto.response.admin.RealTimeMetricsResponse;
+import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.entity.User;
 import com.restaurant.waitlist.backend.entity.Waitlist;
 import com.restaurant.waitlist.backend.repository.FeedbackRepository;
@@ -11,6 +12,7 @@ import com.restaurant.waitlist.backend.repository.OfferRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -20,8 +22,8 @@ import org.springframework.stereotype.Service;
 
 import java.sql.Date;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,45 +38,38 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final FeedbackRepository feedbackRepository;
     private final OfferRepository offerRepository;
     private final UserRepository userRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     public AdminDashboardResponse getDashboard(LocalDate fromDate, LocalDate toDate, int topN, Long locationId) {
         Date from = fromDate != null ? Date.valueOf(fromDate) : null;
         Date to = toDate != null ? Date.valueOf(toDate) : null;
 
-        long totalRestaurants = locationId != null ? 1 : restaurantRepository.count();
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
 
-        long totalWaitlistJoins = (locationId != null)
-                ? waitlistRepository.countByRestaurantIdInDateRange(locationId, from, to)
-                : waitlistRepository.countAllInDateRange(from, to);
+        long totalRestaurants = restaurantIds.size();
 
-        List<Waitlist> waiting = locationId != null
-                ? waitlistRepository.findByRestaurantIdAndStatus(locationId, Waitlist.WaitlistStatus.WAITING)
-                : waitlistRepository.findByStatus(Waitlist.WaitlistStatus.WAITING);
-        List<Waitlist> notified = locationId != null
-                ? waitlistRepository.findByRestaurantIdAndStatus(locationId, Waitlist.WaitlistStatus.NOTIFIED)
-                : waitlistRepository.findByStatus(Waitlist.WaitlistStatus.NOTIFIED);
-        long totalActive = (waiting != null ? waiting.size() : 0) + (notified != null ? notified.size() : 0);
+        long totalWaitlistJoins = restaurantIds.stream()
+                .mapToLong(id -> waitlistRepository.countByRestaurantIdInDateRange(id, from, to))
+                .sum();
 
-        Double avgRating = locationId != null ? feedbackRepository.averageRatingByRestaurantId(locationId) : feedbackRepository.averageRating();
-        if (avgRating == null) avgRating = 0.0;
+        long totalActive = restaurantIds.stream()
+                .mapToLong(id -> waitlistRepository.findByRestaurantIdAndStatus(id, Waitlist.WaitlistStatus.WAITING).size()
+                        + waitlistRepository.findByRestaurantIdAndStatus(id, Waitlist.WaitlistStatus.NOTIFIED).size())
+                .sum();
 
-        List<Object[]> top = (locationId != null)
-                ? waitlistRepository.topRestaurantByJoinsForLocation(locationId, from, to, topN)
-                : waitlistRepository.topRestaurantsByJoins(from, to, topN);
-        List<LocationLeaderboardItem> leaderboard = new ArrayList<>();
-        if (top != null) {
-            for (Object[] row : top) {
-                Long restaurantId = row[0] != null ? ((Number) row[0]).longValue() : null;
-                String name = row[1] != null ? row[1].toString() : null;
-                Long joins = row[2] != null ? ((Number) row[2]).longValue() : 0L;
-                leaderboard.add(LocationLeaderboardItem.builder()
-                        .restaurantId(restaurantId)
-                        .name(name)
-                        .joins(joins)
-                        .build());
-            }
-        }
+        double avgRating = weightedAverageRating(restaurantIds);
+
+        List<LocationLeaderboardItem> leaderboard = restaurantIds.stream()
+                .flatMap(id -> waitlistRepository.topRestaurantByJoinsForLocation(id, from, to, 1).stream())
+                .map(row -> LocationLeaderboardItem.builder()
+                        .restaurantId(row[0] != null ? ((Number) row[0]).longValue() : null)
+                        .name(row[1] != null ? row[1].toString() : null)
+                        .joins(row[2] != null ? ((Number) row[2]).longValue() : 0L)
+                        .build())
+                .sorted(Comparator.comparingLong(LocationLeaderboardItem::getJoins).reversed())
+                .limit(topN)
+                .collect(Collectors.toList());
 
         return AdminDashboardResponse.builder()
                 .totalRestaurants(totalRestaurants)
@@ -84,6 +79,20 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .userName(getCurrentUserName())
                 .topLocations(leaderboard)
                 .build();
+    }
+
+    private double weightedAverageRating(List<Long> restaurantIds) {
+        long totalCount = 0;
+        double totalRatingSum = 0;
+        for (Long id : restaurantIds) {
+            long count = feedbackRepository.countByWaitlistRestaurantId(id);
+            Double avg = feedbackRepository.averageRatingByRestaurantId(id);
+            if (count > 0 && avg != null) {
+                totalRatingSum += avg * count;
+                totalCount += count;
+            }
+        }
+        return totalCount > 0 ? totalRatingSum / totalCount : 0.0;
     }
 
     @Override
@@ -109,22 +118,23 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     public RealTimeMetricsResponse getRealTimeMetrics(Long locationId) {
-        List<Waitlist> waiting = locationId != null
-                ? waitlistRepository.findByRestaurantIdAndStatus(locationId, Waitlist.WaitlistStatus.WAITING)
-                : waitlistRepository.findByStatus(Waitlist.WaitlistStatus.WAITING);
-        
-        List<Waitlist> notified = locationId != null
-                ? waitlistRepository.findByRestaurantIdAndStatus(locationId, Waitlist.WaitlistStatus.NOTIFIED)
-                : waitlistRepository.findByStatus(Waitlist.WaitlistStatus.NOTIFIED);
-        
-        int waitingCount = waiting != null ? waiting.size() : 0;
-        int notifiedCount = notified != null ? notified.size() : 0;
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+
+        List<Waitlist> waiting = new ArrayList<>();
+        List<Waitlist> notified = new ArrayList<>();
+        for (Long id : restaurantIds) {
+            waiting.addAll(waitlistRepository.findByRestaurantIdAndStatus(id, Waitlist.WaitlistStatus.WAITING));
+            notified.addAll(waitlistRepository.findByRestaurantIdAndStatus(id, Waitlist.WaitlistStatus.NOTIFIED));
+        }
+
+        int waitingCount = waiting.size();
+        int notifiedCount = notified.size();
         int activeWaitlists = waitingCount + notifiedCount;
-        
-        double averageWaitTime = waiting != null && waiting.size() > 0 
-            ? waiting.stream().mapToInt(w -> w.getEstimatedWaitTime() != null ? w.getEstimatedWaitTime() : 0).average().orElse(0) 
-            : 0;
-        
+
+        double averageWaitTime = !waiting.isEmpty()
+                ? waiting.stream().mapToInt(w -> w.getEstimatedWaitTime() != null ? w.getEstimatedWaitTime() : 0).average().orElse(0)
+                : 0;
+
         return RealTimeMetricsResponse.builder()
                 .activeWaitlists(activeWaitlists)
                 .waitingCount(waitingCount)
@@ -136,6 +146,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     public List<InsightCardResponse> getInsightsFeed(String category, Long locationId) {
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+
         List<InsightCardResponse> insights = new ArrayList<>();
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(30);
@@ -144,17 +156,17 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
         // GROWTH insights - Locations without active offers
         if (category == null || "GROWTH".equalsIgnoreCase(category) || "All".equalsIgnoreCase(category)) {
-            insights.addAll(generateGrowthInsights(locationId, from, to));
+            insights.addAll(generateGrowthInsights(restaurantIds, from, to));
         }
 
         // OPERATIONS insights - No-shows & Closed locations
         if (category == null || "OPERATIONS".equalsIgnoreCase(category) || "All".equalsIgnoreCase(category)) {
-            insights.addAll(generateOperationsInsights(locationId, from, to));
+            insights.addAll(generateOperationsInsights(restaurantIds, from, to));
         }
 
         // TIPS insights - Wait time accuracy
         if (category == null || "TIPS".equalsIgnoreCase(category) || "All".equalsIgnoreCase(category)) {
-            insights.addAll(generateTipsInsights(locationId, from, to));
+            insights.addAll(generateTipsInsights(restaurantIds, from, to));
         }
 
         // ANNOUNCEMENTS insights
@@ -165,14 +177,15 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return insights;
     }
 
-    private List<InsightCardResponse> generateGrowthInsights(Long locationId, Date from, Date to) {
+    private List<InsightCardResponse> generateGrowthInsights(List<Long> restaurantIds, Date from, Date to) {
         List<InsightCardResponse> insights = new ArrayList<>();
 
-        if (locationId != null) {
+        if (restaurantIds.size() == 1) {
+            Long locationId = restaurantIds.get(0);
             // Single location - check if it has active offers
             long activeOffers = offerRepository.countActiveOffersByRestaurant(locationId);
             long totalWaitlistJoins = waitlistRepository.countByRestaurantIdInDateRange(locationId, from, to);
-            
+
             if (activeOffers == 0 && totalWaitlistJoins > 0) {
                 insights.add(InsightCardResponse.builder()
                     .type("GROWTH")
@@ -199,19 +212,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                     .timestamp(System.currentTimeMillis())
                     .build());
             }
-        } else {
-            // All locations - find those without active offers
-            List<Object[]> locationOfferStats = waitlistRepository.topRestaurantsByJoins(from, to, 100);
-            List<Long> restaurantIds = new ArrayList<>();
-            
-            for (Object[] row : locationOfferStats) {
-                Long restaurantId = row[0] != null ? ((Number) row[0]).longValue() : null;
-                if (restaurantId != null) {
-                    restaurantIds.add(restaurantId);
-                }
-            }
-
-            // Check each location for active offers
+        } else if (!restaurantIds.isEmpty()) {
+            // Multiple locations under this admin - find those without active offers
             List<Long> locationsWithoutOffers = new ArrayList<>();
             for (Long rId : restaurantIds) {
                 long activeOffers = offerRepository.countActiveOffersByRestaurant(rId);
@@ -238,10 +240,11 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return insights;
     }
 
-    private List<InsightCardResponse> generateOperationsInsights(Long locationId, Date from, Date to) {
+    private List<InsightCardResponse> generateOperationsInsights(List<Long> restaurantIds, Date from, Date to) {
         List<InsightCardResponse> insights = new ArrayList<>();
 
-        if (locationId != null) {
+        if (restaurantIds.size() == 1) {
+            Long locationId = restaurantIds.get(0);
             // Single location - No-show rate
             Double noShowRate = waitlistRepository.getNoShowRateByLocation(locationId, from, to);
             if (noShowRate != null && noShowRate > 15.0) {
@@ -272,62 +275,54 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                     .timestamp(System.currentTimeMillis())
                     .build());
             });
-        } else {
-            // All locations - Find high no-show rate locations
-            List<Object[]> topLocations = waitlistRepository.topRestaurantsByJoins(from, to, 50);
-            for (Object[] row : topLocations) {
-                Long rId = row[0] != null ? ((Number) row[0]).longValue() : null;
-                String name = row[1] != null ? row[1].toString() : null;
-                
-                if (rId != null) {
-                    Double noShowRate = waitlistRepository.getNoShowRateByLocation(rId, from, to);
-                    if (noShowRate != null && noShowRate > 15.0) {
-                        insights.add(InsightCardResponse.builder()
-                            .type("OPERATIONS")
-                            .title("High no-show rate at " + name)
-                            .description("Operational efficiency issue")
-                            .message(name + " has a " + String.format("%.1f", noShowRate) + "% no-show rate — this impacts table utilization and guest satisfaction")
-                            .actionLabel("Review hold-time settings")
-                            .actionUrl("/store-availability")
-                            .priority("MEDIUM")
-                            .metric(String.format("%.1f", noShowRate) + "%")
-                            .timestamp(System.currentTimeMillis())
-                            .build());
-                        // Limit to top 2 no-show insights
-                        if (insights.stream().filter(i -> i.getType().equals("OPERATIONS")).count() >= 2) break;
-                    }
+        } else if (!restaurantIds.isEmpty()) {
+            // Multiple locations under this admin - high no-show rate locations
+            for (Long rId : restaurantIds) {
+                Double noShowRate = waitlistRepository.getNoShowRateByLocation(rId, from, to);
+                if (noShowRate != null && noShowRate > 15.0) {
+                    String name = restaurantRepository.findById(rId).map(Restaurant::getName).orElse("Location " + rId);
+                    insights.add(InsightCardResponse.builder()
+                        .type("OPERATIONS")
+                        .title("High no-show rate at " + name)
+                        .description("Operational efficiency issue")
+                        .message(name + " has a " + String.format("%.1f", noShowRate) + "% no-show rate — this impacts table utilization and guest satisfaction")
+                        .actionLabel("Review hold-time settings")
+                        .actionUrl("/store-availability")
+                        .priority("MEDIUM")
+                        .metric(String.format("%.1f", noShowRate) + "%")
+                        .timestamp(System.currentTimeMillis())
+                        .build());
+                    // Limit to top 2 no-show insights
+                    if (insights.stream().filter(i -> i.getType().equals("OPERATIONS")).count() >= 2) break;
                 }
             }
 
             // Closed locations without reopen schedule
-            List<Object[]> closedLocations = restaurantRepository.findClosedLocations().stream()
-                    .map(r -> new Object[]{r.getId(), r.getName()})
-                    .collect(Collectors.toList());
-            
-            for (Object[] row : closedLocations) {
-                Long rId = (Long) row[0];
-                String name = (String) row[1];
-                insights.add(InsightCardResponse.builder()
-                    .type("OPERATIONS")
-                    .title(name + " is closed")
-                    .description("Closed with no reopening schedule")
-                    .message(name + " is currently closed — schedule a reopen time to resume accepting waitlist entries")
-                    .actionLabel("Schedule reopening")
-                    .actionUrl("/store-availability")
-                    .priority("HIGH")
-                    .metric("Closed")
-                    .timestamp(System.currentTimeMillis())
-                    .build());
+            for (Long rId : restaurantIds) {
+                restaurantRepository.findClosedLocationById(rId).ifPresent(r -> {
+                    insights.add(InsightCardResponse.builder()
+                        .type("OPERATIONS")
+                        .title(r.getName() + " is closed")
+                        .description("Closed with no reopening schedule")
+                        .message(r.getName() + " is currently closed — schedule a reopen time to resume accepting waitlist entries")
+                        .actionLabel("Schedule reopening")
+                        .actionUrl("/store-availability")
+                        .priority("HIGH")
+                        .metric("Closed")
+                        .timestamp(System.currentTimeMillis())
+                        .build());
+                });
             }
         }
 
         return insights;
     }
 
-    private List<InsightCardResponse> generateTipsInsights(Long locationId, Date from, Date to) {
+    private List<InsightCardResponse> generateTipsInsights(List<Long> restaurantIds, Date from, Date to) {
         List<InsightCardResponse> insights = new ArrayList<>();
 
-        if (locationId != null) {
+        if (restaurantIds.size() == 1) {
+            Long locationId = restaurantIds.get(0);
             // Single location - Wait time accuracy
             Double waitTimeVariance = waitlistRepository.getWaitTimeAccuracyByLocation(locationId, from, to);
             if (waitTimeVariance != null && Math.abs(waitTimeVariance) > 5.0) {
@@ -344,30 +339,25 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                     .timestamp(System.currentTimeMillis())
                     .build());
             }
-        } else {
-            // All locations - Find those with significant wait time variance
-            List<Object[]> topLocations = waitlistRepository.topRestaurantsByJoins(from, to, 30);
-            for (Object[] row : topLocations) {
-                Long rId = row[0] != null ? ((Number) row[0]).longValue() : null;
-                String name = row[1] != null ? row[1].toString() : null;
-                
-                if (rId != null) {
-                    Double waitTimeVariance = waitlistRepository.getWaitTimeAccuracyByLocation(rId, from, to);
-                    if (waitTimeVariance != null && Math.abs(waitTimeVariance) > 5.0) {
-                        String direction = waitTimeVariance > 0 ? "longer" : "shorter";
-                        insights.add(InsightCardResponse.builder()
-                            .type("TIPS")
-                            .title("Wait time accuracy issue at " + name)
-                            .description("Accuracy opportunity")
-                            .message("Guests at " + name + " are waiting " + Math.abs(Math.round(waitTimeVariance)) + " minutes " + direction + " than estimated")
-                            .actionLabel("Review metrics")
-                            .actionUrl("/performance?tab=waitlist")
-                            .priority("LOW")
-                            .metric(String.format("%.1f", Math.abs(waitTimeVariance)) + " min")
-                            .timestamp(System.currentTimeMillis())
-                            .build());
-                        if (insights.stream().filter(i -> i.getType().equals("TIPS")).count() >= 2) break;
-                    }
+        } else if (!restaurantIds.isEmpty()) {
+            // Multiple locations under this admin - wait time variance
+            for (Long rId : restaurantIds) {
+                Double waitTimeVariance = waitlistRepository.getWaitTimeAccuracyByLocation(rId, from, to);
+                if (waitTimeVariance != null && Math.abs(waitTimeVariance) > 5.0) {
+                    String name = restaurantRepository.findById(rId).map(Restaurant::getName).orElse("Location " + rId);
+                    String direction = waitTimeVariance > 0 ? "longer" : "shorter";
+                    insights.add(InsightCardResponse.builder()
+                        .type("TIPS")
+                        .title("Wait time accuracy issue at " + name)
+                        .description("Accuracy opportunity")
+                        .message("Guests at " + name + " are waiting " + Math.abs(Math.round(waitTimeVariance)) + " minutes " + direction + " than estimated")
+                        .actionLabel("Review metrics")
+                        .actionUrl("/performance?tab=waitlist")
+                        .priority("LOW")
+                        .metric(String.format("%.1f", Math.abs(waitTimeVariance)) + " min")
+                        .timestamp(System.currentTimeMillis())
+                        .build());
+                    if (insights.stream().filter(i -> i.getType().equals("TIPS")).count() >= 2) break;
                 }
             }
         }
@@ -397,44 +387,43 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     @Override
     public List<Map<String, String>> getQuickActions() {
         List<Map<String, String>> actions = new ArrayList<>();
-        
+
         actions.add(Map.of(
             "label", "Create offer",
             "icon", "🎁",
             "url", "/offers"
         ));
-        
+
         actions.add(Map.of(
             "label", "Edit menu item",
             "icon", "📋",
             "url", "/menu-management"
         ));
-        
+
         actions.add(Map.of(
             "label", "Edit store hours",
             "icon", "🕐",
             "url", "/store-availability"
         ));
-        
+
         actions.add(Map.of(
             "label", "Add staff member",
             "icon", "👤",
             "url", "/admin"
         ));
-        
+
         actions.add(Map.of(
             "label", "Generate report",
             "icon", "📊",
             "url", "/reports"
         ));
-        
+
         actions.add(Map.of(
             "label", "Help center",
             "icon", "❓",
             "url", "/help"
         ));
-        
+
         return actions;
     }
 }
-

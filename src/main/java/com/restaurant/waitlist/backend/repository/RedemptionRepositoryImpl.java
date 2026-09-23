@@ -67,4 +67,46 @@ public class RedemptionRepositoryImpl implements RedemptionRepositoryCustom {
 
         return new PageImpl<>(results, pageable, total);
     }
+
+    @Override
+    public Page<Redemption> findFiltered(List<Long> restaurantIds, LocalDateTime from, LocalDateTime to,
+                                          Long offerId, Long userId, Pageable pageable) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Redemption> cq = cb.createQuery(Redemption.class);
+        Root<Redemption> root = cq.from(Redemption.class);
+        cq.where(buildPredicates(cb, root, restaurantIds, from, to, offerId, userId));
+        cq.orderBy(cb.desc(root.get("redeemedAt")));
+
+        TypedQuery<Redemption> q = em.createQuery(cq);
+        q.setFirstResult((int) pageable.getOffset());
+        q.setMaxResults(pageable.getPageSize());
+        List<Redemption> results = q.getResultList();
+
+        CriteriaQuery<Long> countQ = cb.createQuery(Long.class);
+        Root<Redemption> countRoot = countQ.from(Redemption.class);
+        countQ.select(cb.count(countRoot));
+        countQ.where(buildPredicates(cb, countRoot, restaurantIds, from, to, offerId, userId));
+        Long total = em.createQuery(countQ).getSingleResult();
+
+        return new PageImpl<>(results, pageable, total);
+    }
+
+    private Predicate[] buildPredicates(CriteriaBuilder cb, Root<Redemption> root, List<Long> restaurantIds,
+                                         LocalDateTime from, LocalDateTime to, Long offerId, Long userId) {
+        List<Predicate> preds = new ArrayList<>();
+        preds.add(restaurantIds.isEmpty() ? cb.disjunction() : root.get("restaurantId").in(restaurantIds));
+        if (from != null) {
+            preds.add(cb.greaterThanOrEqualTo(root.get("redeemedAt"), from));
+        }
+        if (to != null) {
+            preds.add(cb.lessThanOrEqualTo(root.get("redeemedAt"), to));
+        }
+        if (offerId != null) {
+            preds.add(cb.equal(root.get("offer").get("id"), offerId));
+        }
+        if (userId != null) {
+            preds.add(cb.equal(root.get("userId"), userId));
+        }
+        return preds.toArray(new Predicate[0]);
+    }
 }

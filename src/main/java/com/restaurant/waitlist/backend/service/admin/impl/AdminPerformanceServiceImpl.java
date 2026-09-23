@@ -8,6 +8,7 @@ import com.restaurant.waitlist.backend.repository.CampaignRepository;
 import com.restaurant.waitlist.backend.repository.FeedbackRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminPerformanceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,8 +37,12 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
     @Autowired
     private RestaurantRepository restaurantRepository;
 
+    @Autowired
+    private AdminLocationAccessService adminLocationAccessService;
+
     @Override
     public WaitlistPerformanceResponse getWaitlistPerformance(Long locationId, String period, LocalDate startDate, LocalDate endDate) {
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
         // Use custom dates if provided, otherwise use period-based dates
         LocalDate to = endDate != null ? endDate : LocalDate.now();
         LocalDate from = startDate != null ? startDate : fromPeriod(period, to);
@@ -45,17 +50,9 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         Date toDate = Date.valueOf(to);
 
         // Current period metrics
-        long joins = (locationId == null)
-                ? waitlistRepository.countAllInDateRange(fromDate, toDate)
-                : waitlistRepository.countByRestaurantInDateRange(locationId, fromDate, toDate);
-
-        long seated = (locationId == null)
-                ? waitlistRepository.countByRestaurantAndStatusInDateRange(null, "SEATED", fromDate, toDate)
-                : waitlistRepository.countByRestaurantAndStatusInDateRange(locationId, "SEATED", fromDate, toDate);
-
-        Double avgWait = (locationId == null)
-                ? waitlistRepository.averageSeatedDurationMinutes(null, fromDate, toDate)
-                : waitlistRepository.averageSeatedDurationMinutes(locationId, fromDate, toDate);
+        long joins = sumJoins(restaurantIds, fromDate, toDate);
+        long seated = sumSeated(restaurantIds, fromDate, toDate);
+        Double avgWait = weightedAvgWait(restaurantIds, fromDate, toDate);
 
         // Previous period metrics for comparison
         LocalDate prevFrom = getPreviousPeriodStart(period, from, startDate);
@@ -63,20 +60,12 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         Date prevFromDate = Date.valueOf(prevFrom);
         Date prevToDate = Date.valueOf(prevTo);
 
-        long prevJoins = (locationId == null)
-                ? waitlistRepository.countAllInDateRange(prevFromDate, prevToDate)
-                : waitlistRepository.countByRestaurantInDateRange(locationId, prevFromDate, prevToDate);
+        long prevJoins = sumJoins(restaurantIds, prevFromDate, prevToDate);
+        long prevSeated = sumSeated(restaurantIds, prevFromDate, prevToDate);
+        Double prevAvgWait = weightedAvgWait(restaurantIds, prevFromDate, prevToDate);
 
-        long prevSeated = (locationId == null)
-                ? waitlistRepository.countByRestaurantAndStatusInDateRange(null, "SEATED", prevFromDate, prevToDate)
-                : waitlistRepository.countByRestaurantAndStatusInDateRange(locationId, "SEATED", prevFromDate, prevToDate);
-
-        Double prevAvgWait = (locationId == null)
-                ? waitlistRepository.averageSeatedDurationMinutes(null, prevFromDate, prevToDate)
-                : waitlistRepository.averageSeatedDurationMinutes(locationId, prevFromDate, prevToDate);
-
-        List<WaitlistPerformanceResponse.TrendPoint> trend = buildWaitlistTrend(locationId, from, to);
-        List<WaitlistPerformanceResponse.LeaderboardEntry> leaderboard = buildWaitlistLeaderboard(locationId, fromDate, toDate);
+        List<WaitlistPerformanceResponse.TrendPoint> trend = buildWaitlistTrend(restaurantIds, from, to);
+        List<WaitlistPerformanceResponse.LeaderboardEntry> leaderboard = buildWaitlistLeaderboard(restaurantIds, fromDate, toDate);
 
         return WaitlistPerformanceResponse.builder()
                 .summary(WaitlistPerformanceResponse.Summary.builder()
@@ -97,6 +86,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
 
     @Override
     public ReviewsPerformanceResponse getReviewsPerformance(Long locationId, String period, LocalDate startDate, LocalDate endDate) {
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
         // Use custom dates if provided, otherwise use period-based dates
         LocalDate to = endDate != null ? endDate : LocalDate.now();
         LocalDate from = startDate != null ? startDate : fromPeriod(period, to);
@@ -104,18 +94,9 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         Date toDate = Date.valueOf(to);
 
         // Current period reviews
-        long reviewsReceived = (locationId == null)
-                ? feedbackRepository.countByDateRange(fromDate, toDate)
-                : feedbackRepository.countByWaitlistRestaurantIdAndDateRange(locationId, fromDate, toDate);
-
-        Double avgRating = (locationId == null)
-                ? feedbackRepository.averageRatingByDateRange(fromDate, toDate)
-                : feedbackRepository.averageRatingByRestaurantIdAndDateRange(locationId, fromDate, toDate);
-
-        long replied = (locationId == null)
-                ? feedbackRepository.countRepliedByDateRange(fromDate, toDate)
-                : feedbackRepository.countRepliedByRestaurantIdAndDateRange(locationId, fromDate, toDate);
-
+        long reviewsReceived = sumReviews(restaurantIds, fromDate, toDate);
+        Double avgRating = weightedAvgRating(restaurantIds, fromDate, toDate);
+        long replied = sumReplied(restaurantIds, fromDate, toDate);
         long replyRate = reviewsReceived > 0 ? Math.round((replied * 100.0) / reviewsReceived) : 0L;
 
         // Previous period reviews
@@ -124,22 +105,13 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         Date prevFromDate = Date.valueOf(prevFrom);
         Date prevToDate = Date.valueOf(prevTo);
 
-        long prevReviewsReceived = (locationId == null)
-                ? feedbackRepository.countByDateRange(prevFromDate, prevToDate)
-                : feedbackRepository.countByWaitlistRestaurantIdAndDateRange(locationId, prevFromDate, prevToDate);
-
-        Double prevAvgRating = (locationId == null)
-                ? feedbackRepository.averageRatingByDateRange(prevFromDate, prevToDate)
-                : feedbackRepository.averageRatingByRestaurantIdAndDateRange(locationId, prevFromDate, prevToDate);
-
-        long prevReplied = (locationId == null)
-                ? feedbackRepository.countRepliedByDateRange(prevFromDate, prevToDate)
-                : feedbackRepository.countRepliedByRestaurantIdAndDateRange(locationId, prevFromDate, prevToDate);
-
+        long prevReviewsReceived = sumReviews(restaurantIds, prevFromDate, prevToDate);
+        Double prevAvgRating = weightedAvgRating(restaurantIds, prevFromDate, prevToDate);
+        long prevReplied = sumReplied(restaurantIds, prevFromDate, prevToDate);
         long prevReplyRate = prevReviewsReceived > 0 ? Math.round((prevReplied * 100.0) / prevReviewsReceived) : 0L;
 
-        List<ReviewsPerformanceResponse.TrendPoint> trend = buildReviewsTrend(locationId, from, to);
-        List<ReviewsPerformanceResponse.LeaderboardEntry> leaderboard = buildReviewsLeaderboard(locationId, fromDate, toDate);
+        List<ReviewsPerformanceResponse.TrendPoint> trend = buildReviewsTrend(restaurantIds, from, to);
+        List<ReviewsPerformanceResponse.LeaderboardEntry> leaderboard = buildReviewsLeaderboard(restaurantIds, fromDate, toDate);
 
         return ReviewsPerformanceResponse.builder()
                 .summary(ReviewsPerformanceResponse.Summary.builder()
@@ -160,6 +132,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
 
     @Override
     public RewardsOffersPerformanceResponse getRewardsOffersPerformance(Long locationId, String period, LocalDate startDate, LocalDate endDate, int page, int size) {
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
         // Use custom dates if provided, otherwise use period-based dates
         LocalDate to = endDate != null ? endDate : LocalDate.now();
         LocalDate from = startDate != null ? startDate : fromPeriod(period, to);
@@ -167,9 +140,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         Date toDate = Date.valueOf(to);
 
         // Current period campaigns/redemptions
-        List<com.restaurant.waitlist.backend.entity.Campaign> campaigns = (locationId == null)
-                ? campaignRepository.findAllByOrderByCreatedAtDesc()
-                : campaignRepository.findByRestaurantId(locationId);
+        List<com.restaurant.waitlist.backend.entity.Campaign> campaigns = campaignRepository.findByRestaurantIdIn(restaurantIds);
 
         long activeOffers = campaigns.stream().filter(c -> "ACTIVE".equalsIgnoreCase(c.getStatus())).count();
         long redemptions = campaigns.stream()
@@ -187,9 +158,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         Date prevFromDate = Date.valueOf(prevFrom);
         Date prevToDate = Date.valueOf(prevTo);
 
-        List<com.restaurant.waitlist.backend.entity.Campaign> prevCampaigns = (locationId == null)
-                ? campaignRepository.findAllByOrderByCreatedAtDesc()
-                : campaignRepository.findByRestaurantId(locationId);
+        List<com.restaurant.waitlist.backend.entity.Campaign> prevCampaigns = campaigns;
 
         long prevActiveOffers = prevCampaigns.stream().filter(c -> "ACTIVE".equalsIgnoreCase(c.getStatus())).count();
         long prevRedemptions = prevCampaigns.stream()
@@ -201,8 +170,8 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
                 .mapToLong(com.restaurant.waitlist.backend.entity.Campaign::getReach)
                 .sum();
 
-        List<RewardsOffersPerformanceResponse.TrendPoint> trend = buildRewardsTrend(locationId, from, to);
-        List<RewardsOffersPerformanceResponse.LeaderboardEntry> leaderboard = buildRewardsLeaderboard(locationId, campaigns);
+        List<RewardsOffersPerformanceResponse.TrendPoint> trend = buildRewardsTrend(restaurantIds, from, to);
+        List<RewardsOffersPerformanceResponse.LeaderboardEntry> leaderboard = buildRewardsLeaderboard(campaigns);
 
         return RewardsOffersPerformanceResponse.builder()
                 .summary(RewardsOffersPerformanceResponse.Summary.builder()
@@ -277,10 +246,54 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         }
     }
 
-    private List<WaitlistPerformanceResponse.TrendPoint> buildWaitlistTrend(Long locationId, LocalDate from, LocalDate to) {
+    private long sumJoins(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        return restaurantIds.stream().mapToLong(id -> waitlistRepository.countByRestaurantInDateRange(id, fromDate, toDate)).sum();
+    }
+
+    private long sumSeated(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        return restaurantIds.stream().mapToLong(id -> waitlistRepository.countByRestaurantAndStatusInDateRange(id, "SEATED", fromDate, toDate)).sum();
+    }
+
+    private Double weightedAvgWait(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        long totalWeight = 0;
+        double totalSum = 0;
+        for (Long id : restaurantIds) {
+            long weight = waitlistRepository.countByRestaurantAndStatusInDateRange(id, "SEATED", fromDate, toDate);
+            Double avg = waitlistRepository.averageSeatedDurationMinutes(id, fromDate, toDate);
+            if (weight > 0 && avg != null) {
+                totalSum += avg * weight;
+                totalWeight += weight;
+            }
+        }
+        return totalWeight > 0 ? totalSum / totalWeight : 0.0;
+    }
+
+    private long sumReviews(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        return restaurantIds.stream().mapToLong(id -> feedbackRepository.countByWaitlistRestaurantIdAndDateRange(id, fromDate, toDate)).sum();
+    }
+
+    private long sumReplied(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        return restaurantIds.stream().mapToLong(id -> feedbackRepository.countRepliedByRestaurantIdAndDateRange(id, fromDate, toDate)).sum();
+    }
+
+    private Double weightedAvgRating(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        long totalWeight = 0;
+        double totalSum = 0;
+        for (Long id : restaurantIds) {
+            long weight = feedbackRepository.countByWaitlistRestaurantIdAndDateRange(id, fromDate, toDate);
+            Double avg = feedbackRepository.averageRatingByRestaurantIdAndDateRange(id, fromDate, toDate);
+            if (weight > 0 && avg != null) {
+                totalSum += avg * weight;
+                totalWeight += weight;
+            }
+        }
+        return totalWeight > 0 ? totalSum / totalWeight : 0.0;
+    }
+
+    private List<WaitlistPerformanceResponse.TrendPoint> buildWaitlistTrend(List<Long> restaurantIds, LocalDate from, LocalDate to) {
         List<WaitlistPerformanceResponse.TrendPoint> trend = new ArrayList<>();
         Map<LocalDate, Long> values = new HashMap<>();
-        List<Object[]> rows = waitlistRepository.countJoinsByDay(locationId, Date.valueOf(from), Date.valueOf(to));
+        List<Object[]> rows = waitlistRepository.countJoinsByDayForRestaurantIds(restaurantIds, Date.valueOf(from), Date.valueOf(to));
         for (Object[] row : rows) {
             LocalDate date = normalizeDate(row[0]);
             Long count = row[1] != null ? ((Number) row[1]).longValue() : 0L;
@@ -299,10 +312,10 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         return trend;
     }
 
-    private List<ReviewsPerformanceResponse.TrendPoint> buildReviewsTrend(Long locationId, LocalDate from, LocalDate to) {
+    private List<ReviewsPerformanceResponse.TrendPoint> buildReviewsTrend(List<Long> restaurantIds, LocalDate from, LocalDate to) {
         List<ReviewsPerformanceResponse.TrendPoint> trend = new ArrayList<>();
         Map<LocalDate, Long> values = new HashMap<>();
-        List<Object[]> rows = feedbackRepository.countReviewsByDay(locationId, Date.valueOf(from), Date.valueOf(to));
+        List<Object[]> rows = feedbackRepository.countReviewsByDayForRestaurantIds(restaurantIds, Date.valueOf(from), Date.valueOf(to));
         for (Object[] row : rows) {
             LocalDate date = normalizeDate(row[0]);
             Long count = row[1] != null ? ((Number) row[1]).longValue() : 0L;
@@ -321,10 +334,10 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         return trend;
     }
 
-    private List<RewardsOffersPerformanceResponse.TrendPoint> buildRewardsTrend(Long locationId, LocalDate from, LocalDate to) {
+    private List<RewardsOffersPerformanceResponse.TrendPoint> buildRewardsTrend(List<Long> restaurantIds, LocalDate from, LocalDate to) {
         List<RewardsOffersPerformanceResponse.TrendPoint> trend = new ArrayList<>();
         Map<LocalDate, Long> values = new HashMap<>();
-        List<Object[]> rows = campaignRepository.aggregateRedemptionsByDay(locationId, Date.valueOf(from), Date.valueOf(to));
+        List<Object[]> rows = campaignRepository.aggregateRedemptionsByDayForRestaurantIds(restaurantIds, Date.valueOf(from), Date.valueOf(to));
         for (Object[] row : rows) {
             LocalDate date = normalizeDate(row[0]);
             Long count = row[1] != null ? ((Number) row[1]).longValue() : 0L;
@@ -343,11 +356,21 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         return trend;
     }
 
-    private List<WaitlistPerformanceResponse.LeaderboardEntry> buildWaitlistLeaderboard(Long locationId, Date fromDate, Date toDate) {
+    private List<WaitlistPerformanceResponse.LeaderboardEntry> buildWaitlistLeaderboard(List<Long> restaurantIds, Date fromDate, Date toDate) {
         List<WaitlistPerformanceResponse.LeaderboardEntry> entries = new ArrayList<>();
-        List<Object[]> rows = waitlistRepository.topRestaurantsByJoins(fromDate, toDate, 10);
-        if (rows == null || rows.isEmpty()) {
-            if (locationId != null) {
+        List<Object[]> rows = new ArrayList<>();
+        for (Long id : restaurantIds) {
+            rows.addAll(waitlistRepository.topRestaurantByJoinsForLocation(id, fromDate, toDate, 1));
+        }
+        rows.sort((a, b) -> Long.compare(
+                b[2] != null ? ((Number) b[2]).longValue() : 0L,
+                a[2] != null ? ((Number) a[2]).longValue() : 0L));
+        if (rows.size() > 10) {
+            rows = rows.subList(0, 10);
+        }
+        if (rows.isEmpty()) {
+            if (restaurantIds.size() == 1) {
+                Long locationId = restaurantIds.get(0);
                 Restaurant restaurant = restaurantRepository.findById(locationId).orElse(null);
                 if (restaurant != null) {
                     Double rating = feedbackRepository.averageRatingByRestaurantId(locationId);
@@ -376,7 +399,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
                     .filter(c -> c.getRedemptions() != null)
                     .mapToLong(com.restaurant.waitlist.backend.entity.Campaign::getRedemptions)
                     .sum()) : 0L;
-            
+
             entries.add(WaitlistPerformanceResponse.LeaderboardEntry.builder()
                     .rank(rank++)
                     .location(name)
@@ -389,11 +412,9 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         return entries;
     }
 
-    private List<ReviewsPerformanceResponse.LeaderboardEntry> buildReviewsLeaderboard(Long locationId, Date fromDate, Date toDate) {
+    private List<ReviewsPerformanceResponse.LeaderboardEntry> buildReviewsLeaderboard(List<Long> restaurantIds, Date fromDate, Date toDate) {
         List<ReviewsPerformanceResponse.LeaderboardEntry> entries = new ArrayList<>();
-        List<Restaurant> restaurants = locationId != null
-                ? List.of(restaurantRepository.findById(locationId).orElse(null))
-                : restaurantRepository.findAll();
+        List<Restaurant> restaurants = restaurantRepository.findAllById(restaurantIds);
 
         for (Restaurant restaurant : restaurants) {
             if (restaurant == null) continue;
@@ -419,7 +440,7 @@ public class AdminPerformanceServiceImpl implements AdminPerformanceService {
         return rankedEntries;
     }
 
-    private List<RewardsOffersPerformanceResponse.LeaderboardEntry> buildRewardsLeaderboard(Long locationId, List<com.restaurant.waitlist.backend.entity.Campaign> campaigns) {
+    private List<RewardsOffersPerformanceResponse.LeaderboardEntry> buildRewardsLeaderboard(List<com.restaurant.waitlist.backend.entity.Campaign> campaigns) {
         List<RewardsOffersPerformanceResponse.LeaderboardEntry> entries = new ArrayList<>();
         Map<Long, RewardsOffersPerformanceResponse.LeaderboardEntry> byRestaurant = new HashMap<>();
 

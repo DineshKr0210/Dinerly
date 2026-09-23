@@ -11,6 +11,7 @@ import com.restaurant.waitlist.backend.repository.FeedbackRepository;
 import com.restaurant.waitlist.backend.repository.CampaignRepository;
 import com.restaurant.waitlist.backend.repository.RedemptionRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminReportService;
 import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,10 +40,14 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final RestaurantRepository restaurantRepository;
     private final ReportRepository reportRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     @Transactional
     public ReportResponse generateReport(String type, Long locationId, String period, LocalDate startDate, LocalDate endDate) throws Exception {
+        if (locationId != null) {
+            adminLocationAccessService.assertAccess(locationId);
+        }
         ReportType reportType = ReportType.fromValue(type);
         String normalizedType = reportType.getValue();
         LocalDate to = endDate != null ? endDate : LocalDate.now();
@@ -87,17 +92,20 @@ public class AdminReportServiceImpl implements AdminReportService {
             reviewCount = feedbackRepository.countByWaitlistRestaurantIdAndDateRange(locationId, fromDate, toDate);
             totalUniqueGuests = waitlistRepository.aggregateCustomers(locationId, fromDate, toDate).stream().mapToLong(c -> 1L).sum();
         } else {
-            waitlistJoins = waitlistRepository.countAllInDateRange(fromDate, toDate);
-            seatedCount = waitlistRepository.countByRestaurantAndStatusInDateRange(null, "SEATED", fromDate, toDate);
-            avgWaitTime = waitlistRepository.averageSeatedDurationMinutes(null, fromDate, toDate);
-            redemptionCount = redemptionRepository.countRedemptionsByDateRange(
-                    from.atStartOfDay(),
-                    to.plusDays(1).atStartOfDay().minusNanos(1)
-            );
-            activeOfferCount = campaignRepository.countActiveCampaigns();
-            avgRating = feedbackRepository.averageRatingByDateRange(fromDate, toDate);
-            reviewCount = feedbackRepository.countByDateRange(fromDate, toDate);
-            totalUniqueGuests = waitlistRepository.aggregateCustomers(null, fromDate, toDate).stream().mapToLong(c -> 1L).sum();
+            // "overall" (and any other non-location-scoped report) covers the
+            // reporting admin's whole franchise group, never every restaurant
+            // in the system.
+            List<Long> restaurantIds = adminLocationAccessService.getAccessibleRestaurantIds();
+            waitlistJoins = restaurantIds.stream().mapToLong(id -> waitlistRepository.countByRestaurantInDateRange(id, fromDate, toDate)).sum();
+            seatedCount = restaurantIds.stream().mapToLong(id -> waitlistRepository.countByRestaurantAndStatusInDateRange(id, "SEATED", fromDate, toDate)).sum();
+            avgWaitTime = weightedAverageSeatedDuration(restaurantIds, fromDate, toDate);
+            redemptionCount = restaurantIds.stream()
+                    .mapToLong(id -> redemptionRepository.countRedemptionsByRestaurantAndDateRange(id, from.atStartOfDay(), to.plusDays(1).atStartOfDay().minusNanos(1)))
+                    .sum();
+            activeOfferCount = restaurantIds.stream().mapToLong(campaignRepository::countActiveCampaignsByRestaurant).sum();
+            avgRating = weightedAverageRating(restaurantIds, fromDate, toDate);
+            reviewCount = restaurantIds.stream().mapToLong(id -> feedbackRepository.countByWaitlistRestaurantIdAndDateRange(id, fromDate, toDate)).sum();
+            totalUniqueGuests = waitlistRepository.aggregateCustomersByRestaurantIds(restaurantIds, fromDate, toDate).size();
         }
 
         if (avgRating == null) avgRating = 0.0;
@@ -144,7 +152,9 @@ public class AdminReportServiceImpl implements AdminReportService {
 
         csvContent.append("GUEST SEGMENT DATA\n");
         csvContent.append("Guest,Visits,Contact,Locations\n");
-        java.util.List<com.restaurant.waitlist.backend.repository.CustomerAggregation> customers = waitlistRepository.aggregateCustomers(locationId, fromDate, toDate);
+        java.util.List<com.restaurant.waitlist.backend.repository.CustomerAggregation> customers = "location".equals(normalizedType)
+                ? waitlistRepository.aggregateCustomers(locationId, fromDate, toDate)
+                : waitlistRepository.aggregateCustomersByRestaurantIds(adminLocationAccessService.getAccessibleRestaurantIds(), fromDate, toDate);
         if (customers != null && !customers.isEmpty()) {
             customers.stream().limit(10).forEach(customer -> {
                 csvContent.append(customer.getGuest()).append(",");
@@ -163,7 +173,15 @@ public class AdminReportServiceImpl implements AdminReportService {
         if ("location".equals(normalizedType)) {
             topLocations.add(new Object[] { locationId, locationName, waitlistJoins });
         } else {
-            topLocations.addAll(waitlistRepository.topRestaurantsByJoins(fromDate, toDate, 10));
+            for (Long id : adminLocationAccessService.getAccessibleRestaurantIds()) {
+                topLocations.addAll(waitlistRepository.topRestaurantByJoinsForLocation(id, fromDate, toDate, 1));
+            }
+            topLocations.sort((a, b) -> Long.compare(
+                    b[2] != null ? ((Number) b[2]).longValue() : 0L,
+                    a[2] != null ? ((Number) a[2]).longValue() : 0L));
+            if (topLocations.size() > 10) {
+                topLocations = topLocations.subList(0, 10);
+            }
         }
         if (!topLocations.isEmpty()) {
             for (Object[] row : topLocations) {
@@ -196,6 +214,7 @@ public class AdminReportServiceImpl implements AdminReportService {
                 .filePath(file.getAbsolutePath())
                 .type(normalizedType)
                 .locationId("location".equals(normalizedType) ? locationId : null)
+                .generatedByRestaurantId(adminLocationAccessService.getCurrentAdminRestaurantId())
                 .period(period)
                 .build();
         ReportRecord saved = reportRepository.save(rec);
@@ -221,7 +240,8 @@ public class AdminReportServiceImpl implements AdminReportService {
 
     @Override
     public Page<ReportResponse> listReports(Pageable pageable) {
-        Page<ReportRecord> page = reportRepository.findAll(pageable);
+        List<Long> restaurantIds = adminLocationAccessService.getAccessibleRestaurantIds();
+        Page<ReportRecord> page = reportRepository.findByGeneratedByRestaurantIdIn(restaurantIds, pageable);
         List<ReportResponse> items = page.getContent().stream().map(r -> {
             String scope = "overall".equals(r.getType()) ? "All locations" : (r.getLocationId() != null ? "Location " + r.getLocationId() : "All locations");
             return ReportResponse.builder()
@@ -247,6 +267,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     public byte[] downloadReport(Long reportId) throws Exception {
         ReportRecord r = reportRepository.findById(reportId).orElseThrow(() -> new IllegalArgumentException("Report not found"));
+        adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
         File f = new File(r.getFilePath());
 
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
@@ -260,6 +281,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     public ReportResponse getReportMetadata(Long reportId) throws Exception {
         ReportRecord r = reportRepository.findById(reportId).orElseThrow(() -> new IllegalArgumentException("Report not found"));
+        adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
         String scope = "overall".equals(r.getType()) ? "All locations" : (r.getLocationId() != null ? "Location " + r.getLocationId() : "All locations");
         return ReportResponse.builder()
             .id(r.getId())
@@ -275,7 +297,8 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     public byte[] exportReportAsExcel(Long reportId) throws Exception {
         ReportRecord r = reportRepository.findById(reportId).orElseThrow(() -> new RuntimeException("Report not found"));
-        
+        adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
+
         // Placeholder - Excel export not in requirements
         // In production, use POI (Apache POI) to generate real XLSX files
         String excelContent = "Report ID,Type,Location,Period,Generated\n";
@@ -293,7 +316,8 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     public byte[] exportReportAsPdf(Long reportId) throws Exception {
         ReportRecord r = reportRepository.findById(reportId).orElseThrow(() -> new RuntimeException("Report not found"));
-        
+        adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
+
         // Placeholder - PDF export not in requirements
         // In production, use iText or similar to generate real PDF files
         String pdfContent = "PDF Report\nReport ID: " + r.getId() + "\nType: " + r.getType() + "\nPeriod: " + r.getPeriod();
@@ -310,7 +334,8 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     public byte[] exportReportCsv(Long reportId) throws Exception {
         ReportRecord r = reportRepository.findById(reportId).orElseThrow(() -> new RuntimeException("Report not found"));
-        
+        adminLocationAccessService.assertAccess(r.getGeneratedByRestaurantId());
+
         String csvContent = "metric,value\n";
         csvContent += "Report ID," + r.getId() + "\n";
         csvContent += "Type," + r.getType() + "\n";
@@ -329,6 +354,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     @Transactional
     public java.util.Map<String, Object> scheduleReport(com.restaurant.waitlist.backend.dto.request.admin.ReportScheduleRequest request) {
+        adminLocationAccessService.assertAccess(request.getLocationId());
         // Create scheduled report record
         java.util.Map<String, Object> scheduled = new java.util.HashMap<>();
         scheduled.put("id", System.currentTimeMillis());
@@ -406,6 +432,34 @@ public class AdminReportServiceImpl implements AdminReportService {
             .build());
         
         return template;
+    }
+
+    private Double weightedAverageSeatedDuration(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        long totalWeight = 0;
+        double totalSum = 0;
+        for (Long id : restaurantIds) {
+            long weight = waitlistRepository.countByRestaurantAndStatusInDateRange(id, "SEATED", fromDate, toDate);
+            Double avg = waitlistRepository.averageSeatedDurationMinutes(id, fromDate, toDate);
+            if (weight > 0 && avg != null) {
+                totalSum += avg * weight;
+                totalWeight += weight;
+            }
+        }
+        return totalWeight > 0 ? totalSum / totalWeight : 0.0;
+    }
+
+    private Double weightedAverageRating(List<Long> restaurantIds, Date fromDate, Date toDate) {
+        long totalWeight = 0;
+        double totalSum = 0;
+        for (Long id : restaurantIds) {
+            long weight = feedbackRepository.countByWaitlistRestaurantIdAndDateRange(id, fromDate, toDate);
+            Double avg = feedbackRepository.averageRatingByRestaurantIdAndDateRange(id, fromDate, toDate);
+            if (weight > 0 && avg != null) {
+                totalSum += avg * weight;
+                totalWeight += weight;
+            }
+        }
+        return totalWeight > 0 ? totalSum / totalWeight : 0.0;
     }
 
     /**

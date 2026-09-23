@@ -8,6 +8,7 @@ import com.restaurant.waitlist.backend.repository.RedemptionRepository;
 import com.restaurant.waitlist.backend.repository.ReportRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.dto.response.admin.ReportResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,11 +19,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +52,9 @@ class AdminReportServiceImplTest {
     @Mock
     private AuditLogRepository auditLogRepository;
 
+    @Mock
+    private AdminLocationAccessService adminLocationAccessService;
+
     private AdminReportServiceImpl service;
 
     @BeforeEach
@@ -61,20 +66,22 @@ class AdminReportServiceImplTest {
                 redemptionRepository,
                 restaurantRepository,
                 reportRepository,
-                auditLogRepository
+                auditLogRepository,
+                adminLocationAccessService
         );
     }
 
     @Test
-    void generateReport_overallWithoutDates_shouldUseNullRestaurantIdForGlobalCounts() throws Exception {
-        when(waitlistRepository.countAllInDateRange(any(Date.class), any(Date.class))).thenReturn(229L);
-        when(waitlistRepository.countByRestaurantAndStatusInDateRange(isNull(), any(), any(Date.class), any(Date.class))).thenReturn(52L);
-        when(waitlistRepository.averageSeatedDurationMinutes(isNull(), any(Date.class), any(Date.class))).thenReturn(99.94);
-        when(waitlistRepository.aggregateCustomers(isNull(), any(Date.class), any(Date.class))).thenReturn(Collections.emptyList());
-        when(redemptionRepository.countRedemptionsByDateRange(any(), any())).thenReturn(82L);
-        when(campaignRepository.countActiveCampaigns()).thenReturn(13L);
-        when(feedbackRepository.averageRatingByDateRange(any(Date.class), any(Date.class))).thenReturn(0.0);
-        when(feedbackRepository.countByDateRange(any(Date.class), any(Date.class))).thenReturn(0L);
+    void generateReport_overallWithoutDates_shouldScopeCountsToAdminsOwnRestaurants() throws Exception {
+        when(adminLocationAccessService.getAccessibleRestaurantIds()).thenReturn(List.of(1L));
+        when(waitlistRepository.countByRestaurantInDateRange(eq(1L), any(Date.class), any(Date.class))).thenReturn(229L);
+        when(waitlistRepository.countByRestaurantAndStatusInDateRange(eq(1L), any(), any(Date.class), any(Date.class))).thenReturn(52L);
+        when(waitlistRepository.averageSeatedDurationMinutes(eq(1L), any(Date.class), any(Date.class))).thenReturn(99.94);
+        when(waitlistRepository.aggregateCustomersByRestaurantIds(eq(List.of(1L)), any(Date.class), any(Date.class))).thenReturn(Collections.emptyList());
+        when(redemptionRepository.countRedemptionsByRestaurantAndDateRange(eq(1L), any(), any())).thenReturn(82L);
+        when(campaignRepository.countActiveCampaignsByRestaurant(1L)).thenReturn(13L);
+        when(feedbackRepository.averageRatingByRestaurantIdAndDateRange(eq(1L), any(Date.class), any(Date.class))).thenReturn(0.0);
+        when(feedbackRepository.countByWaitlistRestaurantIdAndDateRange(eq(1L), any(Date.class), any(Date.class))).thenReturn(0L);
         when(reportRepository.save(any(ReportRecord.class))).thenAnswer(invocation -> {
             ReportRecord record = invocation.getArgument(0);
             record.setId(1L);
@@ -86,6 +93,7 @@ class AdminReportServiceImplTest {
 
         assertNotNull(response);
         assertEquals("overall", response.getType());
-        verify(waitlistRepository).countByRestaurantAndStatusInDateRange(isNull(), any(), any(Date.class), any(Date.class));
+        verify(waitlistRepository, org.mockito.Mockito.atLeastOnce())
+                .countByRestaurantAndStatusInDateRange(eq(1L), any(), any(Date.class), any(Date.class));
     }
 }

@@ -7,6 +7,7 @@ import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.repository.AuditLogRepository;
 import com.restaurant.waitlist.backend.repository.OfferRepository;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminOfferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -24,10 +26,12 @@ public class AdminOfferServiceImpl implements AdminOfferService {
     private final OfferRepository offerRepository;
     private final RestaurantRepository restaurantRepository;
     private final AuditLogRepository auditLogRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     @Transactional
     public OfferResponse createOffer(OfferRequest request) {
+        adminLocationAccessService.assertAccess(request.getLocationId());
         Restaurant r = restaurantRepository.findById(request.getLocationId())
                 .orElseThrow(() -> new IllegalArgumentException("Location not found"));
         if (request.getEndDate().isBefore(request.getStartDate())) {
@@ -58,6 +62,8 @@ public class AdminOfferServiceImpl implements AdminOfferService {
     @Transactional
     public OfferResponse updateOffer(Long offerId, OfferRequest request) {
         Offer o = offerRepository.findById(offerId).orElseThrow(() -> new IllegalArgumentException("Offer not found"));
+        adminLocationAccessService.assertAccess(o.getRestaurant().getId());
+        adminLocationAccessService.assertAccess(request.getLocationId());
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new IllegalArgumentException("startDate must be <= endDate");
         }
@@ -87,6 +93,7 @@ public class AdminOfferServiceImpl implements AdminOfferService {
     public void deleteOffer(Long offerId) {
         Offer o = offerRepository.findById(offerId).orElseThrow(() -> new IllegalArgumentException("Offer not found"));
         Long rid = o.getRestaurant().getId();
+        adminLocationAccessService.assertAccess(rid);
         offerRepository.delete(o);
         auditLogRepository.save(com.restaurant.waitlist.backend.entity.AuditLog.builder()
                 .restaurantId(rid)
@@ -116,20 +123,23 @@ public class AdminOfferServiceImpl implements AdminOfferService {
 
     @Override
     public Page<OfferResponse> listOffers(Long locationId, String status, String category, Pageable pageable) {
-        Page<Offer> page = offerRepository.findFiltered(locationId, status, null, null, pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+        Page<Offer> page = offerRepository.findFilteredByRestaurantIds(restaurantIds, status, null, null, pageable);
         return page.map(this::map);
     }
 
     @Override
     public OfferResponse getOfferById(Long offerId) {
-        return offerRepository.findById(offerId).map(this::map)
-            .orElseThrow(() -> new IllegalArgumentException("Offer not found"));
+        Offer offer = offerRepository.findById(offerId).orElseThrow(() -> new IllegalArgumentException("Offer not found"));
+        adminLocationAccessService.assertAccess(offer.getRestaurant().getId());
+        return map(offer);
     }
 
     @Override
     public OfferResponse toggleOfferStatus(Long offerId) {
         Offer offer = offerRepository.findById(offerId)
             .orElseThrow(() -> new IllegalArgumentException("Offer not found"));
+        adminLocationAccessService.assertAccess(offer.getRestaurant().getId());
         offer.setStatus("INACTIVE".equals(offer.getStatus()) ? "ACTIVE" : "INACTIVE");
         offer = offerRepository.save(offer);
         return map(offer);
@@ -139,6 +149,7 @@ public class AdminOfferServiceImpl implements AdminOfferService {
     public OfferResponse duplicateOffer(Long offerId, String newName) {
         Offer original = offerRepository.findById(offerId)
             .orElseThrow(() -> new IllegalArgumentException("Offer not found"));
+        adminLocationAccessService.assertAccess(original.getRestaurant().getId());
         Offer duplicate = Offer.builder()
             .name(newName != null ? newName : original.getName() + " (Copy)")
             .restaurant(original.getRestaurant())
@@ -169,6 +180,7 @@ public class AdminOfferServiceImpl implements AdminOfferService {
     public OfferResponse archiveOffer(Long offerId) {
         Offer offer = offerRepository.findById(offerId)
             .orElseThrow(() -> new IllegalArgumentException("Offer not found"));
+        adminLocationAccessService.assertAccess(offer.getRestaurant().getId());
         offer.setStatus("ARCHIVED");
         offer = offerRepository.save(offer);
         return map(offer);
@@ -186,35 +198,41 @@ public class AdminOfferServiceImpl implements AdminOfferService {
 
     @Override
     public java.util.List<String> getAvailableCategories(Long locationId) {
+        adminLocationAccessService.assertAccess(locationId);
         return java.util.Arrays.asList("food", "beverage", "dessert", "special");
     }
 
     @Override
     public Page<OfferResponse> getOffersByCategory(String category, Long locationId, Pageable pageable) {
-        Page<Offer> page = offerRepository.findFiltered(locationId, null, null, null, pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+        Page<Offer> page = offerRepository.findFilteredByRestaurantIds(restaurantIds, null, null, null, pageable);
         return page.map(this::map);
     }
 
     @Override
     public Page<OfferResponse> getOfferExpiringSoon(Long locationId, int days, Pageable pageable) {
-        Page<Offer> page = offerRepository.findFiltered(locationId, "ACTIVE", null, null, pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+        Page<Offer> page = offerRepository.findFilteredByRestaurantIds(restaurantIds, "ACTIVE", null, null, pageable);
         return page.map(this::map);
     }
 
     @Override
     public Page<OfferResponse> getOffersWithLowInventory(Long locationId, int threshold, Pageable pageable) {
-        Page<Offer> page = offerRepository.findFiltered(locationId, "ACTIVE", null, null, pageable);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(locationId);
+        Page<Offer> page = offerRepository.findFilteredByRestaurantIds(restaurantIds, "ACTIVE", null, null, pageable);
         return page.map(this::map);
     }
 
     @Override
     public void exportOffersCsv(Long locationId, String status, java.time.LocalDateTime from, java.time.LocalDateTime to, java.io.OutputStream out) throws Exception {
+        adminLocationAccessService.assertAccess(locationId);
         // Stub implementation for CSV export
         out.write("id,name,status\n".getBytes());
     }
 
     @Override
     public java.util.Map<String, Object> getStatistics(Long locationId) {
+        adminLocationAccessService.assertAccess(locationId);
         return java.util.Map.of(
             "totalOffers", 0,
             "activeOffers", 0,

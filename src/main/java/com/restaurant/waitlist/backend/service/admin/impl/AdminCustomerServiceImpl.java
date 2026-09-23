@@ -4,6 +4,7 @@ import com.restaurant.waitlist.backend.dto.response.admin.CustomerResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.CustomerSummaryResponse;
 import com.restaurant.waitlist.backend.repository.CustomerAggregation;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminCustomerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,10 +23,12 @@ public class AdminCustomerServiceImpl implements AdminCustomerService {
 
     private final WaitlistRepository waitlistRepository;
     private final com.restaurant.waitlist.backend.repository.AuditLogRepository auditLogRepository;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
     public CustomerSummaryResponse getCustomerSummary(Long restaurantId) {
-        List<CustomerAggregation> currentCustomers = waitlistRepository.aggregateCustomers(restaurantId);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        List<CustomerAggregation> currentCustomers = waitlistRepository.aggregateCustomersByRestaurantIds(restaurantIds);
         
         // Calculate this month and last month date ranges
         LocalDate today = LocalDate.now();
@@ -99,7 +102,8 @@ public class AdminCustomerServiceImpl implements AdminCustomerService {
 
     @Override
     public Page<CustomerResponse> listCustomers(Long restaurantId, Pageable pageable) {
-        List<CustomerAggregation> agg = waitlistRepository.aggregateCustomers(restaurantId);
+        List<Long> restaurantIds = adminLocationAccessService.resolveRestaurantIds(restaurantId);
+        List<CustomerAggregation> agg = waitlistRepository.aggregateCustomersByRestaurantIds(restaurantIds);
         
         List<CustomerResponse> items = agg.stream().map(a -> CustomerResponse.builder()
                 .guest(a.getGuest())

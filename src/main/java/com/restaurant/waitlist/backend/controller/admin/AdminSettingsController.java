@@ -14,6 +14,7 @@ import com.restaurant.waitlist.backend.dto.response.HolidayHoursResponse;
 import com.restaurant.waitlist.backend.dto.response.RestaurantSettingsResponse;
 import com.restaurant.waitlist.backend.dto.response.SettingsProfileResponse;
 import com.restaurant.waitlist.backend.dto.response.WaitlistSettingsResponse;
+import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.SettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,12 +30,14 @@ import java.util.Map;
 public class AdminSettingsController {
 
     private final SettingsService settingsService;
+    private final AdminLocationAccessService adminLocationAccessService;
 
     @GetMapping("/{restaurantId}/profile")
     public ResponseEntity<ApiResponse<SettingsProfileResponse>> getProfileSettings(
             @PathVariable Long restaurantId,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             SettingsProfileResponse response = settingsService.getProfileSettings(restaurantId, year, month);
             return ResponseEntity.ok(ApiResponse.success("Profile settings retrieved", response));
@@ -47,6 +50,7 @@ public class AdminSettingsController {
     public ResponseEntity<ApiResponse<SettingsProfileResponse>> updateProfileSettings(
             @PathVariable Long restaurantId,
             @RequestBody UpdateSettingsProfileRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             SettingsProfileResponse response = settingsService.updateProfileSettings(restaurantId, request);
             return ResponseEntity.ok(ApiResponse.success("Profile settings updated", response));
@@ -57,6 +61,7 @@ public class AdminSettingsController {
 
     @GetMapping("/{restaurantId}/notifications")
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> getNotificationSettings(@PathVariable Long restaurantId) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             RestaurantSettingsResponse response = settingsService.getRestaurantSettings(restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Notification settings retrieved", response));
@@ -69,6 +74,7 @@ public class AdminSettingsController {
     public ResponseEntity<ApiResponse<RestaurantSettingsResponse>> updateNotificationSettings(
             @PathVariable Long restaurantId,
             @RequestBody UpdateRestaurantSettingsRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             RestaurantSettingsResponse response = settingsService.updateRestaurantSettings(restaurantId, request);
             return ResponseEntity.ok(ApiResponse.success("Notification settings updated", response));
@@ -79,6 +85,7 @@ public class AdminSettingsController {
 
     @GetMapping("/{restaurantId}/waitlist-settings")
     public ResponseEntity<ApiResponse<WaitlistSettingsResponse>> getWaitlistSettings(@PathVariable Long restaurantId) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             WaitlistSettingsResponse response = settingsService.getWaitlistSettings(restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Waitlist settings retrieved", response));
@@ -91,6 +98,7 @@ public class AdminSettingsController {
     public ResponseEntity<ApiResponse<WaitlistSettingsResponse>> updateWaitlistSettings(
             @PathVariable Long restaurantId,
             @RequestBody UpdateWaitlistSettingsRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             WaitlistSettingsResponse response = settingsService.updateWaitlistSettings(restaurantId, request);
             return ResponseEntity.ok(ApiResponse.success("Waitlist settings updated", response));
@@ -101,6 +109,7 @@ public class AdminSettingsController {
 
     @GetMapping("/{restaurantId}/advanced")
     public ResponseEntity<ApiResponse<AdvancedSettingsResponse>> getAdvancedSettings(@PathVariable Long restaurantId) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             AdvancedSettingsResponse response = settingsService.getAdvancedSettings(restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Advanced settings retrieved", response));
@@ -113,6 +122,7 @@ public class AdminSettingsController {
     public ResponseEntity<ApiResponse<AdvancedSettingsResponse>> updateAdvancedSettings(
             @PathVariable Long restaurantId,
             @RequestBody AdvancedSettingsRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             AdvancedSettingsResponse response = settingsService.updateAdvancedSettings(restaurantId, request);
             return ResponseEntity.ok(ApiResponse.success("Advanced settings updated", response));
@@ -123,6 +133,7 @@ public class AdminSettingsController {
 
     @GetMapping("/{restaurantId}/holiday-hours")
     public ResponseEntity<ApiResponse<HolidayHoursResponse>> getHolidayHours(@PathVariable Long restaurantId) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             HolidayHoursResponse response = settingsService.getHolidayHours(restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Holiday hours retrieved", response));
@@ -135,6 +146,7 @@ public class AdminSettingsController {
     public ResponseEntity<ApiResponse<HolidayHourResponse>> addHolidayHour(
             @PathVariable Long restaurantId,
             @RequestBody HolidayHourRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             HolidayHourResponse response = settingsService.addHolidayHour(restaurantId, request);
             return ResponseEntity.ok(ApiResponse.success("Holiday hour added", response));
@@ -148,6 +160,7 @@ public class AdminSettingsController {
             @PathVariable Long restaurantId,
             @PathVariable String holidayHourId,
             @RequestBody UpdateHolidayHourRequest request) {
+        adminLocationAccessService.assertAccess(restaurantId);
         try {
             HolidayHourResponse response = settingsService.updateHolidayHour(restaurantId, holidayHourId, request);
             return ResponseEntity.ok(ApiResponse.success("Holiday hour updated", response));

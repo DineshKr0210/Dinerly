@@ -116,6 +116,18 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
                                             @Param("fromDate") java.sql.Date fromDate,
                                             @Param("toDate") java.sql.Date toDate);
 
+    // Franchise-group scoped variant: an admin's "all my locations" view
+    // resolves to a restaurant id list rather than a truly global query.
+    @Query(value = "SELECT DATE(w.joined_at) AS day, COUNT(*) AS joins " +
+            "FROM waitlist w " +
+            "WHERE w.restaurant_id IN (:restaurantIds) " +
+            "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+            "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE)) " +
+            "GROUP BY DATE(w.joined_at) ORDER BY DATE(w.joined_at)", nativeQuery = true)
+    java.util.List<Object[]> countJoinsByDayForRestaurantIds(@Param("restaurantIds") List<Long> restaurantIds,
+                                            @Param("fromDate") java.sql.Date fromDate,
+                                            @Param("toDate") java.sql.Date toDate);
+
     @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
             "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
             "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
@@ -133,6 +145,32 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
     default java.util.List<CustomerAggregation> aggregateCustomers(Long restaurantId) {
         return aggregateCustomers(restaurantId, null, null);
     }
+
+    // Franchise-group scoped variant: an admin's "all my locations" view
+    // resolves to a restaurant id list rather than a truly global query.
+    @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
+            "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
+            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
+            "FROM waitlist w " +
+            "JOIN restaurants r ON w.restaurant_id = r.id " +
+            "WHERE w.restaurant_id IN (:restaurantIds) " +
+            "GROUP BY w.guest_name, w.guest_phone " +
+            "ORDER BY visits DESC", nativeQuery = true)
+    java.util.List<CustomerAggregation> aggregateCustomersByRestaurantIds(@Param("restaurantIds") List<Long> restaurantIds);
+
+    @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
+            "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
+            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
+            "FROM waitlist w " +
+            "JOIN restaurants r ON w.restaurant_id = r.id " +
+            "WHERE w.restaurant_id IN (:restaurantIds) " +
+            "AND (CAST(:fromDate AS DATE) IS NULL OR DATE(w.joined_at) >= CAST(:fromDate AS DATE)) " +
+            "AND (CAST(:toDate AS DATE) IS NULL OR DATE(w.joined_at) <= CAST(:toDate AS DATE)) " +
+            "GROUP BY w.guest_name, w.guest_phone " +
+            "ORDER BY visits DESC", nativeQuery = true)
+    java.util.List<CustomerAggregation> aggregateCustomersByRestaurantIds(@Param("restaurantIds") List<Long> restaurantIds,
+                                                                         @Param("fromDate") java.sql.Date fromDate,
+                                                                         @Param("toDate") java.sql.Date toDate);
 
        @Query("SELECT w FROM Waitlist w WHERE w.restaurant.id = :restaurantId " +
                "AND (:status IS NULL OR w.status = :status) " +
