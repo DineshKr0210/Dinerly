@@ -205,9 +205,14 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
         // never every restaurant in the system.
         List<Long> targetRestaurantIds = adminLocationAccessService.resolveRestaurantIds(c.getRestaurantId());
         List<com.restaurant.waitlist.backend.repository.CustomerAggregation> agg = waitlistRepository.aggregateCustomersByRestaurantIds(targetRestaurantIds);
-        
+
+        // Only send marketing SMS to guests who consented when joining the waitlist.
+        List<com.restaurant.waitlist.backend.repository.CustomerAggregation> consentingAgg = agg.stream()
+                .filter(a -> Boolean.TRUE.equals(a.getMarketingSmsConsent()))
+                .collect(Collectors.toList());
+
         // ✅ Use strategy pattern for audience filtering (replaces hardcoded if-else)
-        List<String> recipients = AudienceFilterResolver.resolve(c.getAudience(), agg);
+        List<String> recipients = AudienceFilterResolver.resolve(c.getAudience(), consentingAgg);
 
         // *** CONDITIONAL CODE GENERATION ***
         java.util.Map<String, String> phoneToCode = new java.util.HashMap<>();

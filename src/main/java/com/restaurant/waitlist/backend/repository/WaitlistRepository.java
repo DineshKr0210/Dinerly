@@ -133,7 +133,11 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
 
     @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
             "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
-            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
+            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations, " +
+            "(SELECT w2.marketing_sms_consent FROM waitlist w2 " +
+            "  WHERE w2.guest_name = w.guest_name AND w2.guest_phone = w.guest_phone " +
+            "  AND (:restaurantId IS NULL OR w2.restaurant_id = :restaurantId) " +
+            "  ORDER BY w2.joined_at DESC LIMIT 1) as marketingSmsConsent " +
             "FROM waitlist w " +
             "JOIN restaurants r ON w.restaurant_id = r.id " +
             "WHERE (:restaurantId IS NULL OR w.restaurant_id = :restaurantId) " +
@@ -153,7 +157,11 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
     // resolves to a restaurant id list rather than a truly global query.
     @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
             "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
-            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
+            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations, " +
+            "(SELECT w2.marketing_sms_consent FROM waitlist w2 " +
+            "  WHERE w2.guest_name = w.guest_name AND w2.guest_phone = w.guest_phone " +
+            "  AND w2.restaurant_id IN (:restaurantIds) " +
+            "  ORDER BY w2.joined_at DESC LIMIT 1) as marketingSmsConsent " +
             "FROM waitlist w " +
             "JOIN restaurants r ON w.restaurant_id = r.id " +
             "WHERE w.restaurant_id IN (:restaurantIds) " +
@@ -165,7 +173,11 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
     // rather than needing the full aggregation (e.g. for summary stats).
     @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
             "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
-            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
+            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations, " +
+            "(SELECT w2.marketing_sms_consent FROM waitlist w2 " +
+            "  WHERE w2.guest_name = w.guest_name AND w2.guest_phone = w.guest_phone " +
+            "  AND w2.restaurant_id IN (:restaurantIds) " +
+            "  ORDER BY w2.joined_at DESC LIMIT 1) as marketingSmsConsent " +
             "FROM waitlist w " +
             "JOIN restaurants r ON w.restaurant_id = r.id " +
             "WHERE w.restaurant_id IN (:restaurantIds) " +
@@ -178,7 +190,11 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
 
     @Query(value = "SELECT w.guest_name as guest, w.guest_phone as contact, COUNT(*) as visits, " +
             "MIN(DATE(w.joined_at)) as firstVisit, MAX(DATE(w.joined_at)) as lastVisit, " +
-            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations " +
+            "STRING_AGG(DISTINCT r.name, ', ' ORDER BY r.name) as locations, " +
+            "(SELECT w2.marketing_sms_consent FROM waitlist w2 " +
+            "  WHERE w2.guest_name = w.guest_name AND w2.guest_phone = w.guest_phone " +
+            "  AND w2.restaurant_id IN (:restaurantIds) " +
+            "  ORDER BY w2.joined_at DESC LIMIT 1) as marketingSmsConsent " +
             "FROM waitlist w " +
             "JOIN restaurants r ON w.restaurant_id = r.id " +
             "WHERE w.restaurant_id IN (:restaurantIds) " +

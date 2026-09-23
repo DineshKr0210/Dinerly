@@ -9,4 +9,5 @@ public interface CustomerAggregation {
     LocalDate getFirstVisit();
     LocalDate getLastVisit();
     String getLocations(); // comma-separated restaurant names
+    Boolean getMarketingSmsConsent(); // consent as of the customer's most recent waitlist join
 }

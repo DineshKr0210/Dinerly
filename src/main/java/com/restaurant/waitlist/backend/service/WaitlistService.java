@@ -83,6 +83,7 @@ public class WaitlistService {
                 .partySize(request.getPartySize())
                 .preference(request.getPreference())
                 .notes(request.getNotes())
+                .marketingSmsConsent(Boolean.TRUE.equals(request.getMarketingSmsConsent()))
                 .status(Waitlist.WaitlistStatus.PENDING)
                 .lastActiveStatus(Waitlist.WaitlistStatus.PENDING)
                 .build();

@@ -24,5 +24,11 @@ public class JoinWaitlistRequest {
     private String preference;
 
     private String notes;
+
+    /**
+     * Guest's consent to receive marketing SMS (offers, campaigns). Defaults
+     * to false (opted out) if not explicitly provided.
+     */
+    private Boolean marketingSmsConsent;
 }
 

@@ -39,6 +39,10 @@ public class Waitlist {
 
     private String notes;
 
+    @Column(name = "marketing_sms_consent", nullable = false)
+    @Builder.Default
+    private Boolean marketingSmsConsent = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

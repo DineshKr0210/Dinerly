@@ -18,6 +18,7 @@ public class WaitlistResponse {
     private Integer partySize;
     private String preference;
     private String notes;
+    private Boolean marketingSmsConsent;
     private Waitlist.WaitlistStatus status;
     private Integer position;
     private Integer estimatedWaitTime;
@@ -51,6 +52,7 @@ public class WaitlistResponse {
                 .partySize(waitlist.getPartySize())
                 .preference(waitlist.getPreference())
                 .notes(waitlist.getNotes())
+                .marketingSmsConsent(waitlist.getMarketingSmsConsent())
                 .status(waitlist.getStatus())
                 .position(waitlist.getPosition())
                 .estimatedWaitTime(waitlist.getEstimatedWaitTime())
