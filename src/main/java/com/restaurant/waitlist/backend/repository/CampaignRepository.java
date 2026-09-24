@@ -40,4 +40,9 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
     @org.springframework.data.jpa.repository.Query("SELECT COUNT(c) FROM Campaign c WHERE c.restaurantId = :restaurantId AND c.status = 'ACTIVE'")
     long countActiveCampaignsByRestaurant(Long restaurantId);
+
+    // Shared campaign coupon codes: looked up at POS validation time and
+    // checked for uniqueness before a campaign is published.
+    java.util.Optional<Campaign> findByRedemptionCode(String redemptionCode);
+    boolean existsByRedemptionCode(String redemptionCode);
 }

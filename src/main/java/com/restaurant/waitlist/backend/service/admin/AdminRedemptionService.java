@@ -18,8 +18,10 @@ public interface AdminRedemptionService {
     Page<RedemptionResponse> getByOffer(Long offerId, Pageable pageable);
     Page<RedemptionResponse> getByUser(Long userId, Pageable pageable);
     /**
-     * The code must belong to the given restaurant — a code generated at one
-     * location cannot be redeemed at another.
+     * A campaign scoped to a single restaurant can only be redeemed at that
+     * restaurant; a franchise-wide campaign can be redeemed at any of the
+     * admin's locations. The guest phone is required so the same shared code
+     * can be tracked per-guest and can't be redeemed twice by the same guest.
      */
-    Map<String, Object> validateAndCompleteCampaignCodeByCode(String code, Long restaurantId);
+    Map<String, Object> validateAndCompleteCampaignCodeByCode(String code, Long restaurantId, String guestPhone);
 }

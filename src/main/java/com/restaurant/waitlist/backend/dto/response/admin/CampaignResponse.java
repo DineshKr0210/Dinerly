@@ -25,8 +25,9 @@ public class CampaignResponse {
     private Integer sentCount;
     private Integer reach;
     private Integer redemptions;
-    private Integer codesGenerated; // Number of codes generated for this campaign
-    private Boolean hasRedemptionCode; // Whether this campaign uses redemption codes
+    private Integer codesGenerated; // 1 once the shared coupon code has been generated, 0 otherwise
+    private Boolean hasRedemptionCode; // Whether this campaign uses a redemption code
+    private String redemptionCode; // The shared coupon code sent to every recipient (e.g. "BROTPIZZA50")
     private BigDecimal revenueInfluenced;
     private LocalDateTime createdAt;
 }

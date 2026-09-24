@@ -62,6 +62,9 @@ public class Campaign {
     @Column(name = "has_redemption_code")
     private Boolean hasRedemptionCode = false; // true = generate codes, false = no codes
 
+    @Column(name = "redemption_code", length = 20)
+    private String redemptionCode; // Single shared coupon code sent to every recipient (e.g. "BROTPIZZA50")
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

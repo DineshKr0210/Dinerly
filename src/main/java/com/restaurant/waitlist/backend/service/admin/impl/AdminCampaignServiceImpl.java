@@ -4,8 +4,10 @@ import com.restaurant.waitlist.backend.dto.request.admin.CampaignRequest;
 import com.restaurant.waitlist.backend.dto.response.admin.CampaignResponse;
 import com.restaurant.waitlist.backend.dto.response.admin.MarketingSummaryResponse;
 import com.restaurant.waitlist.backend.entity.Campaign;
+import com.restaurant.waitlist.backend.entity.Restaurant;
 import com.restaurant.waitlist.backend.repository.CampaignRepository;
 import com.restaurant.waitlist.backend.repository.RedemptionRepository;
+import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import com.restaurant.waitlist.backend.service.SmsService;
 import com.restaurant.waitlist.backend.service.SmsTemplateService;
@@ -14,7 +16,6 @@ import com.restaurant.waitlist.backend.service.AuditLogService;
 import com.restaurant.waitlist.backend.service.admin.AdminCampaignService;
 import com.restaurant.waitlist.backend.service.audience.AudienceFilterResolver;
 import com.restaurant.waitlist.backend.util.RedemptionCodeGenerator;
-import com.restaurant.waitlist.backend.entity.Redemption;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,15 +42,22 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
     private final CampaignRepository campaignRepository;
     private final RedemptionRepository redemptionRepository;
     private final WaitlistRepository waitlistRepository;
+    private final RestaurantRepository restaurantRepository;
     private final SmsService smsService;
     private final SmsTemplateService smsTemplateService;
     private final AdminLocationAccessService adminLocationAccessService;
     private final AuditLogService auditLogService;
 
+    private static final Pattern REDEMPTION_CODE_PATTERN = Pattern.compile("^[A-Z0-9-]{3,20}$");
+
     @Override
     @Transactional
     public CampaignResponse createCampaign(CampaignRequest req) {
         adminLocationAccessService.assertAccess(req.getRestaurantId());
+        String customCode = normalizeAndValidateCode(req.getRedemptionCode());
+        if (customCode != null && campaignRepository.existsByRedemptionCode(customCode)) {
+            throw new IllegalArgumentException("Redemption code '" + customCode + "' is already in use");
+        }
         Campaign c = Campaign.builder()
                 .name(req.getName())
                 .channels(req.getChannel())
@@ -63,6 +72,7 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
                 .reach(0)
                 .redemptions(0)
                 .hasRedemptionCode(req.getHasRedemptionCode() != null ? req.getHasRedemptionCode() : false)
+                .redemptionCode(customCode)
                 .revenueInfluenced(null)
                 .build();
         Campaign saved = campaignRepository.save(c);
@@ -85,6 +95,13 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
         c.setScheduledAt(req.getScheduledAt());
         c.setEndDate(req.getEndDate());
         if (req.getHasRedemptionCode() != null) c.setHasRedemptionCode(req.getHasRedemptionCode());
+        if (req.getRedemptionCode() != null) {
+            String customCode = normalizeAndValidateCode(req.getRedemptionCode());
+            if (customCode != null && !customCode.equals(c.getRedemptionCode()) && campaignRepository.existsByRedemptionCode(customCode)) {
+                throw new IllegalArgumentException("Redemption code '" + customCode + "' is already in use");
+            }
+            c.setRedemptionCode(customCode);
+        }
         if (req.getScheduledAt() != null) c.setStatus("SCHEDULED");
         Campaign saved = campaignRepository.save(c);
         auditLogService.log(c.getRestaurantId() != null ? c.getRestaurantId() : 0L, "UPDATE_CAMPAIGN", "Campaign updated: " + saved.getName());
@@ -214,34 +231,13 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
         // ✅ Use strategy pattern for audience filtering (replaces hardcoded if-else)
         List<String> recipients = AudienceFilterResolver.resolve(c.getAudience(), consentingAgg);
 
-        // *** CONDITIONAL CODE GENERATION ***
-        java.util.Map<String, String> phoneToCode = new java.util.HashMap<>();
-        int codesGenerated = 0;
-        
-        if (Boolean.TRUE.equals(c.getHasRedemptionCode())) {
-            // ✅ OFFER CAMPAIGN: Generate codes for each recipient
-            LocalDateTime codeExpiresAt = LocalDateTime.now().plusHours(24); // 24-hour TTL
-            
-            for (String phone : recipients) {
-                try {
-                    // Generate unique 6-digit code
-                    String code;
-                    int attempts = 0;
-                    do {
-                        code = RedemptionCodeGenerator.generate();
-                        attempts++;
-                        if (attempts > 20) break; // Prevent infinite loop
-                    } while (redemptionRepository.existsByRedemptionCode(code));
-                    
-                    // Create redemption record with campaign_id FK
-                    // Use separate transaction to isolate redemption failures
-                    createCampaignRedemption(c, code, phone, codeExpiresAt, phoneToCode);
-                    codesGenerated++;
-                } catch (Exception ex) {
-                    // Log but continue with next recipient
-                    log.warn("Failed to create redemption for campaign {} phone {}: {}", c.getId(), phone, ex.getMessage());
-                }
-            }
+        // *** SHARED COUPON CODE: one code for the whole campaign, identical for every recipient ***
+        if (Boolean.TRUE.equals(c.getHasRedemptionCode()) && (c.getRedemptionCode() == null || c.getRedemptionCode().isBlank())) {
+            String restaurantName = c.getRestaurantId() != null
+                    ? restaurantRepository.findById(c.getRestaurantId()).map(Restaurant::getName).orElse("")
+                    : "";
+            String baseCode = RedemptionCodeGenerator.generateCampaignCode(restaurantName, c.getName());
+            c.setRedemptionCode(ensureUniqueCampaignCode(baseCode));
         }
 
         // ✅ DEDUPLICATE RECIPIENTS to prevent duplicate SMS to same phone number
@@ -263,10 +259,9 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
                     }
                 }
                 
-                // *** PERSONALIZE MESSAGE WITH CODE IF GENERATED ***
-                if (Boolean.TRUE.equals(c.getHasRedemptionCode()) && phoneToCode.containsKey(to)) {
-                    String code = phoneToCode.get(to);
-                    message = message + "\n\nUse code: " + code;
+                // *** APPEND THE SHARED COUPON CODE (identical for every recipient) ***
+                if (Boolean.TRUE.equals(c.getHasRedemptionCode()) && c.getRedemptionCode() != null) {
+                    message = message + "\n\nUse code: " + c.getRedemptionCode();
                 }
                 
                 if (message != null && !message.isBlank()) {
@@ -289,28 +284,34 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
         return toDto(c);
     }
 
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    private void createCampaignRedemption(Campaign c, String code, String phone, 
-                                         LocalDateTime codeExpiresAt, java.util.Map<String, String> phoneToCode) {
-        Redemption redemption = Redemption.builder()
-                .campaign(c)
-                .redemptionCode(code)
-                .guestPhone(phone)
-                .status(Redemption.RedemptionStatus.GENERATED)
-                .codeExpiresAt(codeExpiresAt)
-                .restaurantId(c.getRestaurantId())
-                .build();
-        
-        redemptionRepository.save(redemption);
-        phoneToCode.put(phone, code);
+    /**
+     * A generated code is derived from the campaign name/restaurant name, so a collision
+     * only happens when two campaigns would otherwise produce the identical code.
+     */
+    private String ensureUniqueCampaignCode(String baseCode) {
+        String code = baseCode;
+        int suffix = 2;
+        while (campaignRepository.existsByRedemptionCode(code) && suffix < 20) {
+            code = baseCode + suffix;
+            suffix++;
+        }
+        return code;
+    }
+
+    private String normalizeAndValidateCode(String rawCode) {
+        if (rawCode == null || rawCode.isBlank()) {
+            return null;
+        }
+        String normalized = rawCode.trim().toUpperCase(Locale.ROOT);
+        if (!REDEMPTION_CODE_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Redemption code must be 3-20 characters (letters, numbers, hyphens only)");
+        }
+        return normalized;
     }
 
     private CampaignResponse toDto(Campaign c) {
         long actualRedemptions = redemptionRepository.countByCampaignId(c.getId());
-        int codesGenerated = Boolean.TRUE.equals(c.getHasRedemptionCode()) 
-            ? redemptionRepository.countCodesGeneratedForCampaign(c.getId())
-            : 0;
-        
+
         String dateRangeDisplay = "";
         if (c.getScheduledAt() != null) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d, yyyy");
@@ -340,8 +341,9 @@ public class AdminCampaignServiceImpl implements AdminCampaignService {
                 .sentCount(c.getSentCount())
                 .reach(c.getReach())
                 .redemptions((int) actualRedemptions)
-                .codesGenerated(codesGenerated)
+                .codesGenerated(c.getRedemptionCode() != null ? 1 : 0)
                 .hasRedemptionCode(c.getHasRedemptionCode())
+                .redemptionCode(c.getRedemptionCode())
                 .revenueInfluenced(c.getRevenueInfluenced())
                 .createdAt(c.getCreatedAt())
                 .build();

@@ -12,9 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@jakarta.persistence.Table(name = "redemptions", uniqueConstraints = {
-    @UniqueConstraint(columnNames = "redemption_code")
-})
+@jakarta.persistence.Table(name = "redemptions")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -47,9 +45,11 @@ public class Redemption {
     @Column(name = "value")
     private BigDecimal value;
 
-    // Phase 2: 6-digit redemption code fields
-    @Column(name = "redemption_code", unique = true, length = 6)
-    private String redemptionCode; // Auto-generated 6-digit code
+    // Offer/reward codes: auto-generated 6-digit, unique per code (checked at app level).
+    // Campaign codes: a single shared code reused across every guest who redeems it,
+    // so this column is intentionally NOT globally unique.
+    @Column(name = "redemption_code", length = 20)
+    private String redemptionCode;
 
     @Column(name = "code_expires_at")
     private LocalDateTime codeExpiresAt; // 1-hour TTL

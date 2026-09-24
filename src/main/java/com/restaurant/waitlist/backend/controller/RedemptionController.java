@@ -1,5 +1,6 @@
 package com.restaurant.waitlist.backend.controller;
 
+import com.restaurant.waitlist.backend.dto.request.ValidateCampaignCodeRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.service.GuestOfferService;
 import com.restaurant.waitlist.backend.service.GuestRewardsService;
@@ -49,38 +50,34 @@ public class RedemptionController {
     }
 
     /**
-     * Validate and complete a campaign redemption code at POS (with campaign ID)
-     * Used when guest enters code at restaurant to redeem campaign offer
-     * Accessible by Host, Manager, or Staff roles
+     * Validate and complete a campaign's shared coupon code at POS.
+     * Every recipient of a campaign gets the same code (e.g. "BROTPIZZA50"), so the
+     * guest's phone number is required to look up which campaign it belongs to and
+     * to make sure the same guest can't redeem it twice.
+     * Accessible by Host, Manager, or Staff roles.
      *
      * @param restaurantId The restaurant ID where POS is validating the code
-     * @param code The 6-digit redemption code entered by guest
-     * @param campaignId The campaign ID associated with the code
-     * @return Success response with redemption details or error if code invalid/expired
-     */
-
-    /**
-     * Validate and complete a campaign redemption code at POS (code only)
-     * Backend automatically looks up which campaign the code belongs to
-     * Simpler endpoint when you only have the redemption code
-     * Accessible by Host, Manager, or Staff roles
-     *
-     * @param restaurantId The restaurant ID where POS is validating the code
-     * @param code The 6-digit redemption code entered by guest
-     * @return Success response with redemption details or error if code invalid/expired
+     * @param code The shared campaign coupon code entered by guest
+     * @param request Contains the guest's phone number
+     * @return Success response with redemption details or error if code invalid/expired/already used
      */
     @PostMapping("/validate-campaign-code/{code}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'HOST')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> validateCampaignCodeByCodeOnly(
             @PathVariable Long restaurantId,
-            @PathVariable String code) {
-        
+            @PathVariable String code,
+            @RequestBody ValidateCampaignCodeRequest request) {
+
         if (code == null || code.isBlank()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Code is required"));
         }
-        
-        Map<String, Object> resp = adminRedemptionService.validateAndCompleteCampaignCodeByCode(code, restaurantId);
+        if (request == null || request.getGuestPhone() == null || request.getGuestPhone().isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Guest phone is required"));
+        }
+
+        Map<String, Object> resp = adminRedemptionService.validateAndCompleteCampaignCodeByCode(code, restaurantId, request.getGuestPhone());
         return ResponseEntity.ok(ApiResponse.success("Campaign code validated successfully", resp));
     }
 

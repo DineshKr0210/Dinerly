@@ -19,14 +19,9 @@ public interface RedemptionRepository extends JpaRepository<Redemption, Long>, R
     @Query("SELECT COUNT(r) FROM Redemption r WHERE r.campaign.id = :campaignId")
     long countByCampaignId(Long campaignId);
 
-    // Campaign code validation - find valid campaign-specific code by code only (campaign auto-looked-up)
-    @Query("SELECT r FROM Redemption r WHERE r.redemptionCode = :code AND r.campaign IS NOT NULL " +
-            "AND r.status = 'GENERATED' AND r.codeExpiresAt > CURRENT_TIMESTAMP")
-    Optional<Redemption> findValidCampaignCodeByCodeOnly(String code);
-
-    // Count codes generated for a campaign (status = GENERATED)
-    @Query("SELECT COUNT(r) FROM Redemption r WHERE r.campaign.id = :campaignId AND r.status = 'GENERATED'")
-    int countCodesGeneratedForCampaign(Long campaignId);
+    // Double-redemption guard for shared campaign coupon codes: has this guest
+    // already redeemed this campaign's code?
+    boolean existsByCampaignIdAndGuestPhoneAndStatus(Long campaignId, String guestPhone, Redemption.RedemptionStatus status);
 
     @Query("SELECT COUNT(r) FROM Redemption r WHERE r.restaurantId = :restaurantId AND r.redeemedAt >= :fromDate AND r.redeemedAt <= :toDate")
     long countRedemptionsByRestaurantAndDateRange(Long restaurantId, java.time.LocalDateTime fromDate, java.time.LocalDateTime toDate);

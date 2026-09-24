@@ -17,4 +17,5 @@ public class CampaignRequest {
     private LocalDateTime scheduledAt; // optional
     private LocalDateTime endDate; // optional
     private Boolean hasRedemptionCode; // true = generate codes at publish, false = no codes
+    private String redemptionCode; // optional: admin-chosen shared coupon code (auto-generated at publish if left blank)
 }

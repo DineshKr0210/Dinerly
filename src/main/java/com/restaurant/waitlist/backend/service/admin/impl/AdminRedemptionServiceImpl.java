@@ -1,7 +1,9 @@
 package com.restaurant.waitlist.backend.service.admin.impl;
 
 import com.restaurant.waitlist.backend.dto.response.admin.RedemptionResponse;
+import com.restaurant.waitlist.backend.entity.Campaign;
 import com.restaurant.waitlist.backend.entity.Redemption;
+import com.restaurant.waitlist.backend.repository.CampaignRepository;
 import com.restaurant.waitlist.backend.repository.RedemptionRepository;
 import com.restaurant.waitlist.backend.service.AdminLocationAccessService;
 import com.restaurant.waitlist.backend.service.admin.AdminRedemptionService;
@@ -9,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -20,6 +23,7 @@ import java.util.List;
 public class AdminRedemptionServiceImpl implements AdminRedemptionService {
 
     private final RedemptionRepository redemptionRepository;
+    private final CampaignRepository campaignRepository;
     private final AdminLocationAccessService adminLocationAccessService;
 
     @Override
@@ -118,43 +122,63 @@ public class AdminRedemptionServiceImpl implements AdminRedemptionService {
     }
 
     @Override
-    public java.util.Map<String, Object> validateAndCompleteCampaignCodeByCode(String code, Long restaurantId) {
+    @Transactional
+    public java.util.Map<String, Object> validateAndCompleteCampaignCodeByCode(String code, Long restaurantId, String guestPhone) {
         java.util.Map<String, Object> response = new java.util.HashMap<>();
 
         try {
-            // Find the redemption record for this campaign code (campaign ID auto-looked-up)
-            Redemption redemption = redemptionRepository.findValidCampaignCodeByCodeOnly(code)
+            if (guestPhone == null || guestPhone.isBlank()) {
+                throw new IllegalArgumentException("Guest phone is required");
+            }
+
+            // The shared coupon code lives on the campaign itself, not on any one redemption row.
+            Campaign campaign = campaignRepository.findByRedemptionCode(code)
                     .orElseThrow(() -> new IllegalArgumentException("Invalid or expired campaign code"));
 
-            if (!redemption.getRestaurantId().equals(restaurantId)) {
-                // Same error as "not found" — avoid revealing that the code exists at another location.
+            if (!"ACTIVE".equalsIgnoreCase(campaign.getStatus())
+                    || (campaign.getEndDate() != null && campaign.getEndDate().isBefore(LocalDateTime.now()))) {
                 throw new IllegalArgumentException("Invalid or expired campaign code");
             }
 
-            // Mark as completed
-            redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
-            redemption.setRedeemedAt(LocalDateTime.now());
+            // A campaign scoped to one restaurant can only be redeemed there; a
+            // franchise-wide campaign (restaurantId == null) can be redeemed anywhere.
+            if (campaign.getRestaurantId() != null && !campaign.getRestaurantId().equals(restaurantId)) {
+                throw new IllegalArgumentException("Invalid or expired campaign code");
+            }
+
+            boolean alreadyRedeemed = redemptionRepository.existsByCampaignIdAndGuestPhoneAndStatus(
+                    campaign.getId(), guestPhone, Redemption.RedemptionStatus.COMPLETED);
+            if (alreadyRedeemed) {
+                throw new IllegalArgumentException("This code has already been redeemed by this guest");
+            }
+
+            Redemption redemption = Redemption.builder()
+                    .campaign(campaign)
+                    .redemptionCode(code)
+                    .guestPhone(guestPhone)
+                    .status(Redemption.RedemptionStatus.COMPLETED)
+                    .restaurantId(restaurantId)
+                    .redeemedAt(LocalDateTime.now())
+                    .build();
             redemptionRepository.save(redemption);
-            
-            // Return success response
-            Long campaignId = redemption.getCampaign() != null ? redemption.getCampaign().getId() : null;
+
             response.put("success", true);
             response.put("message", "Campaign code validated and completed");
             response.put("code", code);
-            response.put("campaignId", campaignId);
+            response.put("campaignId", campaign.getId());
             response.put("redemptionId", redemption.getId());
-            response.put("guestPhone", redemption.getGuestPhone());
-            response.put("offer", redemption.getCampaign().getName());
-            response.put("offerMessage", redemption.getCampaign().getMessage());
+            response.put("guestPhone", guestPhone);
+            response.put("offer", campaign.getName());
+            response.put("offerMessage", campaign.getMessage());
             response.put("status", "COMPLETED");
-            
+
         } catch (IllegalArgumentException ex) {
             response.put("success", false);
-            response.put("message", "Invalid or expired campaign code");
+            response.put("message", ex.getMessage());
             response.put("code", code);
             response.put("error", ex.getMessage());
         }
-        
+
         return response;
     }
 }
