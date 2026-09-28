@@ -6,8 +6,10 @@ import com.restaurant.waitlist.backend.dto.response.GuestOfferResponse;
 import com.restaurant.waitlist.backend.dto.response.RedeemOfferResponse;
 import com.restaurant.waitlist.backend.entity.Offer;
 import com.restaurant.waitlist.backend.entity.Redemption;
+import com.restaurant.waitlist.backend.entity.User;
 import com.restaurant.waitlist.backend.repository.OfferRepository;
 import com.restaurant.waitlist.backend.repository.RedemptionRepository;
+import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.service.GuestOfferService;
 import com.restaurant.waitlist.backend.service.PointsService;
 import com.restaurant.waitlist.backend.util.RedemptionCodeGenerator;
@@ -30,6 +32,7 @@ public class GuestOfferServiceImpl implements GuestOfferService {
     private final OfferRepository offerRepository;
     private final RedemptionRepository redemptionRepository;
     private final PointsService pointsService;
+    private final UserRepository userRepository;
     private static final int CODE_VALIDITY_MINUTES = 60; // 1 hour
 
     @Override
@@ -81,15 +84,17 @@ public class GuestOfferServiceImpl implements GuestOfferService {
         } while (redemptionRepository.existsByRedemptionCode(code));
 
         // Create redemption record
+        User user = userRepository.findById(userId).orElse(null);
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(CODE_VALIDITY_MINUTES);
         Redemption redemption = Redemption.builder()
             .offer(offer)
             .restaurantId(restaurantId)
+            .guestName(user != null ? user.getName() : null)
+            .guestPhone(user != null ? user.getPhone() : null)
             .redemptionCode(code)
             .codeExpiresAt(expiresAt)
             .status(Redemption.RedemptionStatus.GENERATED)
             .userId(userId)
-            .redeemedAt(LocalDateTime.now())
             .value(offer.getDiscountValue())
             .build();
 
@@ -121,6 +126,7 @@ public class GuestOfferServiceImpl implements GuestOfferService {
             throw new IllegalArgumentException("Invalid or expired redemption code");
         }
         redemption.setStatus(Redemption.RedemptionStatus.COMPLETED);
+        redemption.setRedeemedAt(LocalDateTime.now());
         redemptionRepository.save(redemption);
 
         Offer offer = redemption.getOffer();

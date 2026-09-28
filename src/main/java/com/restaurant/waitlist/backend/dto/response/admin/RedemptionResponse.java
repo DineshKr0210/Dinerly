@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @Builder
 public class RedemptionResponse {
     private Long id;
+    private String type; // OFFER, CAMPAIGN, or REWARD
     private String itemRedeemed;
     private String location;
     private String guest;

@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
@@ -38,8 +37,10 @@ public class Redemption {
     @Column(name = "guest_phone")
     private String guestPhone;
 
+    // Set explicitly by each flow when the code is actually completed at POS,
+    // not when the row is first created - so a still-pending (GENERATED) code
+    // has no redeemedAt yet.
     @Column(name = "redeemed_at")
-    @CreationTimestamp
     private LocalDateTime redeemedAt;
 
     @Column(name = "value")
