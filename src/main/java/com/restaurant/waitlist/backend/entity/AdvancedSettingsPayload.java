@@ -26,6 +26,12 @@ public class AdvancedSettingsPayload {
     @Builder.Default
     private String timezone = "Canada/Central";
 
+    // ===== SERVER ASSIGNMENT MODE =====
+    // ROTATION: Fair round-robin rotation (Scenario 1 - default)
+    // SECTION: Table-based section assignments (Scenario 2)
+    @Builder.Default
+    private String serverAssignmentMode = "ROTATION";
+
     public static AdvancedSettingsPayload defaults() {
         return AdvancedSettingsPayload.builder().build();
     }

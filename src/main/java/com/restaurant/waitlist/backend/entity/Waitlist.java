@@ -107,6 +107,22 @@ public class Waitlist {
     @Column(name = "table_name")
     private String tableName;
 
+    // Actual Table.id this party was seated at (nullable - legacy records only have tableName text)
+    @Column(name = "table_id")
+    private Long tableId;
+
+    // Staff.id of the server credited with/assigned to this seating event
+    @Column(name = "assigned_server_id")
+    private Long assignedServerId;
+
+    // Free-text notes the assigned server jots down about what the table/guest wants
+    // (order items, special requests, allergies mentioned at the table, etc.)
+    @Column(name = "order_notes", columnDefinition = "TEXT")
+    private String orderNotes;
+
+    @Column(name = "order_notes_updated_at")
+    private LocalDateTime orderNotesUpdatedAt;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

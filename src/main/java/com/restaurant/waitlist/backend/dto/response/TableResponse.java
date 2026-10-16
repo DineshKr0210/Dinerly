@@ -16,6 +16,7 @@ public class TableResponse {
     private Integer capacity;
     private Table.TableStatus status;
     private Long mergedTableId;
+    private Long currentServerId;
 
     public static TableResponse fromTable(Table table) {
         return TableResponse.builder()
@@ -24,6 +25,7 @@ public class TableResponse {
                 .capacity(table.getCapacity())
                 .status(table.getStatus())
                 .mergedTableId(table.getMergedTableId())
+                .currentServerId(table.getCurrentServerId())
                 .build();
     }
 }

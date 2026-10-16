@@ -55,6 +55,10 @@ public class Redemption {
     @Column(name = "code_expires_at")
     private LocalDateTime codeExpiresAt; // 1-hour TTL
 
+    // QR Code data (Base64 encoded PNG image) - ONLY for Offers, not Campaign or Rewards
+    @Column(name = "qr_code_data", columnDefinition = "BYTEA")
+    private byte[] qrCodeData;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private RedemptionStatus status; // GENERATED, COMPLETED, EXPIRED, CANCELLED

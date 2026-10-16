@@ -44,4 +44,23 @@ public class CurrentUserResolver {
         }
         return null;
     }
+
+    /**
+     * Resolves the Staff.id linked to the currently authenticated user, if any
+     * (e.g. for a logged-in SERVER wanting to see "their own" assigned tables).
+     */
+    public Long getCurrentStaffId() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return null;
+            }
+            String email = authentication.getPrincipal().toString();
+            User user = userRepository.findByEmail(email).orElse(null);
+            return user != null ? user.getStaffId() : null;
+        } catch (Exception e) {
+            log.debug("Error getting current staff id", e);
+        }
+        return null;
+    }
 }

@@ -235,5 +235,9 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
        Double getWaitTimeAccuracyByLocation(@Param("restaurantId") Long restaurantId,
                                            @Param("fromDate") java.sql.Date fromDate,
                                            @Param("toDate") java.sql.Date toDate);
+
+       // Server "my tables" view: currently seated parties credited to this server, most recent first.
+       List<Waitlist> findByRestaurantIdAndAssignedServerIdAndStatusOrderBySeatedAtDesc(
+               Long restaurantId, Long assignedServerId, Waitlist.WaitlistStatus status);
 }
 

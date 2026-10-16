@@ -18,13 +18,13 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
     // Franchise-group scoped variant: an admin's "all my locations" view
     // resolves to a restaurant id list rather than a truly global query.
     @Query("SELECT o FROM Offer o WHERE o.restaurant.id IN :restaurantIds " +
-            "AND (:status IS NULL OR o.status = :status) " +
+            "AND (:status IS NULL OR UPPER(o.status) = UPPER(:status)) " +
             "AND (:fromDate IS NULL OR o.startDate >= :fromDate) " +
             "AND (:toDate IS NULL OR o.endDate <= :toDate)")
     Page<Offer> findFilteredByRestaurantIds(List<Long> restaurantIds, String status, LocalDate fromDate, LocalDate toDate, Pageable pageable);
 
     @Query("SELECT o FROM Offer o WHERE o.restaurant.id = :restaurantId " +
-            "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE " +
+            "AND UPPER(o.status) = 'ACTIVE' AND o.endDate >= CURRENT_DATE " +
             "ORDER BY o.startDate DESC")
     Page<Offer> findActiveOffersByRestaurant(Long restaurantId, Pageable pageable);
 
@@ -32,12 +32,12 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
     long countTotalRedemptionsByUserAndOffer(Long offerId, Long userId);
 
     @Query("SELECT COUNT(o) FROM Offer o WHERE o.restaurant.id = :restaurantId " +
-            "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE")
+            "AND UPPER(o.status) = 'ACTIVE' AND o.endDate >= CURRENT_DATE")
     long countActiveOffersByRestaurant(Long restaurantId);
 
     // Batched IN-list variant, grouped by restaurant, to avoid one query per restaurant
     // when checking which locations in a franchise group have active offers.
     @Query("SELECT o.restaurant.id, COUNT(o) FROM Offer o WHERE o.restaurant.id IN :restaurantIds " +
-            "AND o.status = 'ACTIVE' AND o.endDate >= CURRENT_DATE GROUP BY o.restaurant.id")
+            "AND UPPER(o.status) = 'ACTIVE' AND o.endDate >= CURRENT_DATE GROUP BY o.restaurant.id")
     List<Object[]> countActiveOffersGroupedByRestaurantIds(List<Long> restaurantIds);
 }

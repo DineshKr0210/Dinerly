@@ -7,7 +7,8 @@ package com.restaurant.waitlist.backend.entity;
 public enum StaffRole {
     ADMIN("Owner"),           // Account-level administrator
     MANAGER("Manager"),       // Location-level operations manager
-    HOST("Host");             // Front desk staff
+    HOST("Host"),             // Front desk staff
+    SERVER("Server");         // Floor server / waitstaff
 
     private final String displayName;
 
@@ -44,7 +45,7 @@ public enum StaffRole {
         try {
             return StaffRole.valueOf(role.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid staff role: " + role + ". Valid roles are: ADMIN, MANAGER, HOST");
+            throw new IllegalArgumentException("Invalid staff role: " + role + ". Valid roles are: ADMIN, MANAGER, HOST, SERVER");
         }
     }
 }

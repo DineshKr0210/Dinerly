@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -21,7 +22,14 @@ public class GuestOfferResponse {
     private String description;
     private String photoUrl;
     
-    // Computed fields
+    // Per-user redemption limit (how many times user can redeem this offer)
+    private Integer perUserLimit;
+    
+    // Timestamps
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    // Computed fields for guest
     private Boolean redeemable;
     private String reasonIfNotRedeemable;
     private Integer userRedemptionsTotal;

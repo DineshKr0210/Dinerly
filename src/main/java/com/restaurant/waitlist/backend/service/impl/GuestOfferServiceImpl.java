@@ -13,6 +13,8 @@ import com.restaurant.waitlist.backend.repository.UserRepository;
 import com.restaurant.waitlist.backend.service.GuestOfferService;
 import com.restaurant.waitlist.backend.service.PointsService;
 import com.restaurant.waitlist.backend.util.RedemptionCodeGenerator;
+import com.restaurant.waitlist.backend.util.QRCodeGenerator;
+import com.restaurant.waitlist.backend.dto.request.ValidateOfferRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -86,6 +88,10 @@ public class GuestOfferServiceImpl implements GuestOfferService {
         // Create redemption record
         User user = userRepository.findById(userId).orElse(null);
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(CODE_VALIDITY_MINUTES);
+        
+        // Generate QR code for the redemption code (only for Offers, not Campaign/Rewards)
+        byte[] qrCodeImage = QRCodeGenerator.generateQRCode(code);
+        
         Redemption redemption = Redemption.builder()
             .offer(offer)
             .restaurantId(restaurantId)
@@ -93,6 +99,7 @@ public class GuestOfferServiceImpl implements GuestOfferService {
             .guestPhone(user != null ? user.getPhone() : null)
             .redemptionCode(code)
             .codeExpiresAt(expiresAt)
+            .qrCodeData(qrCodeImage)  // Store QR code image
             .status(Redemption.RedemptionStatus.GENERATED)
             .userId(userId)
             .value(offer.getDiscountValue())
@@ -102,13 +109,17 @@ public class GuestOfferServiceImpl implements GuestOfferService {
 
         log.info("Redemption code generated for offer {} by user {}: {}", offerId, userId, code);
 
+        // Generate data URI for QR code (easier to display in frontend)
+        String qrCodeDataUri = QRCodeGenerator.generateQRCodeDataURI(code);
+
         return RedeemOfferResponse.builder()
             .redemptionId(redemption.getId())
             .redemptionCode(code)
             .expiresAt(expiresAt)
-            .message("Show this code to your server")
+            .message("Show this code or QR to your server")
             .offerName(offer.getName())
             .offerDescription(offer.getDescription())
+            .qrCodeDataUri(qrCodeDataUri)  // Include QR code in response
             .build();
     }
 
@@ -133,6 +144,12 @@ public class GuestOfferServiceImpl implements GuestOfferService {
 
         log.info("Redemption code {} marked as completed", code);
 
+        // Generate QR code data URI for response (if available)
+        String qrCodeDataUri = null;
+        if (redemption.getQrCodeData() != null && redemption.getQrCodeData().length > 0) {
+            qrCodeDataUri = QRCodeGenerator.generateQRCodeDataURI(code);
+        }
+
         return ConfirmRedemptionResponse.builder()
                 .redemptionId(redemption.getId())
                 .redemptionCode(code)
@@ -147,9 +164,39 @@ public class GuestOfferServiceImpl implements GuestOfferService {
                 .discountLabel(offer.getDiscountLabel() != null ? offer.getDiscountLabel() : "Discount")
                 .confirmedAt(LocalDateTime.now())
                 .codeExpiresAt(redemption.getCodeExpiresAt())
+                .qrCodeDataUri(qrCodeDataUri)  // Include QR code if available
                 .build();
     }
 
+    /**
+     * Validate offer redemption with support for QR code scanning or manual code entry.
+     * This is the NEW method that handles both QR codes and manual codes.
+     *
+     * @param validateRequest Contains either redemptionCode (manual) or scannedQRText (from QR scanner)
+     * @param restaurantId    The restaurant validating the offer
+     * @return ConfirmRedemptionResponse with offer details
+     */
+    @Transactional
+    public ConfirmRedemptionResponse validateOfferByCodeOrQR(ValidateOfferRequest validateRequest, Long restaurantId) {
+        // Extract code from request (tries redemptionCode, then scannedQRText, then qrCodeData)
+        String code = validateRequest.getEffectiveCode();
+
+        if (code == null || code.isBlank()) {
+            throw new IllegalArgumentException("Please provide either a redemption code or scan the QR code");
+        }
+
+        // Validate code format (6-digit numeric)
+        if (!QRCodeGenerator.isValidCodeFormat(code.trim())) {
+            throw new IllegalArgumentException("Invalid code format. Please enter a 6-digit code or scan the QR code");
+        }
+
+        log.info("Validating offer redemption: code={}, method={}", 
+            code.substring(0, 3) + "***", 
+            validateRequest.getScannedQRText() != null ? "QR_SCAN" : "MANUAL_ENTRY");
+
+        // Use existing validation logic
+        return validateAndCompleteCode(code.trim(), restaurantId);
+    }
     @Override
     public boolean canUserRedeemOffer(Long userId, Long offerId) {
         String reason = getRedemptionRestrictionReason(userId, offerId);
@@ -204,6 +251,9 @@ public class GuestOfferServiceImpl implements GuestOfferService {
             .discountLabel(offer.getDiscountLabel())
             .description(offer.getDescription())
             .photoUrl(offer.getPhotoUrl())
+            .perUserLimit(offer.getPerUserLimit())  // ✅ Added
+            .createdAt(offer.getCreatedAt())         // ✅ Added
+            .updatedAt(offer.getUpdatedAt())         // ✅ Added
             .redeemable(canRedeem)
             .reasonIfNotRedeemable(reason)
             .userRedemptionsTotal((int) totalRedemptions)

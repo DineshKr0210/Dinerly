@@ -22,4 +22,8 @@ public class ConfirmRedemptionResponse {
     private String discountLabel;
     private LocalDateTime confirmedAt;
     private LocalDateTime codeExpiresAt;
+    
+    // QR Code: Base64 encoded PNG image or data URI
+    // For validation/scanning purposes
+    private String qrCodeDataUri; // data:image/png;base64,...
 }

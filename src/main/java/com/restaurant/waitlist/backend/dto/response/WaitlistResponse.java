@@ -40,6 +40,10 @@ public class WaitlistResponse {
     private LocalDateTime voiceReplyReceivedAt;
     private String voiceReplyDigits;
     private String tableName;
+    private Long tableId;
+    private Long assignedServerId;
+    private String orderNotes;
+    private LocalDateTime orderNotesUpdatedAt;
 
     public static WaitlistResponse fromWaitlist(Waitlist waitlist) {
         String customerReplyDescription = mapReplyValue(waitlist.getLatestCustomerReply());
@@ -74,6 +78,10 @@ public class WaitlistResponse {
                 .voiceReplyReceivedAt(waitlist.getVoiceReplyReceivedAt())
                 .voiceReplyDigits(waitlist.getVoiceReplyDigits())
                 .tableName(waitlist.getTableName())
+                .tableId(waitlist.getTableId())
+                .assignedServerId(waitlist.getAssignedServerId())
+                .orderNotes(waitlist.getOrderNotes())
+                .orderNotesUpdatedAt(waitlist.getOrderNotesUpdatedAt())
                 .build();
     }
 

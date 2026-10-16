@@ -69,6 +69,7 @@ public class User {
     public enum UserRole {
         GUEST,      // Customer - no staff access
         STAFF,      // Restaurant general staff
+        SERVER,     // Floor server / waitstaff
         HOST,       // Restaurant front desk
         MANAGER,    // Restaurant operations manager
         OWNER,      // Restaurant owner

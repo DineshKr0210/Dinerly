@@ -68,6 +68,15 @@ public class RestaurantService {
     @Autowired
     private RestaurantSettingsRepository restaurantSettingsRepository;
 
+    @Autowired
+    private ServerRotationService serverRotationService;
+
+    @Autowired
+    private ServerSectionAssignmentService serverSectionAssignmentService;
+
+    @Autowired
+    private ServerService serverService;
+
     public RestaurantResponse createRestaurant(CreateRestaurantRequest request) {
         Restaurant restaurant = Restaurant.builder()
                 .name(request.getName())
@@ -232,7 +241,55 @@ public class RestaurantService {
             waitlist.setTableName(seatReq.getTableName());
         }
 
+        // Get restaurant settings to check which server assignment mode is enabled
+        RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId).orElse(null);
+        String assignmentMode = (settings != null && settings.getAdvancedSettings() != null) 
+            ? settings.getAdvancedSettings().getServerAssignmentMode() 
+            : "ROTATION"; // Default to Scenario 1 (Round-robin rotation)
+
+        // Resolve which server should be credited with this seating
+        Long assignedServerId;
+        if ("SECTION".equals(assignmentMode)) {
+            // Scenario 2: Section-based assignment
+            // Use the table's assigned server
+            Long tableId = seatReq != null ? seatReq.getTableId() : null;
+            assignedServerId = serverSectionAssignmentService.assignServerForSeating(restaurantId, tableId);
+            log.info("Seating guest using SECTION mode: tableId={}, assignedServerId={}", tableId, assignedServerId);
+        } else {
+            // Scenario 1: Fair rotation (default)
+            // Use the next-up server in rotation, or explicit choice
+            Long requestedServerId = seatReq != null ? seatReq.getServerId() : null;
+            assignedServerId = serverRotationService.assignServerForSeating(restaurantId, requestedServerId);
+            log.info("Seating guest using ROTATION mode: requestedServerId={}, assignedServerId={}", 
+                seatReq != null ? seatReq.getServerId() : null, assignedServerId);
+        }
+
+        waitlist.setAssignedServerId(assignedServerId);
+
+        Table table = null;
+        if (seatReq != null && seatReq.getTableId() != null) {
+            table = tableService.getTable(restaurantId, seatReq.getTableId());
+            waitlist.setTableId(table.getId());
+            if (waitlist.getTableName() == null || waitlist.getTableName().isBlank()) {
+                waitlist.setTableName(table.getTableNumber());
+            }
+            tableService.assignServerToTable(restaurantId, table.getId(), assignedServerId);
+        }
+
         waitlistRepository.save(waitlist);
+
+        if (assignedServerId != null) {
+            String tableLabel = waitlist.getTableName() != null ? waitlist.getTableName() : "a table";
+            String message = "You've been assigned " + tableLabel + " for a party of "
+                    + (waitlist.getPartySize() != null ? waitlist.getPartySize() : 1) + " (" + waitlist.getGuestName() + ").";
+            try {
+                serverService.notifyTableAssigned(restaurantId, assignedServerId, waitlist.getId(),
+                        table != null ? table.getId() : null, message);
+            } catch (Exception e) {
+                log.warn("Failed to create server notification for waitlist id={} server id={}: {}",
+                        waitlist.getId(), assignedServerId, e.getMessage());
+            }
+        }
 
         java.time.LocalDate today = java.time.LocalDate.now();
         java.util.List<Waitlist> todaysActive = waitlistRepository.findByRestaurantIdAndJoinedDate(restaurantId, java.sql.Date.valueOf(today)).stream()

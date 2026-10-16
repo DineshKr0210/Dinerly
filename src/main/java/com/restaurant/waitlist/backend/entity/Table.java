@@ -40,6 +40,10 @@ public class Table {
     @Column(name = "merged_table_id")
     private Long mergedTableId;
 
+    // Staff.id of the server currently assigned to this table (null when unoccupied/unassigned)
+    @Column(name = "current_server_id")
+    private Long currentServerId;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

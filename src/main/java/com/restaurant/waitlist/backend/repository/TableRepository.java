@@ -10,5 +10,7 @@ import java.util.List;
 public interface TableRepository extends JpaRepository<Table, Long> {
     List<Table> findByRestaurantId(Long restaurantId);
     List<Table> findByRestaurantIdAndStatus(Long restaurantId, Table.TableStatus status);
+    List<Table> findByRestaurantIdAndMergedTableId(Long restaurantId, Long mergedTableId);
+    List<Table> findByRestaurantIdAndCurrentServerId(Long restaurantId, Long currentServerId);
 }
 

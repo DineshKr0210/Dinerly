@@ -53,7 +53,35 @@ public class TableService {
         }
 
         table.setStatus(status);
+        if (status != Table.TableStatus.OCCUPIED) {
+            // Table turned over (cleared/reserved/needs cleaning) - no server is actively serving it anymore.
+            table.setCurrentServerId(null);
+        }
         tableRepository.save(table);
+    }
+
+    /**
+     * Marks a table OCCUPIED and records which server is currently serving it. A merged
+     * group of tables is treated as a single seating event: the same server/status is
+     * propagated to every table in the merge group.
+     */
+    @Transactional
+    public void assignServerToTable(Long restaurantId, Long tableId, Long serverId) {
+        Table table = getValidTable(restaurantId, tableId);
+        table.setStatus(Table.TableStatus.OCCUPIED);
+        table.setCurrentServerId(serverId);
+        tableRepository.save(table);
+
+        if (table.getMergedTableId() != null) {
+            List<Table> group = tableRepository.findByRestaurantIdAndMergedTableId(restaurantId, table.getMergedTableId());
+            for (Table partner : group) {
+                if (!partner.getId().equals(table.getId())) {
+                    partner.setStatus(Table.TableStatus.OCCUPIED);
+                    partner.setCurrentServerId(serverId);
+                    tableRepository.save(partner);
+                }
+            }
+        }
     }
 
     @Transactional
@@ -106,6 +134,10 @@ public class TableService {
         }
 
         return table;
+    }
+
+    public Table getTable(Long restaurantId, Long tableId) {
+        return getValidTable(restaurantId, tableId);
     }
 }
 

@@ -398,6 +398,7 @@ public class AdminStaffServiceImpl implements AdminStaffService {
             case ADMIN -> User.UserRole.ADMIN;
             case MANAGER -> User.UserRole.MANAGER;
             case HOST -> User.UserRole.HOST;
+            case SERVER -> User.UserRole.SERVER;
         };
     }
 }
