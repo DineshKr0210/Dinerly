@@ -1,8 +1,11 @@
 package com.restaurant.waitlist.backend.controller;
 
 import com.restaurant.waitlist.backend.dto.request.MergeTablesRequest;
+import com.restaurant.waitlist.backend.dto.request.SeatNextPartyRequest;
 import com.restaurant.waitlist.backend.dto.request.UpdateTableStatusRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
+import com.restaurant.waitlist.backend.dto.response.WaitlistResponse;
+import com.restaurant.waitlist.backend.service.RestaurantService;
 import com.restaurant.waitlist.backend.service.TableService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +24,25 @@ public class TableController {
 
     @Autowired
     private TableService tableService;
+
+    @Autowired
+    private RestaurantService restaurantService;
+
+    @PostMapping("/{id}/seat-next-party")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'HOST')")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> seatNextParty(
+            @PathVariable Long restaurantId,
+            @PathVariable Long id,
+            @RequestBody(required = false) SeatNextPartyRequest request) {
+        try {
+            WaitlistResponse response = restaurantService.seatNextPartyAtTable(
+                    restaurantId, id, request != null ? request.getServerId() : null);
+            return ResponseEntity.ok(ApiResponse.success("Next party seated successfully", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'HOST')")

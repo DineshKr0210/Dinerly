@@ -21,4 +21,8 @@ public class AdvancedSettingsRequest {
 
     @NotNull
     private String timezone;
+
+    // Optional: "ROTATION" (fair round-robin, default) or "SECTION" (servers own
+    // fixed tables). Left out of an update request, the current value is kept.
+    private String serverAssignmentMode;
 }

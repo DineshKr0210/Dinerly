@@ -1,6 +1,7 @@
 package com.restaurant.waitlist.backend.controller;
 
 import com.restaurant.waitlist.backend.dto.request.ValidateCampaignCodeRequest;
+import com.restaurant.waitlist.backend.dto.request.ValidateOfferCodeRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.service.GuestOfferService;
 import com.restaurant.waitlist.backend.service.GuestRewardsService;
@@ -27,21 +28,28 @@ public class RedemptionController {
     private final GuestRewardsService guestRewardsService;
 
     /**
-     * Validate and complete an offer redemption code at POS
-     * Used when guest/staff enters offer code at restaurant
-     * Accessible by Host, Manager, or Staff roles
+     * Validate and complete an offer redemption code at POS.
+     * Works two ways: manual entry (the {code} path variable, as before), or by
+     * scanning the offer's QR code on a phone/tablet camera and posting the decoded
+     * text as "qrCode" in the request body - either input validates the same offer.
+     * Accessible by Host, Manager, or Staff roles.
      *
      * @param restaurantId The restaurant ID where POS is validating the code
-     * @param code The 6-digit offer redemption code
+     * @param code The offer redemption code typed in, or a placeholder when scanning
+     * @param request Optional body carrying the QR-scanned code; takes priority over the path code when present
      * @return Success response with offer details or error if code invalid/expired
      */
     @PostMapping("/validate-offer-code/{code}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'HOST')")
     public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> validateOfferCode(
             @PathVariable Long restaurantId,
-            @PathVariable String code) {
+            @PathVariable String code,
+            @RequestBody(required = false) ValidateOfferCodeRequest request) {
         try {
-            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(code, restaurantId);
+            String effectiveCode = (request != null && request.getQrCode() != null && !request.getQrCode().isBlank())
+                    ? request.getQrCode().trim()
+                    : code;
+            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(effectiveCode, restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Offer code validated and completed", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()

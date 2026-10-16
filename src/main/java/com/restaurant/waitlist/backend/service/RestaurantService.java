@@ -304,6 +304,27 @@ public class RestaurantService {
         return WaitlistResponse.fromWaitlist(waitlist);
     }
 
+    /**
+     * Seats the front of the queue at a specific table, from the table's own detail view
+     * rather than the queue's picker. Shares the exact same seatGuest logic (rotation/section
+     * server assignment, table status, notifications) so the Next-Up pointer behaves identically
+     * regardless of which entry point was used.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public WaitlistResponse seatNextPartyAtTable(Long restaurantId, Long tableId, Long serverId) {
+        Table table = tableService.getTable(restaurantId, tableId);
+        if (table.getStatus() != Table.TableStatus.OPEN) {
+            throw new RuntimeException("Table is not open");
+        }
+        Waitlist next = waitlistRepository.findFirstByRestaurantIdAndStatusOrderByPositionAsc(restaurantId, Waitlist.WaitlistStatus.WAITING)
+                .orElseThrow(() -> new RuntimeException("No guests waiting to be seated"));
+
+        SeatGuestRequest seatReq = new SeatGuestRequest();
+        seatReq.setTableId(tableId);
+        seatReq.setServerId(serverId);
+        return seatGuest(restaurantId, next.getId(), seatReq);
+    }
+
     @org.springframework.transaction.annotation.Transactional
     public WaitlistResponse updateSeatedGuest(Long restaurantId, Long waitlistId, UpdateSeatedGuestRequest request) {
         Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);

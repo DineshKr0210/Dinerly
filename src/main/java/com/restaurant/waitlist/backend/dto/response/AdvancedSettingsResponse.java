@@ -12,6 +12,7 @@ public class AdvancedSettingsResponse {
     private Boolean keepSignedIn;
     private String language;
     private String timezone;
+    private String serverAssignmentMode;
 
     public static AdvancedSettingsResponse fromPayload(AdvancedSettingsPayload payload) {
         return AdvancedSettingsResponse.builder()
@@ -20,6 +21,7 @@ public class AdvancedSettingsResponse {
                 .keepSignedIn(payload.getKeepSignedIn())
                 .language(payload.getLanguage())
                 .timezone(payload.getTimezone())
+                .serverAssignmentMode(payload.getServerAssignmentMode())
                 .build();
     }
 }

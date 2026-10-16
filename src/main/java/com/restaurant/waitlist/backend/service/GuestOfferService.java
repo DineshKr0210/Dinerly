@@ -1,7 +1,6 @@
 package com.restaurant.waitlist.backend.service;
 
 import com.restaurant.waitlist.backend.dto.request.RedeemOfferRequest;
-import com.restaurant.waitlist.backend.dto.request.ValidateOfferRequest;
 import com.restaurant.waitlist.backend.dto.response.GuestOfferResponse;
 import com.restaurant.waitlist.backend.dto.response.RedeemOfferResponse;
 import org.springframework.data.domain.Page;
@@ -34,17 +33,6 @@ public interface GuestOfferService {
      * location cannot be redeemed at another.
      */
     com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse validateAndCompleteCode(String code, Long restaurantId);
-
-    /**
-     * Validate offer redemption using QR code scan OR manual code entry (NEW).
-     * Supports both QR scanning and keyboard entry at POS.
-     *
-     * @param validateRequest Contains either redemptionCode (manual) or scannedQRText (QR scan)
-     * @param restaurantId The restaurant validating the offer
-     * @return ConfirmRedemptionResponse with offer details
-     */
-    com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse validateOfferByCodeOrQR(
-            ValidateOfferRequest validateRequest, Long restaurantId);
 
     /**
      * Check if user can redeem an offer

@@ -194,6 +194,13 @@ public class SettingsService {
         if (request.getTimezone() != null) {
             payload.setTimezone(request.getTimezone());
         }
+        if (request.getServerAssignmentMode() != null) {
+            String mode = request.getServerAssignmentMode().trim().toUpperCase(java.util.Locale.ROOT);
+            if (!mode.equals("ROTATION") && !mode.equals("SECTION")) {
+                throw new IllegalArgumentException("serverAssignmentMode must be ROTATION or SECTION");
+            }
+            payload.setServerAssignmentMode(mode);
+        }
 
         settings.setAdvancedSettings(payload);
         restaurantSettingsRepository.save(settings);
