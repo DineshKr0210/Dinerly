@@ -1,128 +1,166 @@
 # Server Rotation — How It Works & How To Test It
 
-This document explains the "Server Rotation Logic" feature end-to-end: the fairness
-algorithm, every API involved, the exact request/response shapes, and a step-by-step
-functional test script you can run with `curl` (or import into Postman).
+This document explains the "Server Rotation Logic" feature end-to-end: both
+assignment scenarios, the setting that switches between them, every API involved,
+exact request/response shapes, and a step-by-step functional test script you can run
+with `curl` (or import into Postman/Swagger).
+
+> **Updated in this revision:** the `serverAssignmentMode` setting is now actually
+> settable via the Advanced Settings API (it previously had no write path at all —
+> every restaurant was silently stuck on ROTATION), and a second seating entry point,
+> "seat next party" from a table's own detail view, has been added. Both are covered
+> below, along with full Scenario 2 (SECTION) test steps that didn't exist before.
 
 ---
 
-## 1. What problem this solves
+## 1. The two scenarios, and the setting that picks one
 
-> 2 servers, 4 tables.
-> 1 customer → 1 server/table. 2 customers → 2 servers/tables.
-> If a customer doesn't want to sit in a particular server's section, the **next**
-> server gets the table — but the server who was skipped stays first in line for the
-> **next** seating. The rotation pointer never silently skips anyone.
+A restaurant runs in exactly one of two modes at a time, stored in its Advanced
+Settings as `serverAssignmentMode`:
 
-This is implemented as a classic "Next Up" round-robin:
-
-- Every server who is currently **on the floor** sits in an ordered rotation list.
+### Scenario 1 — `"ROTATION"` (default): Fair Turn System
+- Every server **on the floor** sits in an ordered rotation list.
 - Exactly **one** on-floor server is marked **Next Up**.
 - When a party is seated:
-  - If the host accepts the suggested (Next Up) server → that server's `seatedCount`
-    goes up by 1, **and** the Next-Up pointer advances to the following server.
-  - If the host instead manually picks a **different** on-floor server (because the
-    guest asked for someone else, or for load-balancing) → that server's
-    `seatedCount` goes up by 1, but the Next-Up pointer **does not move**. The
-    skipped server is still first in line for the very next seating.
-- A **manager** (or admin) can explicitly **"Start a new shift"**, which resets every
-  on-floor server's `seatedCount` back to 0 and restarts the rotation from the first
-  server in line. This is a **manual, on-demand action only** — there is no automatic
-  midnight/daily reset.
+  - No server requested → the **Next Up** server gets them, `seatedCount +1`, and the
+    pointer **advances** to the next server in line.
+  - A **specific** server requested (guest asked for someone, or host picked someone
+    for load-balancing) → that server gets them, `seatedCount +1`, but the Next-Up
+    pointer **does not move**. The skipped server stays first in line for the next
+    seating. The pointer never silently skips anyone.
+- A **manager/admin** can explicitly **"Start a new shift"**, resetting every on-floor
+  server's `seatedCount` to 0. This is manual only — there is no automatic daily reset.
 
-### Example walkthrough (2 servers: Alice, Bob)
-1. Both added to the floor. Alice is first → **Alice is Next Up**.
-2. Party #1 seated with no preference → auto-assigned to Alice (Next Up). Alice
-   `seatedCount = 1`. Pointer advances → **Bob is Next Up**.
-3. Party #2 doesn't want Bob's section; host manually assigns Alice instead.
-   Alice `seatedCount = 2`. Bob was Next Up and **stays** Next Up (out-of-turn pick
-   does not advance the pointer).
-4. Party #3 seated with no preference → auto-assigned to Bob (still Next Up).
-   Bob `seatedCount = 1`. Pointer advances back to Alice.
+### Scenario 2 — `"SECTION"`: Section Owner System
+- Each table is permanently (until reassigned) owned by one server via a
+  **table → server** mapping, independent of any queue or pointer.
+- When a party is seated at a table, whoever owns that table's assignment serves them
+  — automatically, every time, regardless of turn order.
+- If a server calls out, a manager manually reassigns their tables; there is no
+  automatic failover.
+
+### Switching modes
+```
+GET  /api/admin/settings/{restaurantId}/advanced
+PUT  /api/admin/settings/{restaurantId}/advanced
+```
+`PUT` body (all fields; `serverAssignmentMode` is the one that matters here):
+```json
+{
+  "darkMode": false,
+  "desktopNotifications": false,
+  "keepSignedIn": true,
+  "language": "en",
+  "timezone": "Canada/Central",
+  "serverAssignmentMode": "SECTION"
+}
+```
+`serverAssignmentMode` must be exactly `"ROTATION"` or `"SECTION"` (case-insensitive,
+normalized to uppercase) — anything else returns `400 Bad Request`. Omit the field
+entirely to leave the current mode unchanged.
+
+`GET` returns the current value in the same shape, so **always check this first**
+before running a seating test — a leftover `SECTION` mode from a previous test run
+will make Scenario 1 steps fail in confusing ways, and vice versa.
 
 ---
 
-## 2. Data model (new/changed)
+## 2. Data model (reference)
 
-| Entity | New fields | Purpose |
+| Entity | Fields | Purpose |
 |---|---|---|
-| `Staff` | role can now be `SERVER` | Identifies floor servers |
-| `User` | role can now be `SERVER` | Login/JWT role for a server's own account |
+| `Staff` | role can be `SERVER` | Identifies floor servers |
 | `Table` | `currentServerId` | Who is currently serving this table |
-| `Waitlist` | `tableId`, `assignedServerId`, `orderNotes`, `orderNotesUpdatedAt` | Which table/server a seated party is linked to, plus free-text order notes |
-| `ServerFloorStatus` (new) | `staffId`, `onFloor`, `seatedCount`, `rotationOrder`, `isNextUp` | The rotation state, one row per server |
-| `ServerNotification` (new) | `staffId`, `waitlistId`, `tableId`, `type`, `message`, `isRead` | "You've been assigned Table X" feed for the server's own screen |
+| `Waitlist` | `tableId`, `assignedServerId`, `orderNotes` | Which table/server a seated party is linked to |
+| `ServerFloorStatus` | `staffId`, `onFloor`, `seatedCount`, `rotationOrder`, `isNextUp` | Rotation state, one row per server (Scenario 1 only) |
+| `TableServerAssignment` | `tableId`, `assignedServerId`, `sectionName`, `isActive` | Static table→server ownership (Scenario 2 only) |
+| `ServerNotification` | `staffId`, `waitlistId`, `tableId`, `message`, `isRead` | "You've been assigned Table X" feed |
+| `RestaurantSettings.advancedSettings.serverAssignmentMode` | `"ROTATION"` \| `"SECTION"` | Which engine seating uses |
 
-Migrations:
-- `src/main/resources/db/migration/V8__server_rotation_and_table_assignment.sql`
-- `src/main/resources/db/migration/V9__server_order_notes.sql`
+Migrations: `V8__server_rotation_and_table_assignment.sql`,
+`V9__server_order_notes.sql`, `V10__section_based_table_server_assignment.sql`.
 
 ---
 
 ## 3. All APIs involved
 
-All endpoints require `Authorization: Bearer <JWT>` (from `/api/auth/login`) unless noted.
-Base URL below assumes `http://localhost:8080`.
+All endpoints require `Authorization: Bearer <JWT>` (from `/api/auth/login`) unless
+noted. Base URL below assumes `http://localhost:8080`.
 
-### 3.1 Setup/auth (existing APIs you'll reuse)
+### 3.1 Setup/auth
 
 | # | Method & Path | Role | Purpose |
 |---|---|---|---|
 | 1 | `POST /api/auth/login` | public | Get a JWT for ADMIN/MANAGER/HOST/SERVER |
-| 2 | `POST /api/admin/staff` | ADMIN | Invite a new staff member (use `"role": "SERVER"`) |
-| 3 | `POST /api/admin/staff/set-password` | public (token) | Server accepts invite email & sets password → creates their `User` login |
+| 2 | `POST /api/admin/staff` | ADMIN | Create a staff member (use `"role": "SERVER"`) |
+| 3 | `POST /api/admin/staff/set-password` | public (token) | Server accepts invite & sets password → creates their login |
 | 4 | `POST /api/restaurants/{restaurantId}/tables` | ADMIN/MANAGER/HOST | Create floor-plan tables |
-| 5 | `GET  /api/restaurants/{restaurantId}/tables` | ADMIN/MANAGER/HOST | List tables (now includes `currentServerId`) |
-| 6 | `POST /api/restaurants/{restaurantId}/waitlist` | ADMIN/MANAGER/HOST | Add a guest to the waitlist (to seat later) |
+| 5 | `GET  /api/restaurants/{restaurantId}/tables` | ADMIN/MANAGER/HOST | List tables (includes `currentServerId`) |
+| 6 | `POST /api/restaurants/{restaurantId}/waitlist` | ADMIN/MANAGER/HOST | Add a guest to the waitlist |
 
-### 3.2 Rotation / floor management (new — manager-facing)
-
-| # | Method & Path | Role | Purpose |
-|---|---|---|---|
-| 7 | `GET  /api/restaurants/{restaurantId}/servers/floor` | ADMIN/MANAGER/HOST | View the rotation roster (who's on floor, seatedCount, who's Next Up) |
-| 8 | `POST /api/restaurants/{restaurantId}/servers/{staffId}/floor` | ADMIN/MANAGER/HOST | Put a server **on** or **off** the floor. Body: `{ "onFloor": true }` |
-| 9 | `POST /api/restaurants/{restaurantId}/servers/shift/start` | **ADMIN/MANAGER only** | Explicitly start a new shift — resets seatedCount for everyone on the floor |
-
-### 3.3 Seating (existing API, now rotation-aware)
+### 3.2 Mode switch (settings)
 
 | # | Method & Path | Role | Purpose |
 |---|---|---|---|
-| 10 | `POST /api/restaurants/{restaurantId}/waitlist/{id}/seat` | ADMIN/MANAGER/HOST | Seat a guest. Body (all optional): `{ "tableName": "B2", "tableId": 5, "serverId": 12 }`. Leave `serverId` out to auto-assign to whoever is Next Up. |
+| 7 | `GET /api/admin/settings/{restaurantId}/advanced` | ADMIN (own location) | Read current `serverAssignmentMode` |
+| 8 | `PUT /api/admin/settings/{restaurantId}/advanced` | ADMIN (own location) | Set `serverAssignmentMode` to `ROTATION` or `SECTION` |
 
-### 3.4 Server's own screen (new — server-facing)
+### 3.3 Scenario 1 — rotation / floor management
 
 | # | Method & Path | Role | Purpose |
 |---|---|---|---|
-| 11 | `GET  /api/restaurants/{restaurantId}/servers/me/tables` | SERVER (or ADMIN/MANAGER/HOST) | "My Tables" — every currently-seated party assigned to **me** |
-| 12 | `POST /api/restaurants/{restaurantId}/servers/me/tables/{waitlistId}/notes` | **SERVER only** | Save/update free-text **order notes** for one of my own currently-seated tables (what the guest wants, special requests, etc.) |
-| 13 | `GET  /api/restaurants/{restaurantId}/servers/me/notifications?page=0&size=20` | SERVER | My notification feed ("You've been assigned Table 4...") |
-| 14 | `GET  /api/restaurants/{restaurantId}/servers/me/notifications/unread-count` | SERVER | Badge count for the UI |
-| 15 | `POST /api/restaurants/{restaurantId}/servers/me/notifications/{notificationId}/read` | SERVER | Mark a notification as read |
+| 9 | `GET  /api/restaurants/{restaurantId}/servers/floor` | ADMIN/MANAGER/HOST | View the rotation roster |
+| 10 | `POST /api/restaurants/{restaurantId}/servers/{staffId}/floor` | ADMIN/MANAGER/HOST | Put a server on/off the floor. Body: `{ "onFloor": true }` |
+| 11 | `POST /api/restaurants/{restaurantId}/servers/shift/start` | **ADMIN/MANAGER only** | Start a new shift — resets seatedCount for everyone on the floor |
 
-> Note: endpoints 11–15 resolve "me" from the JWT (via the linked `Staff` record), so
-> the server does **not** pass their own staffId — they just log in as themselves.
+### 3.4 Scenario 2 — section assignment
 
-All responses are wrapped in the standard envelope:
-```json
-{ "success": true, "message": "...", "data": { ... } }
-```
+| # | Method & Path | Role | Purpose |
+|---|---|---|---|
+| 12 | `POST   /api/restaurants/{restaurantId}/tables/{tableId}/assign-server` | ADMIN/MANAGER/HOST | Assign a table to a server's section. Body: `{ "tableId": 5, "serverId": 12, "sectionName": "Window" }` |
+| 13 | `GET    /api/restaurants/{restaurantId}/tables/server-assignments` | ADMIN/MANAGER/HOST | List every table→server assignment |
+| 14 | `GET    /api/restaurants/{restaurantId}/tables/assigned-tables/{serverId}` | ADMIN/MANAGER/HOST/SERVER | List tables owned by one server |
+| 15 | `DELETE /api/restaurants/{restaurantId}/tables/server-assignments/{assignmentId}` | ADMIN/MANAGER/HOST | Deactivate an assignment (e.g. server called out) |
+
+### 3.5 Seating (both scenarios go through one of these two)
+
+| # | Method & Path | Role | Purpose |
+|---|---|---|---|
+| 16 | `POST /api/restaurants/{restaurantId}/waitlist/{id}/seat` | ADMIN/MANAGER/HOST | Seat a specific guest from the **queue**. Body (all optional): `{ "tableName": "B2", "tableId": 5, "serverId": 12 }`. `serverId` is only honored in ROTATION mode (explicit/out-of-turn pick); in SECTION mode the table's owner is always used. |
+| 17 | `POST /api/restaurants/{restaurantId}/tables/{tableId}/seat-next-party` | ADMIN/MANAGER/HOST | **New.** Seat the **front of the queue** directly from a table's own detail view. Body (optional): `{ "serverId": 12 }`. Table must be `OPEN`. Internally calls the exact same seating logic as #16, so the Next-Up pointer / section lookup behaves identically regardless of which of these two you use. |
+
+### 3.6 Server's own screen
+
+| # | Method & Path | Role | Purpose |
+|---|---|---|---|
+| 18 | `GET  /api/restaurants/{restaurantId}/servers/me/tables` | SERVER (or ADMIN/MANAGER/HOST) | "My Tables" — every currently-seated party assigned to me |
+| 19 | `POST /api/restaurants/{restaurantId}/servers/me/tables/{waitlistId}/notes` | **SERVER only** | Save order notes for one of my seated tables |
+| 20 | `GET  /api/restaurants/{restaurantId}/servers/me/notifications?page=0&size=20` | SERVER | My notification feed |
+| 21 | `GET  /api/restaurants/{restaurantId}/servers/me/notifications/unread-count` | SERVER | Badge count |
+| 22 | `POST /api/restaurants/{restaurantId}/servers/me/notifications/{notificationId}/read` | SERVER | Mark a notification read |
+
+> Endpoints 18–22 resolve "me" from the JWT (via the linked `Staff` record) — the
+> server does not pass their own staffId.
+
+All responses use the standard envelope: `{ "success": true, "message": "...", "data": {...} }`.
 
 ---
 
-## 4. Functional test script (curl)
+## 4. Functional test script — Scenario 1 (ROTATION)
 
-Replace `TOKEN_ADMIN` / `TOKEN_SERVER_1` / `TOKEN_SERVER_2` with real JWTs after login,
-and `RID` with your restaurant id.
+Replace `TOKEN_ADMIN` / `TOKEN_SERVER_1` / `TOKEN_SERVER_2` with real JWTs after
+login, and `RID` with your restaurant id.
 
-### Step 0 — Login as an admin/manager/host
+### Step 0 — Confirm the mode, then log in
 ```bash
-curl -s -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"manager@yourrestaurant.com","password":"yourpassword"}'
-# => copy data.token into TOKEN_ADMIN
+curl -s http://localhost:8080/api/admin/settings/RID/advanced -H "Authorization: Bearer $TOKEN_ADMIN"
+# data.serverAssignmentMode should be "ROTATION". If it's "SECTION", switch it first:
+curl -s -X PUT http://localhost:8080/api/admin/settings/RID/advanced \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{"darkMode":false,"desktopNotifications":false,"keepSignedIn":true,"language":"en","timezone":"Canada/Central","serverAssignmentMode":"ROTATION"}'
 ```
 
-### Step 1 — Invite two SERVER staff members
+### Step 1 — Create two SERVER staff members
 ```bash
 curl -s -X POST http://localhost:8080/api/admin/staff \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
@@ -131,16 +169,9 @@ curl -s -X POST http://localhost:8080/api/admin/staff \
 curl -s -X POST http://localhost:8080/api/admin/staff \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
   -d '{"name":"Bob","role":"SERVER","locationId":RID,"email":"bob@test.com"}'
-# => note the returned staffId for each (data.id)
+# => note the returned staffId for each (data.id). The staff row is usable
+# immediately for floor/section assignment, even before they set a password.
 ```
-Each invited server gets an invitation email with a token. Use
-`POST /api/admin/staff/set-password` with that token to create their login
-(`{"token":"...","password":"Passw0rd!","confirmPassword":"Passw0rd!"}`), then they can
-`POST /api/auth/login` with their own email/password to get `TOKEN_SERVER_1` / `_2`.
-
-> **Shortcut for local testing** if you don't want to wire up email: insert the
-> invitation token directly from the `staff_invitation_tokens` table, or temporarily
-> call `setStaffPassword` with that token value.
 
 ### Step 2 — Create 4 tables
 ```bash
@@ -164,20 +195,19 @@ curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/<BOB_STAFF_ID>
 
 ### Step 4 — Check the roster
 ```bash
-curl -s http://localhost:8080/api/restaurants/RID/servers/floor \
-  -H "Authorization: Bearer $TOKEN_ADMIN"
+curl -s http://localhost:8080/api/restaurants/RID/servers/floor -H "Authorization: Bearer $TOKEN_ADMIN"
 ```
-**Expect:** Alice first (added first) → `"onFloor": true, "seatedCount": 0, "nextUp": true`.
-Bob → `"onFloor": true, "seatedCount": 0, "nextUp": false`.
+**Expect:** Alice first (added first) → `onFloor:true, seatedCount:0, nextUp:true`.
+Bob → `onFloor:true, seatedCount:0, nextUp:false`.
 
-### Step 5 — Add 3 guests to the waitlist
+### Step 5 — Add 4 guests to the waitlist
 ```bash
-for i in 1 2 3; do
+for i in 1 2 3 4; do
 curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
-  -d "{\"name\":\"Guest $i\",\"phone\":\"555000000$i\",\"partySize\":2}"
+  -d "{\"name\":\"Guest $i\",\"phone\":\"555000000$i\",\"partySize\":2,\"position\":$i}"
 done
-# note each returned data.id as WID1, WID2, WID3
+# note each returned data.id as WID1..WID4
 ```
 
 ### Step 6 — Seat Guest 1 with NO server specified (auto Next Up)
@@ -186,18 +216,18 @@ curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist/WID1/seat \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
   -d '{"tableId": <A1_TABLE_ID>}'
 ```
-**Expect:** `data.assignedServerId` == Alice's staffId.
-Re-check the roster (Step 4's call) → Alice `seatedCount=1, nextUp=false`; Bob `nextUp=true`.
+**Expect:** `data.assignedServerId` == Alice's staffId. Re-check the roster → Alice
+`seatedCount:1, nextUp:false`; Bob `nextUp:true`.
 
-### Step 7 — Seat Guest 2 OUT OF TURN (guest didn't want Bob → explicitly request Alice)
+### Step 7 — Seat Guest 2 OUT OF TURN (guest explicitly requests Alice)
 ```bash
 curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist/WID2/seat \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
   -d '{"tableId": <A2_TABLE_ID>, "serverId": <ALICE_STAFF_ID>}'
 ```
-**Expect:** `data.assignedServerId` == Alice's staffId, Alice `seatedCount=2`.
-**Critical check:** re-check the roster → **Bob must still be `nextUp:true`** (the
-pointer was NOT skipped/advanced because this was an out-of-turn pick).
+**Expect:** `data.assignedServerId` == Alice, Alice `seatedCount:2`.
+**Critical check:** re-check the roster → **Bob must still be `nextUp:true`** — the
+pointer was not advanced because this was an out-of-turn pick.
 
 ### Step 8 — Seat Guest 3 with NO server specified again
 ```bash
@@ -205,127 +235,180 @@ curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist/WID3/seat \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
   -d '{"tableId": <B1_TABLE_ID>}'
 ```
-**Expect:** `data.assignedServerId` == Bob's staffId (he was still Next Up from step 6,
-proving he wasn't skipped). Bob `seatedCount=1`. Pointer now advances back to Alice.
+**Expect:** `data.assignedServerId` == Bob (he was still Next Up from step 6, proving
+he wasn't skipped). Bob `seatedCount:1`. Pointer now advances back to Alice.
 
-### Step 9 — Merged-table group = ONE seating event
+### Step 9 — Seat Guest 4 via "seat next party" from the table's own detail view
+This is the **second entry point** — instead of picking a waitlist id and a table
+separately, you act from an `OPEN` table and let it pull the front of the queue.
 ```bash
-# Merge A1 & A2 (if still OPEN) then seat a party at the primary table:
+curl -s -X POST http://localhost:8080/api/restaurants/RID/tables/<B2_TABLE_ID>/seat-next-party \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{}'
+```
+**Expect:** Guest 4 (front of the queue) gets seated at B2, `data.assignedServerId` ==
+Alice (she's Next Up again after step 8) — identical pointer behavior to the
+queue-based endpoint, since both call the same underlying logic.
+**Negative check:** call this again on a table that's already `OCCUPIED` → expect
+`400 Bad Request` ("Table is not open"). Call it when the queue is empty → expect
+`400 Bad Request` ("No guests waiting to be seated").
+
+### Step 10 — Merged-table group = ONE seating event
+```bash
 curl -s -X POST http://localhost:8080/api/restaurants/RID/tables/merge \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
   -d '{"tableId": <TABLE_X>, "mergedTableId": <TABLE_Y>}'
 
-curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist/WID4/seat \
+curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist/WID5/seat \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
   -d '{"tableId": <TABLE_X>}'
 
-curl -s http://localhost:8080/api/restaurants/RID/tables \
-  -H "Authorization: Bearer $TOKEN_ADMIN"
+curl -s http://localhost:8080/api/restaurants/RID/tables -H "Authorization: Bearer $TOKEN_ADMIN"
 ```
 **Expect:** Both `TABLE_X` and `TABLE_Y` show the **same** `currentServerId` and
-`status: OCCUPIED` — confirming the merge group is credited as a single seating event
-(only +1 to that one server's seatedCount, not +2).
+`status:OCCUPIED` — only +1 to that one server's `seatedCount`, not +2.
 
-### Step 10 — Server's own "My Tables" screen
-```bash
-curl -s http://localhost:8080/api/restaurants/RID/servers/me/tables \
-  -H "Authorization: Bearer $TOKEN_SERVER_1"
-```
-**Expect (as Alice):** a list containing Guest 1 and Guest 2 (both her tables), with
-`tableName`, `partySize`, `guestName`, `seatedAt`, `orderNotes` (null until step 10b).
-
-### Step 10b — Server adds order notes to one of their tables
-```bash
-curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/me/tables/WID1/notes \
-  -H "Authorization: Bearer $TOKEN_SERVER_1" -H "Content-Type: application/json" \
-  -d '{"orderNotes": "2x Caesar salad, 1x no onions, allergic to peanuts, extra napkins"}'
-```
-**Expect:** `200 OK`, response `data.orderNotes` echoes the text, `data.orderNotesUpdatedAt` is set.
-
-Re-run Step 10 (`GET /servers/me/tables`) → Guest 1's entry now shows that `orderNotes` text.
-
-**Negative checks:**
-- Bob (`TOKEN_SERVER_2`) tries to add notes to Alice's `WID1` → **expect 400** ("You can
-  only add order notes to tables assigned to you").
-- Try adding notes to a waitlist id that isn't currently `SEATED` (e.g. already cleared) →
-  **expect 400** ("Order notes can only be added while the party is seated").
-- Try with a `waitlistId` belonging to a different restaurant → **expect 400**.
-
-### Step 11 — Server's notifications
-```bash
-curl -s "http://localhost:8080/api/restaurants/RID/servers/me/notifications?page=0&size=20" \
-  -H "Authorization: Bearer $TOKEN_SERVER_1"
-
-curl -s http://localhost:8080/api/restaurants/RID/servers/me/notifications/unread-count \
-  -H "Authorization: Bearer $TOKEN_SERVER_1"
-```
-**Expect:** 2 notifications for Alice (one per seating), `unreadCount: 2`.
-
-Mark one as read:
-```bash
-curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/me/notifications/<NOTIFICATION_ID>/read \
-  -H "Authorization: Bearer $TOKEN_SERVER_1"
-```
-**Expect:** `unread-count` drops to 1.
-
-### Step 12 — Manager starts a new shift (manual reset only)
+### Step 11 — Manager starts a new shift (manual reset only)
 ```bash
 curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/shift/start \
   -H "Authorization: Bearer $TOKEN_ADMIN"
 ```
-**Expect:** Alice & Bob both `seatedCount: 0`; rotation restarts with the server who
-was first in `rotationOrder` marked `nextUp: true` again.
-**Also verify:** without calling this endpoint, seatedCount never resets on its own
-(no automatic midnight job) — seat a few more guests on a "new day" and confirm counts
-keep accumulating until you explicitly call this endpoint.
+**Expect:** Alice & Bob both `seatedCount:0`; rotation restarts from the first server
+in `rotationOrder`, marked `nextUp:true`.
+**Also verify:** without calling this, `seatedCount` never resets on its own.
 
-### Step 13 — Removing a server from the floor mid-shift
+### Step 12 — Removing a server from the floor mid-shift
 ```bash
 curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/<BOB_STAFF_ID>/floor \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
   -d '{"onFloor": false}'
 
-curl -s http://localhost:8080/api/restaurants/RID/servers/floor \
-  -H "Authorization: Bearer $TOKEN_ADMIN"
+curl -s http://localhost:8080/api/restaurants/RID/servers/floor -H "Authorization: Bearer $TOKEN_ADMIN"
 ```
-**Expect:** Bob `onFloor:false`. If Bob was `nextUp` at the time, the pointer moves to
-whoever else is on the floor (Alice). Seat a new guest with no `serverId` → it should
-go to Alice automatically (Bob is correctly skipped because he clocked out, not because
-of unfair rotation logic).
+**Expect:** Bob `onFloor:false`. If Bob was `nextUp`, the pointer moves to Alice. Seat
+a new guest with no `serverId` → goes to Alice (Bob is skipped because he clocked out,
+not because of unfair rotation).
 
-### Step 14 — No servers on the floor
-Remove Alice too, then seat a guest with no `serverId` specified.
-**Expect:** `data.assignedServerId` is `null` (seating still succeeds — the restaurant
-can operate without the rotation feature active; no error is thrown).
+### Step 13 — No servers on the floor
+Remove Alice too, then seat a guest with no `serverId`.
+**Expect:** `data.assignedServerId` is `null` — seating still succeeds without the
+rotation feature active.
 
-### Step 15 — Permission checks
-- Call `POST /servers/shift/start` with a **HOST** token → **expect 403** (host-only
-  roles cannot start a shift, only ADMIN/MANAGER).
-- Call `GET /servers/me/tables` with `TOKEN_SERVER_2` (Bob) → should only return
-  **Bob's** tables, never Alice's.
-- Call `POST /servers/me/tables/{waitlistId}/notes` with an **ADMIN/MANAGER/HOST** token
-  → **expect 403** (this endpoint is SERVER-only).
-- Call any `/servers/...` endpoint with no `Authorization` header → **expect 401/403**.
+### Step 14 — Permission checks
+- `POST /servers/shift/start` with a **HOST** token → expect `403` (ADMIN/MANAGER only).
+- `GET /servers/me/tables` with Bob's token → only Bob's tables, never Alice's.
+- `POST /servers/me/tables/{waitlistId}/notes` with an ADMIN/MANAGER/HOST token →
+  expect `403` (SERVER-only).
+- Any `/servers/...` endpoint with no `Authorization` header → expect `401`/`403`.
 
 ---
 
-## 5. Edge cases already handled (verify during testing)
+## 5. Functional test script — Scenario 2 (SECTION)
+
+Reuses Alice/Bob/tables from section 4. Run this **after** switching the mode.
+
+### Step 1 — Switch the restaurant to SECTION mode
+```bash
+curl -s -X PUT http://localhost:8080/api/admin/settings/RID/advanced \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{"darkMode":false,"desktopNotifications":false,"keepSignedIn":true,"language":"en","timezone":"Canada/Central","serverAssignmentMode":"SECTION"}'
+```
+**Expect:** `data.serverAssignmentMode == "SECTION"`. Confirm with a `GET` too.
+
+### Step 2 — Assign tables to each server's section
+```bash
+curl -s -X POST http://localhost:8080/api/restaurants/RID/tables/<A1_TABLE_ID>/assign-server \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{"tableId": <A1_TABLE_ID>, "serverId": <ALICE_STAFF_ID>, "sectionName": "Window"}'
+
+curl -s -X POST http://localhost:8080/api/restaurants/RID/tables/<B1_TABLE_ID>/assign-server \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{"tableId": <B1_TABLE_ID>, "serverId": <BOB_STAFF_ID>, "sectionName": "Bar"}'
+```
+**Expect:** both return `200` with the new assignment (`tableName`, `serverName`,
+`sectionName`, `isActive:true`).
+
+### Step 3 — List all assignments
+```bash
+curl -s http://localhost:8080/api/restaurants/RID/tables/server-assignments -H "Authorization: Bearer $TOKEN_ADMIN"
+```
+**Expect:** both assignments listed.
+
+### Step 4 — Seat a guest at Alice's table — no rotation involved
+```bash
+curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist/WID6/seat \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{"tableId": <A1_TABLE_ID>}'
+```
+**Expect:** `data.assignedServerId` == Alice, **even if Bob was "Next Up"** in the old
+ROTATION roster — section mode ignores the rotation pointer entirely. Any `serverId`
+passed in the body is ignored in this mode (the table's owner always wins).
+
+### Step 5 — Seat a guest at Bob's table via "seat next party"
+```bash
+curl -s -X POST http://localhost:8080/api/restaurants/RID/tables/<B1_TABLE_ID>/seat-next-party \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" -d '{}'
+```
+**Expect:** `data.assignedServerId` == Bob — same section lookup, same result whether
+seated via the queue or via this endpoint.
+
+### Step 6 — Seat at a table with no assignment
+```bash
+curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist/WID7/seat \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{"tableId": <A2_TABLE_ID>}'
+```
+**Expect:** `data.assignedServerId` is `null` (A2 was never assigned to anyone) — no
+error, seating still succeeds.
+
+### Step 7 — Server calls out: deactivate their assignment
+```bash
+curl -s -X DELETE http://localhost:8080/api/restaurants/RID/tables/server-assignments/<ASSIGNMENT_ID> \
+  -H "Authorization: Bearer $TOKEN_ADMIN"
+```
+**Expect:** `200`. Re-run Step 4 at the same table → `assignedServerId` now `null`
+until a manager manually reassigns it (no automatic failover, by design).
+
+### Step 8 — Switch back to ROTATION and confirm state survived
+```bash
+curl -s -X PUT http://localhost:8080/api/admin/settings/RID/advanced \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{"darkMode":false,"desktopNotifications":false,"keepSignedIn":true,"language":"en","timezone":"Canada/Central","serverAssignmentMode":"ROTATION"}'
+
+curl -s http://localhost:8080/api/restaurants/RID/servers/floor -H "Authorization: Bearer $TOKEN_ADMIN"
+```
+**Expect:** the rotation roster/pointer from section 4 is unchanged — switching modes
+only changes which engine seating *uses*, it doesn't reset or touch the other
+engine's state. Section assignments made in step 2 also still exist (list them again
+via Step 3's call) — they're just not consulted while in ROTATION mode.
+
+---
+
+## 6. Edge cases to verify
 
 | Scenario | Expected behavior |
 |---|---|
-| `serverId` passed but that server is NOT on the floor | `400 Bad Request` — "Selected server is not currently on the floor" |
-| `staffId` passed to `/floor` belongs to a different restaurant | `400 Bad Request` — "Staff member does not belong to the specified restaurant" |
+| `serverAssignmentMode` set to anything other than `ROTATION`/`SECTION` | `400 Bad Request` — "serverAssignmentMode must be ROTATION or SECTION" |
+| `serverId` passed in ROTATION mode but that server is NOT on the floor | `400 Bad Request` — "Selected server is not currently on the floor" |
+| `staffId` passed to `/floor` belongs to a different restaurant | `400 Bad Request` |
 | `staffId` passed to `/floor` is not role `SERVER` (e.g. a HOST) | `400 Bad Request` — "Only staff with role SERVER can be placed on the floor rotation" |
-| Only 1 server on the floor | That server is always Next Up; seating always goes to them; pointer "advances" to itself |
-| Table status manually set back to `OPEN`/`NEEDS_CLEANING` via `POST /tables/{id}/status` | `currentServerId` on that table is cleared automatically |
-| Guest seated without `tableId` | Still works — only `tableName` (free text) is stored, no Table/server link, `assignedServerId` still set from rotation if servers are on the floor |
-| Order notes on a table not assigned to the caller | `400 Bad Request` — "You can only add order notes to tables assigned to you" |
-| Order notes on a party that isn't currently `SEATED` | `400 Bad Request` — "Order notes can only be added while the party is seated" |
-| `orderNotes` longer than 2000 characters | `400 Bad Request` (validation) |
+| Only 1 server on the floor (ROTATION) | Always Next Up; pointer "advances" to itself |
+| `seat-next-party` on a table that's `OCCUPIED`, `RESERVED`, or `NEEDS_CLEANING` | `400 Bad Request` — "Table is not open" |
+| `seat-next-party` with nobody `WAITING` in the queue | `400 Bad Request` — "No guests waiting to be seated" |
+| Table status manually reset via `POST /tables/{id}/status` | `currentServerId` on that table is cleared automatically |
+| Guest seated without `tableId` | Still works — only `tableName` (free text) stored; `assignedServerId` still comes from ROTATION if applicable, or `null` in SECTION mode (no table to look up) |
+| Order notes on a table not assigned to the caller | `400 Bad Request` |
+| Order notes on a party that isn't currently `SEATED` | `400 Bad Request` |
 
 ---
 
-## 6. Quick reference — request/response shapes
+## 7. Quick reference — request/response shapes
+
+**`PUT /admin/settings/{restaurantId}/advanced`**
+```json
+{ "darkMode": false, "desktopNotifications": false, "keepSignedIn": true,
+  "language": "en", "timezone": "Canada/Central", "serverAssignmentMode": "ROTATION" }
+```
 
 **`POST /servers/{staffId}/floor`**
 ```json
@@ -340,45 +423,27 @@ can operate without the rotation feature active; no error is thrown).
 ]
 ```
 
+**`POST /tables/{tableId}/assign-server`**
+```json
+{ "tableId": 5, "serverId": 12, "sectionName": "Window" }
+```
+
 **`POST /waitlist/{id}/seat`**
 ```json
 { "tableName": "B2", "tableId": 5, "serverId": 12 }
 ```
-(all fields optional — omit `serverId` for auto Next-Up assignment)
+(all fields optional — omit `serverId` for auto Next-Up in ROTATION, ignored entirely in SECTION)
+
+**`POST /tables/{tableId}/seat-next-party`**
+```json
+{ "serverId": 12 }
+```
+(body itself is optional — omit or send `{}` to let the mode's default assignment apply)
 
 **`GET /servers/me/tables` → `data`**
 ```json
 [
-  {
-    "waitlistId": 101, "tableId": 5, "tableName": "B2",
-    "guestName": "Guest 1", "partySize": 2,
-    "notes": null, "preference": null,
-    "seatedAt": "2026-10-10T19:05:00",
-    "orderNotes": "2x Caesar salad, 1x no onions, allergic to peanuts",
-    "orderNotesUpdatedAt": "2026-10-10T19:12:00"
-  }
+  { "waitlistId": 101, "tableId": 5, "tableName": "B2", "guestName": "Guest 1",
+    "partySize": 2, "seatedAt": "2026-10-10T19:05:00", "orderNotes": null }
 ]
 ```
-
-**`POST /servers/me/tables/{waitlistId}/notes`**
-```json
-{ "orderNotes": "2x Caesar salad, 1x no onions, allergic to peanuts, extra napkins" }
-```
-→ `data` is the same `ServerAssignedTableResponse` shape shown above, with the updated
-`orderNotes` / `orderNotesUpdatedAt`.
-
-**`GET /servers/me/notifications` → `data`** (Spring `Page` object)
-```json
-{
-  "content": [
-    {
-      "id": 1, "waitlistId": 101, "tableId": 5,
-      "type": "TABLE_ASSIGNED",
-      "message": "You've been assigned B2 for a party of 2 (Guest 1).",
-      "isRead": false, "createdAt": "2026-10-10T19:05:00"
-    }
-  ],
-  "totalElements": 1, "totalPages": 1, "number": 0, "size": 20
-}
-```
-
