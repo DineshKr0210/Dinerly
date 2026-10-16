@@ -6,12 +6,15 @@ import com.restaurant.waitlist.backend.dto.response.ApiResponse;
 import com.restaurant.waitlist.backend.service.GuestOfferService;
 import com.restaurant.waitlist.backend.service.GuestRewardsService;
 import com.restaurant.waitlist.backend.service.admin.AdminRedemptionService;
+import com.restaurant.waitlist.backend.util.QRCodeGenerator;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -39,7 +42,7 @@ public class RedemptionController {
      * @param request Optional body carrying the QR-scanned code; takes priority over the path code when present
      * @return Success response with offer details or error if code invalid/expired
      */
-    @PostMapping("/validate-offer-code/{code}")
+    @PostMapping(value = "/validate-offer-code/{code}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'HOST')")
     public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> validateOfferCode(
             @PathVariable Long restaurantId,
@@ -50,6 +53,34 @@ public class RedemptionController {
                     ? request.getQrCode().trim()
                     : code;
             com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(effectiveCode, restaurantId);
+            return ResponseEntity.ok(ApiResponse.success("Offer code validated and completed", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Invalid or expired offer code: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Same endpoint, third way in: upload a photo of the offer's QR code (e.g. snapped with
+     * a phone/tablet camera) and let the server decode it, instead of the frontend decoding
+     * it first. Swagger renders this as a file picker, which on mobile offers "Take Photo"
+     * directly - the closest thing to an in-Swagger scan.
+     *
+     * @param restaurantId The restaurant ID where POS is validating the code
+     * @param qrImage A photo/image of the QR code (PNG, JPG, etc.)
+     * @return Success response with offer details or error if code invalid/expired/unreadable
+     */
+    @PostMapping(value = "/validate-offer-code/{code}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'HOST')")
+    public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> validateOfferCodeByImage(
+            @PathVariable Long restaurantId,
+            @RequestParam("qrImage") MultipartFile qrImage) {
+        try {
+            if (qrImage == null || qrImage.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("QR image file is empty"));
+            }
+            String decodedCode = QRCodeGenerator.decodeQRCode(qrImage.getBytes());
+            com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse response = guestOfferService.validateAndCompleteCode(decodedCode, restaurantId);
             return ResponseEntity.ok(ApiResponse.success("Offer code validated and completed", response));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
