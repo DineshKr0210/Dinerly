@@ -42,7 +42,7 @@ public class RedemptionController {
      * @param request Optional body carrying the QR-scanned code; takes priority over the path code when present
      * @return Success response with offer details or error if code invalid/expired
      */
-    @PostMapping(value = "/validate-offer-code/{code}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping("/validate-offer-code/{code}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'HOST')")
     public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> validateOfferCode(
             @PathVariable Long restaurantId,
@@ -61,16 +61,17 @@ public class RedemptionController {
     }
 
     /**
-     * Same endpoint, third way in: upload a photo of the offer's QR code (e.g. snapped with
-     * a phone/tablet camera) and let the server decode it, instead of the frontend decoding
-     * it first. Swagger renders this as a file picker, which on mobile offers "Take Photo"
+     * Validate an offer redemption by uploading a photo of its QR code, instead of typing
+     * or pre-decoding the code. Separate from validate-offer-code/{code} since this one has
+     * no code to put in the path - the server decodes the image itself (ZXing). Swagger
+     * renders the qrImage field as a file picker, which on mobile offers "Take Photo"
      * directly - the closest thing to an in-Swagger scan.
      *
      * @param restaurantId The restaurant ID where POS is validating the code
      * @param qrImage A photo/image of the QR code (PNG, JPG, etc.)
      * @return Success response with offer details or error if code invalid/expired/unreadable
      */
-    @PostMapping(value = "/validate-offer-code/{code}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/validate-offer-qr-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'HOST')")
     public ResponseEntity<ApiResponse<com.restaurant.waitlist.backend.dto.response.ConfirmRedemptionResponse>> validateOfferCodeByImage(
             @PathVariable Long restaurantId,
