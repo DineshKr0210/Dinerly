@@ -5,11 +5,20 @@ assignment scenarios, the setting that switches between them, every API involved
 exact request/response shapes, and a step-by-step functional test script you can run
 with `curl` (or import into Postman/Swagger).
 
-> **Updated in this revision:** the `serverAssignmentMode` setting is now actually
-> settable via the Advanced Settings API (it previously had no write path at all —
-> every restaurant was silently stuck on ROTATION), and a second seating entry point,
-> "seat next party" from a table's own detail view, has been added. Both are covered
-> below, along with full Scenario 2 (SECTION) test steps that didn't exist before.
+> **Updated in this revision:** added a per-server workload cap (`maxTables`) with a
+> live `currentTableCount`/`atCapacity` flag on the floor roster, a way to actually
+> finish a seated party (`POST /waitlist/{id}/complete` — previously a `SEATED` entry
+> had no way out of that status at all), and the floor roster response is now a
+> wrapped object that also reports which mode is active plus each server's assigned
+> table names in SECTION mode.
+>
+> **Also fixed while testing this:** three untracked database CHECK constraints
+> (`staff_role_check`, `waitlist_status_check`/`waitlist_last_active_status_check`,
+> `users_role_check`) predated the `SERVER` role and `COMPLETED` status being added to
+> their Java enums, and silently rejected both — meaning the *entire* server rotation
+> feature, and logging in as a server at all, was broken at the database level until
+> `V12__server_capacity_and_completed_status.sql` fixed them. If you're testing against
+> an older database, make sure this migration has actually run before anything else here.
 
 ---
 
@@ -78,7 +87,9 @@ will make Scenario 1 steps fail in confusing ways, and vice versa.
 | `RestaurantSettings.advancedSettings.serverAssignmentMode` | `"ROTATION"` \| `"SECTION"` | Which engine seating uses |
 
 Migrations: `V8__server_rotation_and_table_assignment.sql`,
-`V9__server_order_notes.sql`, `V10__section_based_table_server_assignment.sql`.
+`V9__server_order_notes.sql`, `V10__section_based_table_server_assignment.sql`,
+`V12__server_capacity_and_completed_status.sql` (adds `max_tables`, the `COMPLETED`
+waitlist status, and fixes the three stale CHECK constraints mentioned above).
 
 ---
 
@@ -109,8 +120,8 @@ noted. Base URL below assumes `http://localhost:8080`.
 
 | # | Method & Path | Role | Purpose |
 |---|---|---|---|
-| 9 | `GET  /api/restaurants/{restaurantId}/servers/floor` | ADMIN/MANAGER/HOST | View the rotation roster |
-| 10 | `POST /api/restaurants/{restaurantId}/servers/{staffId}/floor` | ADMIN/MANAGER/HOST | Put a server on/off the floor. Body: `{ "onFloor": true }` |
+| 9 | `GET  /api/restaurants/{restaurantId}/servers/floor` | ADMIN/MANAGER/HOST | View the roster — wrapped with `serverAssignmentMode`, each server's live `currentTableCount`/`maxTables`/`atCapacity`, and (SECTION mode) `assignedTableNames` |
+| 10 | `POST /api/restaurants/{restaurantId}/servers/{staffId}/floor` | ADMIN/MANAGER/HOST | Put a server on/off the floor, and/or set their capacity. Body: `{ "onFloor": true, "maxTables": 3 }` (`maxTables` optional: omit to leave unchanged, `0` resets to unlimited) |
 | 11 | `POST /api/restaurants/{restaurantId}/servers/shift/start` | **ADMIN/MANAGER only** | Start a new shift — resets seatedCount for everyone on the floor |
 
 ### 3.4 Scenario 2 — section assignment
@@ -127,19 +138,20 @@ noted. Base URL below assumes `http://localhost:8080`.
 | # | Method & Path | Role | Purpose |
 |---|---|---|---|
 | 16 | `POST /api/restaurants/{restaurantId}/waitlist/{id}/seat` | ADMIN/MANAGER/HOST | Seat a specific guest from the **queue**. Body (all optional): `{ "tableName": "B2", "tableId": 5, "serverId": 12 }`. `serverId` is only honored in ROTATION mode (explicit/out-of-turn pick); in SECTION mode the table's owner is always used. |
-| 17 | `POST /api/restaurants/{restaurantId}/tables/{tableId}/seat-next-party` | ADMIN/MANAGER/HOST | **New.** Seat the **front of the queue** directly from a table's own detail view. Body (optional): `{ "serverId": 12 }`. Table must be `OPEN`. Internally calls the exact same seating logic as #16, so the Next-Up pointer / section lookup behaves identically regardless of which of these two you use. |
+| 17 | `POST /api/restaurants/{restaurantId}/tables/{tableId}/seat-next-party` | ADMIN/MANAGER/HOST | Seat the **front of the queue** directly from a table's own detail view. Body (optional): `{ "serverId": 12 }`. Table must be `OPEN`. Internally calls the exact same seating logic as #16, so the Next-Up pointer / section lookup behaves identically regardless of which of these two you use. |
+| 18 | `POST /api/restaurants/{restaurantId}/waitlist/{id}/complete` | ADMIN/MANAGER/HOST | **New.** Marks a seated party as finished: `Waitlist.status → COMPLETED`, and if a real table was linked, frees it (`status → NEEDS_CLEANING`, `currentServerId` cleared) in the same call. This is what makes a server's `currentTableCount` go back down. |
 
 ### 3.6 Server's own screen
 
 | # | Method & Path | Role | Purpose |
 |---|---|---|---|
-| 18 | `GET  /api/restaurants/{restaurantId}/servers/me/tables` | SERVER (or ADMIN/MANAGER/HOST) | "My Tables" — every currently-seated party assigned to me |
-| 19 | `POST /api/restaurants/{restaurantId}/servers/me/tables/{waitlistId}/notes` | **SERVER only** | Save order notes for one of my seated tables |
-| 20 | `GET  /api/restaurants/{restaurantId}/servers/me/notifications?page=0&size=20` | SERVER | My notification feed |
-| 21 | `GET  /api/restaurants/{restaurantId}/servers/me/notifications/unread-count` | SERVER | Badge count |
-| 22 | `POST /api/restaurants/{restaurantId}/servers/me/notifications/{notificationId}/read` | SERVER | Mark a notification read |
+| 19 | `GET  /api/restaurants/{restaurantId}/servers/me/tables` | SERVER (or ADMIN/MANAGER/HOST) | "My Tables" — every currently-seated party assigned to me |
+| 20 | `POST /api/restaurants/{restaurantId}/servers/me/tables/{waitlistId}/notes` | **SERVER only** | Save order notes for one of my seated tables |
+| 21 | `GET  /api/restaurants/{restaurantId}/servers/me/notifications?page=0&size=20` | SERVER | My notification feed |
+| 22 | `GET  /api/restaurants/{restaurantId}/servers/me/notifications/unread-count` | SERVER | Badge count |
+| 23 | `POST /api/restaurants/{restaurantId}/servers/me/notifications/{notificationId}/read` | SERVER | Mark a notification read |
 
-> Endpoints 18–22 resolve "me" from the JWT (via the linked `Staff` record) — the
+> Endpoints 19–23 resolve "me" from the JWT (via the linked `Staff` record) — the
 > server does not pass their own staffId.
 
 All responses use the standard envelope: `{ "success": true, "message": "...", "data": {...} }`.
@@ -268,7 +280,36 @@ curl -s http://localhost:8080/api/restaurants/RID/tables -H "Authorization: Bear
 **Expect:** Both `TABLE_X` and `TABLE_Y` show the **same** `currentServerId` and
 `status:OCCUPIED` — only +1 to that one server's `seatedCount`, not +2.
 
-### Step 11 — Manager starts a new shift (manual reset only)
+### Step 11 — Set Alice's capacity and watch `atCapacity` flip
+```bash
+curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/<ALICE_STAFF_ID>/floor \
+  -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
+  -d '{"onFloor": true, "maxTables": 2}'
+
+curl -s http://localhost:8080/api/restaurants/RID/servers/floor -H "Authorization: Bearer $TOKEN_ADMIN"
+```
+**Expect:** Alice's row shows `maxTables:2` and `currentTableCount` equal to however
+many of her parties (from steps 6/7/10) are still `SEATED`. If that count is already
+`>= 2`, `atCapacity:true`. This is **visibility only** — it does not block a new
+seating from landing on her; the host decides whether to route around it.
+
+### Step 12 — Finish one of Alice's parties and watch the count drop
+```bash
+curl -s -X POST http://localhost:8080/api/restaurants/RID/waitlist/WID1/complete \
+  -H "Authorization: Bearer $TOKEN_ADMIN"
+
+curl -s http://localhost:8080/api/restaurants/RID/tables -H "Authorization: Bearer $TOKEN_ADMIN"
+curl -s http://localhost:8080/api/restaurants/RID/servers/floor -H "Authorization: Bearer $TOKEN_ADMIN"
+```
+**Expect:** the waitlist response shows `status:"COMPLETED"`. A1 (Guest 1's table)
+shows `status:"NEEDS_CLEANING"` and `currentServerId:null` — cleared automatically in
+the same call. Alice's `currentTableCount` drops by 1 and `atCapacity` goes back to
+`false` once she's under the cap again — this is what "picking up another table" looks
+like: free capacity by completing, then she's eligible for the next seating same as before.
+**Negative checks:** completing the same waitlist id again → `400` ("Only a seated
+party can be marked as completed"). Completing a `WAITING`/`CANCELLED` entry → same error.
+
+### Step 13 — Manager starts a new shift (manual reset only)
 ```bash
 curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/shift/start \
   -H "Authorization: Bearer $TOKEN_ADMIN"
@@ -277,7 +318,7 @@ curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/shift/start \
 in `rotationOrder`, marked `nextUp:true`.
 **Also verify:** without calling this, `seatedCount` never resets on its own.
 
-### Step 12 — Removing a server from the floor mid-shift
+### Step 14 — Removing a server from the floor mid-shift
 ```bash
 curl -s -X POST http://localhost:8080/api/restaurants/RID/servers/<BOB_STAFF_ID>/floor \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
@@ -289,12 +330,12 @@ curl -s http://localhost:8080/api/restaurants/RID/servers/floor -H "Authorizatio
 a new guest with no `serverId` → goes to Alice (Bob is skipped because he clocked out,
 not because of unfair rotation).
 
-### Step 13 — No servers on the floor
+### Step 15 — No servers on the floor
 Remove Alice too, then seat a guest with no `serverId`.
 **Expect:** `data.assignedServerId` is `null` — seating still succeeds without the
 rotation feature active.
 
-### Step 14 — Permission checks
+### Step 16 — Permission checks
 - `POST /servers/shift/start` with a **HOST** token → expect `403` (ADMIN/MANAGER only).
 - `GET /servers/me/tables` with Bob's token → only Bob's tables, never Alice's.
 - `POST /servers/me/tables/{waitlistId}/notes` with an ADMIN/MANAGER/HOST token →
@@ -399,6 +440,10 @@ via Step 3's call) — they're just not consulted while in ROTATION mode.
 | Guest seated without `tableId` | Still works — only `tableName` (free text) stored; `assignedServerId` still comes from ROTATION if applicable, or `null` in SECTION mode (no table to look up) |
 | Order notes on a table not assigned to the caller | `400 Bad Request` |
 | Order notes on a party that isn't currently `SEATED` | `400 Bad Request` |
+| `maxTables` set but a server is already over it before you lower it | `atCapacity:true` immediately on the next roster read — no action is blocked, it's informational |
+| `maxTables: 0` sent to `/floor` | Explicitly resets that server back to unlimited capacity |
+| `/waitlist/{id}/complete` called on a `WAITING`/`NOTIFIED`/`CANCELLED`/already-`COMPLETED` entry | `400 Bad Request` — "Only a seated party can be marked as completed" |
+| `/waitlist/{id}/complete` called on a party seated without a real `tableId` (free-text `tableName` only) | Still succeeds — just nothing to free on the Table side |
 
 ---
 
@@ -412,16 +457,29 @@ via Step 3's call) — they're just not consulted while in ROTATION mode.
 
 **`POST /servers/{staffId}/floor`**
 ```json
-{ "onFloor": true }
+{ "onFloor": true, "maxTables": 3 }
 ```
+(`maxTables` optional — omit to leave unchanged, `0` resets to unlimited)
 
-**`GET /servers/floor` → `data`**
+**`GET /servers/floor` → `data`** (now a wrapped object, not a bare array)
 ```json
-[
-  { "staffId": 12, "name": "Alice", "onFloor": true, "seatedCount": 2, "rotationOrder": 1, "nextUp": false },
-  { "staffId": 13, "name": "Bob",   "onFloor": true, "seatedCount": 1, "rotationOrder": 2, "nextUp": true }
-]
+{
+  "serverAssignmentMode": "ROTATION",
+  "servers": [
+    { "staffId": 12, "name": "Alice", "onFloor": true, "seatedCount": 2, "rotationOrder": 1,
+      "nextUp": false, "currentTableCount": 2, "maxTables": 2, "atCapacity": true,
+      "assignedTableNames": null },
+    { "staffId": 13, "name": "Bob", "onFloor": true, "seatedCount": 1, "rotationOrder": 2,
+      "nextUp": true, "currentTableCount": 1, "maxTables": null, "atCapacity": false,
+      "assignedTableNames": null }
+  ]
+}
 ```
+`assignedTableNames` is only populated when `serverAssignmentMode == "SECTION"` (e.g.
+`["A1", "A2"]`); it's `null` in ROTATION mode since there's no static ownership to show.
+
+**`POST /waitlist/{id}/complete`** (no body)
+→ `data` is the same `WaitlistResponse` shape as `/seat`, with `status:"COMPLETED"`.
 
 **`POST /tables/{tableId}/assign-server`**
 ```json

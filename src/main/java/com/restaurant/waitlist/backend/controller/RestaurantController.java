@@ -179,6 +179,18 @@ public class RestaurantController {
         }
     }
 
+    @PostMapping("/{restaurantId}/waitlist/{id}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'HOST')")
+    public ResponseEntity<ApiResponse<WaitlistResponse>> completeSeating(@PathVariable Long restaurantId, @PathVariable Long id) {
+        try {
+            WaitlistResponse response = restaurantService.completeSeating(restaurantId, id);
+            return ResponseEntity.ok(ApiResponse.success("Party marked as completed", response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @PostMapping("/{restaurantId}/waitlist/{waitlistId}/update-seated")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'HOST')")
     public ResponseEntity<ApiResponse<WaitlistResponse>> updateSeatedGuest(@PathVariable Long restaurantId,

@@ -135,6 +135,7 @@ public class Waitlist {
         WAITING,      // Restaurant has approved, guest is waiting
         NOTIFIED,     // Guest has been notified to come
         SEATED,       // Guest has been seated
+        COMPLETED,    // Guest finished dining and the table was cleared
         CANCELLED,    // Guest cancelled
         NO_SHOW       // Guest didn't show up
     }

@@ -3,12 +3,16 @@ package com.restaurant.waitlist.backend.controller;
 import com.restaurant.waitlist.backend.dto.request.UpdateOrderNotesRequest;
 import com.restaurant.waitlist.backend.dto.request.UpdateServerFloorRequest;
 import com.restaurant.waitlist.backend.dto.response.ApiResponse;
+import com.restaurant.waitlist.backend.dto.response.FloorRosterResponse;
 import com.restaurant.waitlist.backend.dto.response.ServerAssignedTableResponse;
 import com.restaurant.waitlist.backend.dto.response.ServerFloorStatusResponse;
 import com.restaurant.waitlist.backend.dto.response.ServerNotificationResponse;
+import com.restaurant.waitlist.backend.entity.TableServerAssignment;
+import com.restaurant.waitlist.backend.repository.TableServerAssignmentRepository;
 import com.restaurant.waitlist.backend.service.CurrentUserResolver;
 import com.restaurant.waitlist.backend.service.ServerRotationService;
 import com.restaurant.waitlist.backend.service.ServerService;
+import com.restaurant.waitlist.backend.service.SettingsService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,6 +28,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Server rotation / floor management (manager-facing) + the dedicated "My Tables" and
@@ -47,15 +53,40 @@ public class ServerController {
     @Autowired
     private CurrentUserResolver currentUserResolver;
 
+    @Autowired
+    private SettingsService settingsService;
+
+    @Autowired
+    private TableServerAssignmentRepository tableServerAssignmentRepository;
+
     // ------------------------------------------------------------------
     // Manager/Host-facing: floor roster & rotation management
     // ------------------------------------------------------------------
 
     @GetMapping("/floor")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'HOST')")
-    public ResponseEntity<ApiResponse<List<ServerFloorStatusResponse>>> getFloorRoster(@PathVariable Long restaurantId) {
+    public ResponseEntity<ApiResponse<FloorRosterResponse>> getFloorRoster(@PathVariable Long restaurantId) {
         try {
-            List<ServerFloorStatusResponse> response = serverRotationService.getFloorRoster(restaurantId);
+            List<ServerFloorStatusResponse> roster = serverRotationService.getFloorRoster(restaurantId);
+            String mode = settingsService.getAdvancedSettings(restaurantId).getServerAssignmentMode();
+            if (mode == null || mode.isBlank()) {
+                mode = "ROTATION";
+            }
+            if ("SECTION".equalsIgnoreCase(mode)) {
+                for (ServerFloorStatusResponse row : roster) {
+                    List<TableServerAssignment> assignments = tableServerAssignmentRepository
+                            .findByRestaurantIdAndAssignedServerIdAndIsActiveTrue(restaurantId, row.getStaffId());
+                    List<String> tableNames = assignments.stream()
+                            .map(a -> a.getTable() != null ? a.getTable().getTableNumber() : null)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
+                    row.setAssignedTableNames(tableNames);
+                }
+            }
+            FloorRosterResponse response = FloorRosterResponse.builder()
+                    .serverAssignmentMode(mode)
+                    .servers(roster)
+                    .build();
             return ResponseEntity.ok(ApiResponse.success("Floor roster retrieved", response));
         } catch (Exception e) {
             log.error("ERROR: getFloorRoster | {}", e.getMessage());
@@ -70,7 +101,8 @@ public class ServerController {
             @Valid @RequestBody UpdateServerFloorRequest request) {
         try {
             boolean onFloor = request != null && Boolean.TRUE.equals(request.getOnFloor());
-            List<ServerFloorStatusResponse> response = serverRotationService.setOnFloor(restaurantId, staffId, onFloor);
+            Integer maxTables = request != null ? request.getMaxTables() : null;
+            List<ServerFloorStatusResponse> response = serverRotationService.setOnFloor(restaurantId, staffId, onFloor, maxTables);
             return ResponseEntity.ok(ApiResponse.success(
                     onFloor ? "Server added to the floor" : "Server removed from the floor", response));
         } catch (Exception e) {

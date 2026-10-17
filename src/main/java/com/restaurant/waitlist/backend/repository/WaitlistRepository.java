@@ -26,6 +26,10 @@ public interface WaitlistRepository extends JpaRepository<Waitlist, Long>, JpaSp
     // The front of the queue for a restaurant - used by "seat next party" from a table's own detail view.
     Optional<Waitlist> findFirstByRestaurantIdAndStatusOrderByPositionAsc(Long restaurantId, Waitlist.WaitlistStatus status);
 
+    // How many tables a server currently has (status still SEATED, not yet completed) - the
+    // live workload count shown on the floor roster.
+    long countByRestaurantIdAndAssignedServerIdAndStatus(Long restaurantId, Long assignedServerId, Waitlist.WaitlistStatus status);
+
         Optional<Waitlist> findFirstByGuestPhoneOrderByIdDesc(String guestPhone);
 
     // Return the most recent waitlist entry (by joined_at desc then id desc) for a given restaurant and guest phone

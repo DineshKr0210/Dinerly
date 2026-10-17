@@ -50,6 +50,12 @@ public class ServerFloorStatus {
     @Builder.Default
     private Boolean isNextUp = false;
 
+    // Max tables this server can handle at once. Null/0 = unlimited (the default).
+    // Purely a visibility flag (see ServerFloorStatusResponse.atCapacity) - it does not
+    // block rotation assignment.
+    @Column(name = "max_tables")
+    private Integer maxTables;
+
     @Column(name = "shift_started_at")
     private LocalDateTime shiftStartedAt;
 

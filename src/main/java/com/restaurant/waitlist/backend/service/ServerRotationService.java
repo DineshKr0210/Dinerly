@@ -4,9 +4,11 @@ import com.restaurant.waitlist.backend.dto.response.ServerFloorStatusResponse;
 import com.restaurant.waitlist.backend.entity.ServerFloorStatus;
 import com.restaurant.waitlist.backend.entity.Staff;
 import com.restaurant.waitlist.backend.entity.StaffRole;
+import com.restaurant.waitlist.backend.entity.Waitlist;
 import com.restaurant.waitlist.backend.repository.RestaurantRepository;
 import com.restaurant.waitlist.backend.repository.ServerFloorStatusRepository;
 import com.restaurant.waitlist.backend.repository.StaffRepository;
+import com.restaurant.waitlist.backend.repository.WaitlistRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,9 @@ public class ServerRotationService {
     @Autowired
     private RestaurantRepository restaurantRepository;
 
+    @Autowired
+    private WaitlistRepository waitlistRepository;
+
     // ---------------------------------------------------------------------
     // Roster / floor management
     // ---------------------------------------------------------------------
@@ -52,12 +57,16 @@ public class ServerRotationService {
 
         List<ServerFloorStatus> rows = floorStatusRepository.findByRestaurantIdOrderByRotationOrderAsc(restaurantId);
         return rows.stream()
-                .map(this::toResponse)
+                .map(status -> toResponse(restaurantId, status))
                 .collect(Collectors.toList());
     }
 
-    private ServerFloorStatusResponse toResponse(ServerFloorStatus status) {
+    private ServerFloorStatusResponse toResponse(Long restaurantId, ServerFloorStatus status) {
         Staff staff = staffRepository.findById(status.getStaffId()).orElse(null);
+        long currentTableCount = waitlistRepository.countByRestaurantIdAndAssignedServerIdAndStatus(
+                restaurantId, status.getStaffId(), Waitlist.WaitlistStatus.SEATED);
+        Integer maxTables = status.getMaxTables();
+        boolean atCapacity = maxTables != null && maxTables > 0 && currentTableCount >= maxTables;
         return ServerFloorStatusResponse.builder()
                 .staffId(status.getStaffId())
                 .name(staff != null ? staff.getName() : null)
@@ -65,11 +74,14 @@ public class ServerRotationService {
                 .seatedCount(status.getSeatedCount())
                 .rotationOrder(status.getRotationOrder())
                 .nextUp(status.getIsNextUp())
+                .maxTables(maxTables)
+                .currentTableCount((int) currentTableCount)
+                .atCapacity(atCapacity)
                 .build();
     }
 
     @Transactional
-    public List<ServerFloorStatusResponse> setOnFloor(Long restaurantId, Long staffId, boolean onFloor) {
+    public List<ServerFloorStatusResponse> setOnFloor(Long restaurantId, Long staffId, boolean onFloor, Integer maxTables) {
         Staff staff = staffRepository.findById(staffId)
                 .orElseThrow(() -> new RuntimeException("Staff member not found"));
         if (staff.getRestaurant() == null || !staff.getRestaurant().getId().equals(restaurantId)) {
@@ -88,6 +100,12 @@ public class ServerRotationService {
                         .rotationOrder(0)
                         .isNextUp(false)
                         .build());
+
+        if (maxTables != null) {
+            // 0 explicitly resets to unlimited; omit the field to leave the current value alone.
+            status.setMaxTables(maxTables == 0 ? null : maxTables);
+            floorStatusRepository.save(status);
+        }
 
         if (onFloor) {
             addToRotation(restaurantId, status);

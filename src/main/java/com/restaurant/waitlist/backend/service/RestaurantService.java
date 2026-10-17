@@ -305,6 +305,32 @@ public class RestaurantService {
     }
 
     /**
+     * Marks a seated party as finished and frees their table (status -> NEEDS_CLEANING,
+     * currentServerId cleared) in one step. Without this, a SEATED waitlist entry has no
+     * way to leave that status, which would make any "how many tables is this server
+     * currently handling" count stay wrong forever.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    public WaitlistResponse completeSeating(Long restaurantId, Long waitlistId) {
+        Waitlist waitlist = waitlistService.getWaitlistById(restaurantId, waitlistId);
+        if (waitlist.getRestaurant() == null || !waitlist.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Waitlist entry does not belong to the specified restaurant");
+        }
+        if (waitlist.getStatus() != Waitlist.WaitlistStatus.SEATED) {
+            throw new RuntimeException("Only a seated party can be marked as completed");
+        }
+
+        waitlist.setStatus(Waitlist.WaitlistStatus.COMPLETED);
+        waitlistRepository.save(waitlist);
+
+        if (waitlist.getTableId() != null) {
+            tableService.updateTableStatus(restaurantId, waitlist.getTableId(), Table.TableStatus.NEEDS_CLEANING);
+        }
+
+        return WaitlistResponse.fromWaitlist(waitlist);
+    }
+
+    /**
      * Seats the front of the queue at a specific table, from the table's own detail view
      * rather than the queue's picker. Shares the exact same seatGuest logic (rotation/section
      * server assignment, table status, notifications) so the Next-Up pointer behaves identically
