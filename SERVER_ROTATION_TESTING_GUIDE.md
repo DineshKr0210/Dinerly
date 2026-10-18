@@ -128,7 +128,7 @@ noted. Base URL below assumes `http://localhost:8080`.
 
 | # | Method & Path | Role | Purpose |
 |---|---|---|---|
-| 12 | `POST   /api/restaurants/{restaurantId}/tables/{tableId}/assign-server` | ADMIN/MANAGER/HOST | Assign a table to a server's section. Body: `{ "tableId": 5, "serverId": 12, "sectionName": "Window" }` |
+| 12 | `POST   /api/restaurants/{restaurantId}/tables/{tableId}/assign-server` | ADMIN/MANAGER/HOST | Assign a table to a server's section. `tableId` is the path variable only now (it used to be duplicated in the body too, where it was silently ignored). Body: `{ "serverId": 12, "sectionName": "Window" }` |
 | 13 | `GET    /api/restaurants/{restaurantId}/tables/server-assignments` | ADMIN/MANAGER/HOST | List every table→server assignment |
 | 14 | `GET    /api/restaurants/{restaurantId}/tables/assigned-tables/{serverId}` | ADMIN/MANAGER/HOST/SERVER | List tables owned by one server |
 | 15 | `DELETE /api/restaurants/{restaurantId}/tables/server-assignments/{assignmentId}` | ADMIN/MANAGER/HOST | Deactivate an assignment (e.g. server called out) |
@@ -137,7 +137,7 @@ noted. Base URL below assumes `http://localhost:8080`.
 
 | # | Method & Path | Role | Purpose |
 |---|---|---|---|
-| 16 | `POST /api/restaurants/{restaurantId}/waitlist/{id}/seat` | ADMIN/MANAGER/HOST | Seat a specific guest from the **queue**. Body (all optional): `{ "tableName": "B2", "tableId": 5, "serverId": 12 }`. `serverId` is only honored in ROTATION mode (explicit/out-of-turn pick); in SECTION mode the table's owner is always used. |
+| 16 | `POST /api/restaurants/{restaurantId}/waitlist/{id}/seat` | ADMIN/MANAGER/HOST | Seat a specific guest from the **queue**. Body (all optional): `{ "tableId": 5, "serverId": 12 }`. `tableId` alone is enough — the table's name is derived from the `Table` row itself, no separate `tableName` field needed (it used to exist and was dropped). `serverId` is only honored in ROTATION mode (explicit/out-of-turn pick); in SECTION mode the table's owner is always used. |
 | 17 | `POST /api/restaurants/{restaurantId}/tables/{tableId}/seat-next-party` | ADMIN/MANAGER/HOST | Seat the **front of the queue** directly from a table's own detail view. Body (optional): `{ "serverId": 12 }`. Table must be `OPEN`. Internally calls the exact same seating logic as #16, so the Next-Up pointer / section lookup behaves identically regardless of which of these two you use. |
 | 18 | `POST /api/restaurants/{restaurantId}/waitlist/{id}/complete` | ADMIN/MANAGER/HOST | **New.** Marks a seated party as finished: `Waitlist.status → COMPLETED`, and if a real table was linked, frees it (`status → NEEDS_CLEANING`, `currentServerId` cleared) in the same call. This is what makes a server's `currentTableCount` go back down. |
 
@@ -360,11 +360,11 @@ curl -s -X PUT http://localhost:8080/api/admin/settings/RID/advanced \
 ```bash
 curl -s -X POST http://localhost:8080/api/restaurants/RID/tables/<A1_TABLE_ID>/assign-server \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
-  -d '{"tableId": <A1_TABLE_ID>, "serverId": <ALICE_STAFF_ID>, "sectionName": "Window"}'
+  -d '{"serverId": <ALICE_STAFF_ID>, "sectionName": "Window"}'
 
 curl -s -X POST http://localhost:8080/api/restaurants/RID/tables/<B1_TABLE_ID>/assign-server \
   -H "Authorization: Bearer $TOKEN_ADMIN" -H "Content-Type: application/json" \
-  -d '{"tableId": <B1_TABLE_ID>, "serverId": <BOB_STAFF_ID>, "sectionName": "Bar"}'
+  -d '{"serverId": <BOB_STAFF_ID>, "sectionName": "Bar"}'
 ```
 **Expect:** both return `200` with the new assignment (`tableName`, `serverName`,
 `sectionName`, `isActive:true`).
@@ -437,13 +437,13 @@ via Step 3's call) — they're just not consulted while in ROTATION mode.
 | `seat-next-party` on a table that's `OCCUPIED`, `RESERVED`, or `NEEDS_CLEANING` | `400 Bad Request` — "Table is not open" |
 | `seat-next-party` with nobody `WAITING` in the queue | `400 Bad Request` — "No guests waiting to be seated" |
 | Table status manually reset via `POST /tables/{id}/status` | `currentServerId` on that table is cleared automatically |
-| Guest seated without `tableId` | Still works — only `tableName` (free text) stored; `assignedServerId` still comes from ROTATION if applicable, or `null` in SECTION mode (no table to look up) |
+| Guest seated without `tableId` | Still works — no table linked, `tableName` stays unset; `assignedServerId` still comes from ROTATION if applicable, or `null` in SECTION mode (no table to look up) |
 | Order notes on a table not assigned to the caller | `400 Bad Request` |
 | Order notes on a party that isn't currently `SEATED` | `400 Bad Request` |
 | `maxTables` set but a server is already over it before you lower it | `atCapacity:true` immediately on the next roster read — no action is blocked, it's informational |
 | `maxTables: 0` sent to `/floor` | Explicitly resets that server back to unlimited capacity |
 | `/waitlist/{id}/complete` called on a `WAITING`/`NOTIFIED`/`CANCELLED`/already-`COMPLETED` entry | `400 Bad Request` — "Only a seated party can be marked as completed" |
-| `/waitlist/{id}/complete` called on a party seated without a real `tableId` (free-text `tableName` only) | Still succeeds — just nothing to free on the Table side |
+| `/waitlist/{id}/complete` called on a party seated without a real `tableId` | Still succeeds — just nothing to free on the Table side |
 
 ---
 
@@ -481,16 +481,17 @@ via Step 3's call) — they're just not consulted while in ROTATION mode.
 **`POST /waitlist/{id}/complete`** (no body)
 → `data` is the same `WaitlistResponse` shape as `/seat`, with `status:"COMPLETED"`.
 
-**`POST /tables/{tableId}/assign-server`**
+**`POST /tables/{tableId}/assign-server`** (`tableId` is the path variable only)
 ```json
-{ "tableId": 5, "serverId": 12, "sectionName": "Window" }
+{ "serverId": 12, "sectionName": "Window" }
 ```
 
 **`POST /waitlist/{id}/seat`**
 ```json
-{ "tableName": "B2", "tableId": 5, "serverId": 12 }
+{ "tableId": 5, "serverId": 12 }
 ```
-(all fields optional — omit `serverId` for auto Next-Up in ROTATION, ignored entirely in SECTION)
+(both fields optional — omit `serverId` for auto Next-Up in ROTATION, ignored entirely
+in SECTION; `tableId` alone is enough to record where the party sits, no `tableName` field)
 
 **`POST /tables/{tableId}/seat-next-party`**
 ```json

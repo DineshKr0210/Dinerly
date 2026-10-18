@@ -237,9 +237,6 @@ public class RestaurantService {
         if (waitlist.getSeatedAt() == null) {
             waitlist.setSeatedAt(java.time.LocalDateTime.now());
         }
-        if (seatReq != null && seatReq.getTableName() != null && !seatReq.getTableName().isBlank() && waitlist.getTableName() == null) {
-            waitlist.setTableName(seatReq.getTableName());
-        }
 
         // Get restaurant settings to check which server assignment mode is enabled
         RestaurantSettings settings = restaurantSettingsRepository.findByRestaurantId(restaurantId).orElse(null);
@@ -270,9 +267,7 @@ public class RestaurantService {
         if (seatReq != null && seatReq.getTableId() != null) {
             table = tableService.getTable(restaurantId, seatReq.getTableId());
             waitlist.setTableId(table.getId());
-            if (waitlist.getTableName() == null || waitlist.getTableName().isBlank()) {
-                waitlist.setTableName(table.getTableNumber());
-            }
+            waitlist.setTableName(table.getTableNumber());
             tableService.assignServerToTable(restaurantId, table.getId(), assignedServerId);
         }
 

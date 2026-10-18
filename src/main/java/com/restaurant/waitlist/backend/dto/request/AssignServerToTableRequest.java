@@ -11,8 +11,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class AssignServerToTableRequest {
 
-    private Long tableId;
-    
     private Long serverId;
     
     private String sectionName; // Optional: e.g. "Window", "Bar", "Patio"
