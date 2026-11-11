@@ -19,7 +19,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/waitlist")
-@CrossOrigin(origins = "*")
 @Tag(name = "Waitlist", description = "Guest waitlist join, live status, and updates — the front door of the guest journey")
 public class WaitlistController {
 

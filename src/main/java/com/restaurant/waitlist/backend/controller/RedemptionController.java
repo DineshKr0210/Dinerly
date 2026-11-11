@@ -19,7 +19,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/redemptions")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Restaurant Redemptions", description = "POS-side validation of offer, campaign, and reward codes")

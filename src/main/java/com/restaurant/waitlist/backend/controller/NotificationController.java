@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/notifications")
-@CrossOrigin(origins = "*")
 @PreAuthorize("hasAnyRole('STAFF', 'HOST', 'MANAGER', 'OWNER', 'ADMIN')")
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Restaurant Notifications", description = "Send SMS/call notifications to waitlist guests and view delivery history")

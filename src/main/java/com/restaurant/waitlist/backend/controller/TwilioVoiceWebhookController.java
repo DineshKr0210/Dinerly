@@ -10,7 +10,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/twilio")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 @Tag(name = "Twilio Webhooks", description = "Inbound SMS/voice callbacks from Twilio (called by Twilio, not by API clients)")
 public class TwilioVoiceWebhookController {

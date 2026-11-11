@@ -18,7 +18,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/performance")
-@CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Admin Performance", description = "Waitlist, reviews, and rewards/offers performance analytics with period comparisons")
 public class AdminPerformanceController {

@@ -20,7 +20,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin/reviews")
-@CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Admin Reviews", description = "View and reply to guest reviews, plus review analytics")
 public class AdminReviewController {

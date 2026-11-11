@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/tables")
-@CrossOrigin(origins = "*")
 @Tag(name = "Table Server Assignment", description = "Section-based table-to-server assignments (Scenario 2)")
 public class TableServerAssignmentController {
 

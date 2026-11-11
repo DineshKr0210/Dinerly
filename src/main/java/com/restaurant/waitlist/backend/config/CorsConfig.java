@@ -12,7 +12,8 @@ public class CorsConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOriginPatterns(
                         "http://localhost:4200",
-                        "https://dev.dinerly.ca"
+                        "https://dev.dinerly.ca",
+                        "https://dinerly-render-frontend.onrender.com"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")

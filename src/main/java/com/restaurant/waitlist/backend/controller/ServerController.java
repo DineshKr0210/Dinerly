@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/servers")
-@CrossOrigin(origins = "*")
 @Tag(name = "Servers", description = "Server rotation, floor roster, and the server's own assigned-tables/notifications feed")
 @SecurityRequirement(name = "bearerAuth")
 public class ServerController {

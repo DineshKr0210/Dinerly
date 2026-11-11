@@ -28,7 +28,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/settings")
-@CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Restaurant Settings", description = "Restaurant profile, hours, holiday schedule, and notification preferences")
 public class SettingsController {

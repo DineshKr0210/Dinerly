@@ -17,7 +17,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/staff")
-@CrossOrigin(origins = "*")
 @PreAuthorize("hasRole('ADMIN')")
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Restaurant Staff", description = "Manage a single location's staff accounts")

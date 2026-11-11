@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/feedback")
-@CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Guest Feedback", description = "Submit guest feedback and reviews after a visit")
 public class FeedbackController {

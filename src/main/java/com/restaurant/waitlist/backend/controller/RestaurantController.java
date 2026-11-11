@@ -33,7 +33,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/restaurants")
-@CrossOrigin(origins = "*")
 @Tag(name = "Restaurant", description = "Staff dashboard: waitlist management, guest seating flow, and daily operations")
 @SecurityRequirement(name = "bearerAuth")
 public class RestaurantController {

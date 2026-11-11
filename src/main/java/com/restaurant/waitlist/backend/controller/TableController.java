@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/restaurants/{restaurantId}/tables")
-@CrossOrigin(origins = "*")
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Restaurant Tables", description = "Manage a restaurant's tables: status, merging, and layout")
 public class TableController {
